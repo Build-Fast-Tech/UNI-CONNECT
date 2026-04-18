@@ -9,33 +9,54 @@ export async function signUpAction(data: {
   password: string;
   fullName: string;
 }): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const origin = (await headers()).get("origin") ?? "";
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      return { error: `Server config missing: URL=${url ? "ok" : "missing"} KEY=${key ? "ok" : "missing"}` };
+    }
 
-  const { error } = await supabase.auth.signUp({
-    email: data.email,
-    password: data.password,
-    options: {
-      data: { full_name: data.fullName },
-      emailRedirectTo: `${origin}/onboarding`,
-    },
-  });
+    const supabase = await createClient();
+    const origin = (await headers()).get("origin") ?? "";
 
-  if (error) return { error: error.message };
-  return {};
+    const { error } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: { full_name: data.fullName },
+        emailRedirectTo: `${origin}/onboarding`,
+      },
+    });
+
+    if (error) return { error: error.message };
+    return {};
+  } catch (e: any) {
+    return { error: e?.message ?? String(e) };
+  }
 }
 
 export async function signInAction(data: {
   email: string;
   password: string;
 }): Promise<{ error?: string }> {
-  const supabase = await createClient();
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      return { error: `Server config missing: URL=${url ? "ok" : "missing"} KEY=${key ? "ok" : "missing"}` };
+    }
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: data.email,
-    password: data.password,
-  });
+    const supabase = await createClient();
 
-  if (error) return { error: error.message };
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (error) return { error: error.message };
+  } catch (e: any) {
+    return { error: e?.message ?? String(e) };
+  }
+
   redirect("/feed");
 }
