@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/feed",          icon: LayoutDashboard, label: "Feed" },
   { href: "/universities",  icon: GraduationCap,   label: "Universities" },
-  { href: "/chat/global",   icon: MessageSquare,   label: "Chat" },
+  { href: "/chat",           icon: MessageSquare,   label: "Chat" },
   { href: "/notes",         icon: FileText,        label: "Notes" },
   { href: "/jobs",          icon: Briefcase,       label: "Jobs" },
   { href: "/cvs",           icon: FileUser,        label: "CVs" },

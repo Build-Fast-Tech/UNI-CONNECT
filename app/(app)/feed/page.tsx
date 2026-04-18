@@ -3,7 +3,7 @@ import Link from "next/link";
 
 const QUICK_ACTIONS = [
   { icon: BookOpen,    label: "Browse Notes",       href: "/notes",   color: "#6366F1" },
-  { icon: MessageSquare, label: "Join Chat",         href: "/chat/global", color: "#10B981" },
+  { icon: MessageSquare, label: "Join Chat",         href: "/chat",        color: "#10B981" },
   { icon: Briefcase,   label: "Find Jobs",          href: "/jobs",    color: "#F97316" },
   { icon: Zap,         label: "Ask AI",             href: "/ai",      color: "#8B5CF6" },
 ];

@@ -14,10 +14,7 @@ import { cn } from "@/lib/utils";
 const THEMES = [
   { id: "midnight",   label: "Midnight",   bg: "#0A0A0F", primary: "#6366F1", desc: "Late-night study sessions" },
   { id: "daylight",   label: "Daylight",   bg: "#FAFAFA", primary: "#4F46E5", desc: "Clean, library, Sunday morning" },
-  { id: "emerald",    label: "Emerald",    bg: "#0F1F1A", primary: "#10B981", desc: "Calm, nature, green campus" },
-  { id: "sunset",     label: "Sunset",     bg: "#1A0F1F", primary: "#F97316", desc: "Warm, social, hostel lounge" },
   { id: "monochrome", label: "Monochrome", bg: "#000000", primary: "#FFFFFF", desc: "Minimalist, pure focus" },
-  { id: "crimson",    label: "Crimson",    bg: "#1A0A0A", primary: "#DC2626", desc: "Bold, driven, exam-week energy" },
 ] as const;
 
 type ThemeId = typeof THEMES[number]["id"];
