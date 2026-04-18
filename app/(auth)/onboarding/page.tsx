@@ -29,6 +29,7 @@ export default function OnboardingPage() {
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Step 1
   const [universities, setUniversities] = useState<University[]>([]);
@@ -80,6 +81,7 @@ export default function OnboardingPage() {
 
   const handleComplete = async () => {
     setLoading(true);
+    setError("");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
 
@@ -98,7 +100,7 @@ export default function OnboardingPage() {
       }
     }
 
-    await supabase.from("profiles").update({
+    const { error: updateError } = await supabase.from("profiles").update({
       university_id: selectedUni?.id,
       branch_id: selectedBranch?.id ?? null,
       department: department || null,
@@ -106,6 +108,12 @@ export default function OnboardingPage() {
       bio: bio || null,
       avatar_url: avatar_url ?? null,
     }).eq("id", user.id);
+
+    if (updateError) {
+      setError(updateError.message);
+      setLoading(false);
+      return;
+    }
 
     router.push("/feed");
   };
@@ -393,6 +401,11 @@ export default function OnboardingPage() {
                 <p className="text-xs text-[rgb(var(--muted-fg))] text-right mt-1">{bio.length}/160</p>
               </div>
 
+              {error && (
+                <p className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.1)] px-3 py-2 rounded-lg text-center mb-2">
+                  {error}
+                </p>
+              )}
               <div className="flex gap-3">
                 <Button variant="outline" size="lg" className="flex-1" onClick={() => setStep(2)}>
                   Back

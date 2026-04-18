@@ -24,7 +24,7 @@ export async function signUpAction(data: {
       password: data.password,
       options: {
         data: { full_name: data.fullName },
-        emailRedirectTo: `${origin}/onboarding`,
+        emailRedirectTo: `${origin}/auth/callback?next=/onboarding`,
       },
     });
 

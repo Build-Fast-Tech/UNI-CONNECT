@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signUpAction } from "@/lib/actions/auth";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
@@ -16,6 +17,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +35,15 @@ export default function SignupPage() {
       return;
     }
     setDone(true);
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setResendMsg("");
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.resend({ type: "signup", email });
+    setResending(false);
+    setResendMsg(resendError ? resendError.message : "Email resent! Check your inbox.");
   };
 
   if (done) {
@@ -51,10 +63,22 @@ export default function SignupPage() {
             Click the link to activate your account.
           </p>
           <Button
+            variant="ghost"
+            size="sm"
+            loading={resending}
+            onClick={handleResend}
+            className="w-full text-xs text-[rgb(var(--muted-fg))]"
+          >
+            Didn&apos;t get the email? Resend
+          </Button>
+          {resendMsg && (
+            <p className="text-xs text-center text-[rgb(var(--muted-fg))]">{resendMsg}</p>
+          )}
+          <Button
             variant="outline"
             size="md"
             onClick={() => window.location.href = "/login"}
-            className="w-full mt-4"
+            className="w-full"
           >
             Back to login
           </Button>

@@ -32,8 +32,12 @@ function VerifyContent() {
   }, [searchParams, router]);
 
   const resendEmail = async () => {
+    const email = searchParams.get("email");
+    if (!email) { router.push("/signup"); return; }
     setResending(true);
-    setTimeout(() => setResending(false), 2000);
+    const supabase = createClient();
+    await supabase.auth.resend({ type: "signup", email });
+    setResending(false);
   };
 
   if (status === "loading") {
