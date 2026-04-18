@@ -2,15 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { signUpAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,22 +25,13 @@ export default function SignupPage() {
       return;
     }
     setLoading(true);
-    try {
-      const supabase = createClient();
-      const { error: err } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/onboarding`,
-        },
-      });
-      if (err) { setError(err.message); setLoading(false); return; }
-      setDone(true);
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
+    const result = await signUpAction({ email, password, fullName });
+    if (result.error) {
+      setError(result.error);
       setLoading(false);
+      return;
     }
+    setDone(true);
   };
 
   if (done) {
@@ -64,7 +53,7 @@ export default function SignupPage() {
           <Button
             variant="outline"
             size="md"
-            onClick={() => router.push("/login")}
+            onClick={() => window.location.href = "/login"}
             className="w-full mt-4"
           >
             Back to login

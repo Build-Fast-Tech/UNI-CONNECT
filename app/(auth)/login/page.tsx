@@ -2,15 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { signInAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -21,10 +19,11 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const supabase = createClient();
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-    if (err) { setError(err.message); setLoading(false); return; }
-    router.push("/feed");
+    const result = await signInAction({ email, password });
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    }
   };
 
   return (
