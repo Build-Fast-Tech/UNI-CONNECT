@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
-export default function VerifyPage() {
+function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -27,14 +27,12 @@ export default function VerifyPage() {
           setTimeout(() => router.push("/onboarding"), 1500);
         });
     } else {
-      // Just landed here from signup — show "check email" state
       setStatus("success");
     }
   }, [searchParams, router]);
 
   const resendEmail = async () => {
     setResending(true);
-    // Supabase handles resend via auth flow
     setTimeout(() => setResending(false), 2000);
   };
 
@@ -104,5 +102,18 @@ export default function VerifyPage() {
         Didn&apos;t get the email? Resend
       </Button>
     </motion.div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-8 h-8 text-[rgb(var(--primary))] animate-spin" />
+        <p className="text-sm text-[rgb(var(--muted-fg))]">Loading…</p>
+      </div>
+    }>
+      <VerifyContent />
+    </Suspense>
   );
 }
