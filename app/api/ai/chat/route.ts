@@ -1,8 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 const SYSTEM_PROMPT = `You are UniConnect AI — a smart study companion built exclusively for Pakistani university students. You help with:
 - Explaining concepts from notes and course material
 - Answering subject questions (CS, Engineering, Business, Medicine, etc.)
@@ -14,9 +12,15 @@ Be concise, friendly, and relevant to Pakistani university context. If a student
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return new Response("AI feature is not configured yet.", { status: 503 });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response("Unauthorized", { status: 401 });
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     // Rate limiting check
     const { data: canSend } = await supabase.rpc("can_send_ai_message", { uid: user.id });

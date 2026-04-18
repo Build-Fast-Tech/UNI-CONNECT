@@ -112,6 +112,16 @@ function AIChat() {
         return;
       }
 
+      if (res.status === 503) {
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: "AI is not available yet — the API key hasn't been configured.", streaming: false }
+            : m
+        ));
+        setLoading(false);
+        return;
+      }
+
       if (!res.ok || !res.body) throw new Error("Request failed");
 
       const reader = res.body.getReader();
