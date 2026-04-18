@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
@@ -27,37 +28,19 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-      if (!url || !url.startsWith("https://")) {
-        setError(`URL not set. Value: "${url || "undefined"}"`);
-        setLoading(false);
-        return;
-      }
-      if (!key) {
-        setError("Anon key not set — check Vercel env vars.");
-        setLoading(false);
-        return;
-      }
-      const res = await fetch(`${url}/auth/v1/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": key,
-          "Authorization": `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          email,
-          password,
+      const supabase = createClient();
+      const { error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
           data: { full_name: fullName },
-          gotrue_meta_security: {},
-        }),
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+        },
       });
-      const json = await res.json();
-      if (!res.ok) { setError(json.msg || json.message || "Signup failed"); setLoading(false); return; }
+      if (err) { setError(err.message); setLoading(false); return; }
       setDone(true);
     } catch (e: any) {
-      setError(`Error: ${e?.message ?? String(e)}`);
+      setError(e?.message ?? String(e));
       setLoading(false);
     }
   };
