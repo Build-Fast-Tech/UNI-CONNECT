@@ -27,20 +27,22 @@ export default function SignupPage() {
       return;
     }
     setLoading(true);
-    let supabase;
-    try { supabase = createClient(); } catch (e: any) {
-      setError(e.message); setLoading(false); return;
+    try {
+      const supabase = createClient();
+      const { error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+        },
+      });
+      if (err) { setError(err.message); setLoading(false); return; }
+      setDone(true);
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+      setLoading(false);
     }
-    const { error: err } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/onboarding`,
-      },
-    });
-    if (err) { setError(err.message); setLoading(false); return; }
-    setDone(true);
   };
 
   if (done) {
