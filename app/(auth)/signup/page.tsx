@@ -27,10 +27,15 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
       if (!url || !url.startsWith("https://")) {
-        setError(`URL not set. Value: "${url ?? "undefined"}"`);
+        setError(`URL not set. Value: "${url || "undefined"}"`);
+        setLoading(false);
+        return;
+      }
+      if (!key) {
+        setError("Anon key not set — check Vercel env vars.");
         setLoading(false);
         return;
       }
