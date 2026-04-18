@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   MapPin, Globe, Users, Calendar, GraduationCap,
-  MessageSquare, BookOpen, UserCheck, ExternalLink, ArrowLeft,
+  MessageSquare, BookOpen, UserCheck, ExternalLink, ArrowLeft, ArrowRight,
+  Download, ThumbsUp, Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -13,6 +15,7 @@ import type { Database } from "@/types/database";
 
 type University = Database["public"]["Tables"]["universities"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Note = Database["public"]["Tables"]["notes"]["Row"];
 
 const TABS = [
   { id: "chat",    label: "Chat",    icon: MessageSquare },
@@ -29,11 +32,14 @@ export default function UniversityHubPage({
 }) {
   const { slug } = use(params);
   const supabase = createClient();
+  const router = useRouter();
   const [uni, setUni] = useState<University | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("chat");
   const [isMember, setIsMember] = useState(false);
+  const [uniChannelId, setUniChannelId] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -45,15 +51,43 @@ export default function UniversityHubPage({
       if (!uniData) { setLoading(false); return; }
       setUni(uniData);
 
-      const { data: membersData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("university_id", uniData.id)
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(50);
+      const [{ data: membersData }, { data: notesData }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("university_id", uniData.id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("notes")
+          .select("*")
+          .eq("university_id", uniData.id)
+          .eq("status", "published")
+          .order("downloads", { ascending: false })
+          .limit(20),
+      ]);
 
       setMembers(membersData || []);
+      setNotes(notesData || []);
+
+      // Resolve (or create) the one university chat channel
+      let { data: channel } = await supabase
+        .from("channels")
+        .select("id")
+        .eq("type", "university")
+        .eq("university_id", uniData.id)
+        .single();
+
+      if (!channel) {
+        const { data: created } = await supabase
+          .from("channels")
+          .insert({ type: "university", university_id: uniData.id, name: `${uniData.short_name} Chat` })
+          .select("id")
+          .single();
+        channel = created;
+      }
+      if (channel) setUniChannelId(channel.id);
 
       if (user) {
         const { data: profile } = await supabase
@@ -218,28 +252,98 @@ export default function UniversityHubPage({
         {/* Tab content */}
         <div className="p-6">
           {tab === "chat" && (
-            <div className="text-center py-12">
-              <MessageSquare className="w-12 h-12 text-[rgb(var(--muted-fg))] mx-auto mb-3" />
-              <p className="font-semibold mb-1">Chat coming in Week 5</p>
-              <p className="text-sm text-[rgb(var(--muted-fg))]">
-                University-scoped chats with realtime messaging are on their way.
+            <div className="flex flex-col items-center text-center py-10 gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-[rgb(var(--primary))]" />
+              </div>
+              <div>
+                <p className="font-semibold text-lg mb-1">
+                  {uni?.short_name} Chat Room
+                </p>
+                <p className="text-sm text-[rgb(var(--muted-fg))] max-w-sm">
+                  One shared chat for all {uni?.short_name} students. Your campus badge
+                  is shown next to your name so everyone knows which branch you&apos;re from.
+                </p>
+              </div>
+              {uniChannelId ? (
+                <Link
+                  href={`/chat/${uniChannelId}`}
+                  className={cn(
+                    "inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200",
+                    "bg-[rgb(var(--primary))] text-white hover:opacity-90 active:scale-95"
+                  )}
+                >
+                  Open Chat <ArrowRight className="w-4 h-4" />
+                </Link>
+              ) : (
+                <div className="h-10 w-32 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />
+              )}
+              <p className="text-xs text-[rgb(var(--muted-fg))]">
+                {members.length} member{members.length !== 1 ? "s" : ""} · campus badge shown on every message
               </p>
             </div>
           )}
 
           {tab === "notes" && (
-            <div className="text-center py-12">
-              <BookOpen className="w-12 h-12 text-[rgb(var(--muted-fg))] mx-auto mb-3" />
-              <p className="font-semibold mb-1">Notes coming in Week 4</p>
-              <p className="text-sm text-[rgb(var(--muted-fg))]">
-                Browse notes uploaded by {uni.short_name} students here.
-              </p>
-              <Link
-                href="/notes"
-                className="mt-4 inline-flex items-center gap-1.5 text-sm text-[rgb(var(--primary))] hover:underline"
-              >
-                Browse global notes
-              </Link>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-[rgb(var(--muted-fg))]">
+                  {notes.length > 0
+                    ? `${notes.length} note${notes.length !== 1 ? "s" : ""} from ${uni.short_name} students`
+                    : `No notes from ${uni.short_name} yet`}
+                </p>
+                <Link
+                  href="/notes/upload"
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-[rgb(var(--primary))] text-white hover:opacity-90 transition-opacity"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Upload
+                </Link>
+              </div>
+
+              {notes.length === 0 ? (
+                <div className="text-center py-10">
+                  <BookOpen className="w-10 h-10 text-[rgb(var(--muted-fg))] mx-auto mb-3" />
+                  <p className="text-sm text-[rgb(var(--muted-fg))] mb-3">
+                    Be the first to share notes from {uni.short_name}!
+                  </p>
+                  <Link
+                    href="/notes"
+                    className="text-sm text-[rgb(var(--primary))] hover:underline inline-flex items-center gap-1"
+                  >
+                    Browse all notes <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {notes.map((note) => (
+                    <Link
+                      key={note.id}
+                      href={`/notes/${note.id}`}
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-[rgb(var(--muted)/0.5)] transition-colors group"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
+                        <BookOpen className="w-4 h-4 text-[rgb(var(--primary))]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-[rgb(var(--primary))] transition-colors">
+                          {note.title}
+                        </p>
+                        <p className="text-xs text-[rgb(var(--muted-fg))]">
+                          {note.subject}{note.semester ? ` · ${note.semester}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-[rgb(var(--muted-fg))] flex-shrink-0">
+                        <span className="flex items-center gap-1">
+                          <Download className="w-3 h-3" /> {note.downloads}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ThumbsUp className="w-3 h-3" /> {note.upvotes}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

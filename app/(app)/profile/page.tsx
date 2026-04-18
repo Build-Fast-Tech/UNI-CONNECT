@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  BookOpen, Edit2, Save, X, Camera, Github, Linkedin,
+  BookOpen, Edit2, Save, X, Camera, GitBranch, Link2,
   Globe, GraduationCap, MapPin, Calendar, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
@@ -280,8 +280,8 @@ export default function MyProfilePage() {
         {editing ? (
           <div className="space-y-3">
             {[
-              { label: "LinkedIn", value: linkedin, set: setLinkedin, icon: Linkedin, placeholder: "linkedin.com/in/yourname" },
-              { label: "GitHub",   value: github,   set: setGithub,   icon: Github,   placeholder: "github.com/yourname" },
+              { label: "LinkedIn", value: linkedin, set: setLinkedin, icon: Link2, placeholder: "linkedin.com/in/yourname" },
+              { label: "GitHub",   value: github,   set: setGithub,   icon: GitBranch,   placeholder: "github.com/yourname" },
               { label: "Portfolio",value: portfolio, set: setPortfolio, icon: Globe,   placeholder: "yourportfolio.com" },
             ].map(({ label, value, set, icon: Icon, placeholder }) => (
               <div key={label} className="flex items-center gap-3">
@@ -304,8 +304,8 @@ export default function MyProfilePage() {
         ) : (
           <div className="space-y-2">
             {[
-              { label: "LinkedIn", value: profile.linkedin, icon: Linkedin },
-              { label: "GitHub",   value: profile.github,   icon: Github },
+              { label: "LinkedIn", value: profile.linkedin, icon: Link2 },
+              { label: "GitHub",   value: profile.github,   icon: GitBranch },
               { label: "Portfolio",value: profile.portfolio_url, icon: Globe },
             ].filter(l => l.value).map(({ label, value, icon: Icon }) => (
               <a

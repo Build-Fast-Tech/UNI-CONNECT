@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { use } from "react";
 import { motion } from "framer-motion";
 import {
-  BookOpen, Github, Linkedin, Globe, GraduationCap,
+  BookOpen, GitBranch, Link2, Globe, GraduationCap,
   MapPin, Calendar, ExternalLink, UserCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -176,8 +176,8 @@ export default function PublicProfilePage({
           <h2 className="text-sm font-semibold mb-4">Links</h2>
           <div className="space-y-2">
             {[
-              { label: "LinkedIn",  value: profile.linkedin,      icon: Linkedin },
-              { label: "GitHub",    value: profile.github,        icon: Github },
+              { label: "LinkedIn",  value: profile.linkedin,      icon: Link2 },
+              { label: "GitHub",    value: profile.github,        icon: GitBranch },
               { label: "Portfolio", value: profile.portfolio_url, icon: Globe },
             ].filter(l => l.value).map(({ label, value, icon: Icon }) => (
               <a

@@ -9,6 +9,8 @@ interface Profile {
   full_name: string;
   avatar_url: string | null;
   username: string | null;
+  branch: { name: string } | null;
+  universities: { short_name: string } | null;
 }
 
 interface Message {
@@ -95,7 +97,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
       const { data: msgs } = await supabase
         .from("messages")
-        .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url, username)")
+        .select(`
+          id, content, created_at, sender_id,
+          sender:profiles!sender_id(
+            full_name, avatar_url, username,
+            branch:branches!branch_id(name),
+            universities!university_id(short_name)
+          )
+        `)
         .eq("channel_id", channelId)
         .eq("is_deleted", false)
         .order("created_at", { ascending: true })
@@ -128,7 +137,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         async (payload) => {
           const { data: msg } = await supabase
             .from("messages")
-            .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url, username)")
+            .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name))")
             .eq("id", payload.new.id)
             .single();
           if (msg) {
@@ -286,13 +295,23 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             {/* Content */}
             <div className="flex-1 min-w-0">
               {showHeader(i) && (
-                <div className="flex items-baseline gap-2 mb-0.5">
+                <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mb-0.5">
                   <span className={cn(
-                    "text-sm font-semibold",
+                    "text-sm font-semibold leading-tight",
                     msg.sender_id === userId ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--fg))]"
                   )}>
                     {msg.sender_id === userId ? "You" : (msg.sender?.full_name ?? "Unknown")}
                   </span>
+                  {msg.sender?.universities && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] leading-tight">
+                      {(msg.sender.universities as any).short_name}
+                    </span>
+                  )}
+                  {msg.sender?.branch && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] leading-tight">
+                      {(msg.sender.branch as any).name}
+                    </span>
+                  )}
                   <span className="text-xs text-[rgb(var(--muted-fg))]">
                     {formatRelativeTime(msg.created_at)}
                   </span>

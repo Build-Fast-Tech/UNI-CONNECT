@@ -320,7 +320,7 @@ export default function OnboardingPage() {
                   variant="primary"
                   size="lg"
                   className="flex-1"
-                  disabled={!department || !year}
+                  disabled={!department || !year || (branches.length > 0 && !selectedBranch)}
                   onClick={() => setStep(3)}
                 >
                   Continue <ChevronRight className="w-4 h-4" />

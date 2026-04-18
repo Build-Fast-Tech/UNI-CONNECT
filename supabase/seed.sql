@@ -27,6 +27,7 @@ insert into universities (name, short_name, slug, city, province, website, found
 -- ── Punjab ────────────────────────────────────────────────────────────────────
 ('Lahore University of Management Sciences',                          'LUMS',    'lums',          'Lahore',    'Punjab',      'https://lums.edu.pk',          1985, 5000,  true),
 ('University of Engineering and Technology Lahore',                   'UET',     'uet-lahore',    'Lahore',    'Punjab',      'https://uet.edu.pk',           1921, 10000, true),
+('University of Engineering and Technology Taxila',                   'UET Taxila','uet-taxila',  'Taxila',    'Punjab',      'https://uettaxila.edu.pk',     1975, 7000,  false),
 ('University of the Punjab',                                          'PU',      'punjab-university','Lahore',  'Punjab',      'https://pu.edu.pk',            1882, 40000, true),
 ('Government College University Lahore',                              'GCU',     'gcu-lahore',    'Lahore',    'Punjab',      'https://gcu.edu.pk',           1864, 10000, false),
 ('Forman Christian College University',                               'FCCU',    'fccu',          'Lahore',    'Punjab',      'https://fccollege.edu.pk',     1864, 4000,  false),
@@ -120,124 +121,134 @@ insert into universities (name, short_name, slug, city, province, website, found
 ('Bahria University',                                                 'BU',      'bahria-university','Islamabad','Islamabad',  'https://bahria.edu.pk',        2000, 12000, false);
 
 -- ─── Branches ─────────────────────────────────────────────────────────────────
+-- Each branch = one campus. University chat is shared; campus shown as a tag on the student.
 
--- NUST campuses
-insert into branches (university_id, name, slug, city) select id, 'H-12 Main Campus',                    'h12-main',       'Islamabad'  from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'SEECS',                               'seecs',          'Islamabad'  from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'NSBE',                                'nsbe',           'Islamabad'  from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'NICE',                                'nice',           'Islamabad'  from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'SMME',                                'smme',           'Islamabad'  from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'RIMMS',                               'rimms',          'Islamabad'  from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'PNEC Karachi',                        'pnec',           'Karachi'    from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'CAE Risalpur',                        'cae',            'Risalpur'   from universities where slug = 'nust';
-insert into branches (university_id, name, slug, city) select id, 'MCS Rawalpindi',                      'mcs',            'Rawalpindi' from universities where slug = 'nust';
+-- ── FAST-NUCES — 5 campuses ──────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'fast';
+insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',             'lahore',       'Lahore'      from universities where slug = 'fast';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',            'karachi',      'Karachi'     from universities where slug = 'fast';
+insert into branches (university_id, name, slug, city) select id, 'Peshawar Campus',           'peshawar',     'Peshawar'    from universities where slug = 'fast';
+insert into branches (university_id, name, slug, city) select id, 'Chiniot-Faisalabad Campus', 'cf-campus',    'Chiniot'     from universities where slug = 'fast';
 
--- FAST campuses
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'fast';
-insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',                       'lahore',         'Lahore'     from universities where slug = 'fast';
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',                      'karachi',        'Karachi'    from universities where slug = 'fast';
-insert into branches (university_id, name, slug, city) select id, 'Peshawar Campus',                     'peshawar',       'Peshawar'   from universities where slug = 'fast';
-insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',                   'faisalabad',     'Faisalabad' from universities where slug = 'fast';
-insert into branches (university_id, name, slug, city) select id, 'Chiniot-Faisalabad Campus',           'cf-campus',      'Chiniot'    from universities where slug = 'fast';
-insert into branches (university_id, name, slug, city) select id, 'Multan Campus',                       'multan',         'Multan'     from universities where slug = 'fast';
+-- ── NUST — 7 campuses ────────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'H-12 Islamabad (Main)',     'h12-main',     'Islamabad'   from universities where slug = 'nust';
+insert into branches (university_id, name, slug, city) select id, 'PNEC — Karachi',            'pnec',         'Karachi'     from universities where slug = 'nust';
+insert into branches (university_id, name, slug, city) select id, 'CEME — Rawalpindi',         'ceme',         'Rawalpindi'  from universities where slug = 'nust';
+insert into branches (university_id, name, slug, city) select id, 'MCS — Rawalpindi',          'mcs',          'Rawalpindi'  from universities where slug = 'nust';
+insert into branches (university_id, name, slug, city) select id, 'CAE — Risalpur',            'cae',          'Risalpur'    from universities where slug = 'nust';
+insert into branches (university_id, name, slug, city) select id, 'MCE — Risalpur',            'mce',          'Risalpur'    from universities where slug = 'nust';
+insert into branches (university_id, name, slug, city) select id, 'Baluchistan Campus, Quetta','nbc',          'Quetta'      from universities where slug = 'nust';
 
--- COMSATS campuses
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'comsats';
-insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',                       'lahore',         'Lahore'     from universities where slug = 'comsats';
-insert into branches (university_id, name, slug, city) select id, 'Wah Campus',                          'wah',            'Wah Cantt'  from universities where slug = 'comsats';
-insert into branches (university_id, name, slug, city) select id, 'Abbottabad Campus',                   'abbottabad',     'Abbottabad' from universities where slug = 'comsats';
-insert into branches (university_id, name, slug, city) select id, 'Sahiwal Campus',                      'sahiwal',        'Sahiwal'    from universities where slug = 'comsats';
-insert into branches (university_id, name, slug, city) select id, 'Vehari Campus',                       'vehari',         'Vehari'     from universities where slug = 'comsats';
-insert into branches (university_id, name, slug, city) select id, 'Attock Campus',                       'attock',         'Attock'     from universities where slug = 'comsats';
+-- ── COMSATS — 7 campuses ─────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'comsats';
+insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',             'lahore',       'Lahore'      from universities where slug = 'comsats';
+insert into branches (university_id, name, slug, city) select id, 'Abbottabad Campus',         'abbottabad',   'Abbottabad'  from universities where slug = 'comsats';
+insert into branches (university_id, name, slug, city) select id, 'Wah Campus',                'wah',          'Wah Cantt'   from universities where slug = 'comsats';
+insert into branches (university_id, name, slug, city) select id, 'Attock Campus',             'attock',       'Attock'      from universities where slug = 'comsats';
+insert into branches (university_id, name, slug, city) select id, 'Sahiwal Campus',            'sahiwal',      'Sahiwal'     from universities where slug = 'comsats';
+insert into branches (university_id, name, slug, city) select id, 'Vehari Campus',             'vehari',       'Vehari'      from universities where slug = 'comsats';
 
--- Air University campuses
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus (Main)',             'islamabad',      'Islamabad'  from universities where slug = 'air-university';
-insert into branches (university_id, name, slug, city) select id, 'Multan Campus',                       'multan',         'Multan'     from universities where slug = 'air-university';
-insert into branches (university_id, name, slug, city) select id, 'Kamra Campus',                        'kamra',          'Kamra'      from universities where slug = 'air-university';
+-- ── University of the Punjab — 4 campuses ────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Quaid-e-Azam Campus, Lahore','qaz-lahore',  'Lahore'      from universities where slug = 'punjab-university';
+insert into branches (university_id, name, slug, city) select id, 'Allama Iqbal Campus, Lahore','allama-iqbal', 'Lahore'      from universities where slug = 'punjab-university';
+insert into branches (university_id, name, slug, city) select id, 'Gujranwala Campus',         'gujranwala',   'Gujranwala'  from universities where slug = 'punjab-university';
+insert into branches (university_id, name, slug, city) select id, 'Jhelum Campus',             'jhelum',       'Jhelum'      from universities where slug = 'punjab-university';
 
--- Bahria University campuses
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'bahria-university';
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',                      'karachi',        'Karachi'    from universities where slug = 'bahria-university';
-insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',                       'lahore',         'Lahore'     from universities where slug = 'bahria-university';
-insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus',                    'hyderabad',      'Hyderabad'  from universities where slug = 'bahria-university';
+-- ── UET Lahore — 5 campuses ──────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Main Campus, Lahore',       'lahore-main',  'Lahore'      from universities where slug = 'uet-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Kala Shah Kaku (KSK) Campus','ksk',         'Kala Shah Kaku' from universities where slug = 'uet-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',         'faisalabad',   'Faisalabad'  from universities where slug = 'uet-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Rachna (Gujranwala) Campus','rachna',       'Gujranwala'  from universities where slug = 'uet-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Narowal Campus',            'narowal',      'Narowal'     from universities where slug = 'uet-lahore';
 
--- NUML campuses
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus (Main)',             'islamabad',      'Islamabad'  from universities where slug = 'numl';
-insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',                       'lahore',         'Lahore'     from universities where slug = 'numl';
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',                      'karachi',        'Karachi'    from universities where slug = 'numl';
-insert into branches (university_id, name, slug, city) select id, 'Peshawar Campus',                     'peshawar',       'Peshawar'   from universities where slug = 'numl';
-insert into branches (university_id, name, slug, city) select id, 'Quetta Campus',                       'quetta',         'Quetta'     from universities where slug = 'numl';
-insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',                   'faisalabad',     'Faisalabad' from universities where slug = 'numl';
-insert into branches (university_id, name, slug, city) select id, 'Multan Campus',                       'multan',         'Multan'     from universities where slug = 'numl';
+-- ── UET Taxila — 2 campuses ──────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Main Campus, Taxila',       'taxila-main',  'Taxila'      from universities where slug = 'uet-taxila';
+insert into branches (university_id, name, slug, city) select id, 'Chakwal Campus',            'chakwal',      'Chakwal'     from universities where slug = 'uet-taxila';
 
--- UET campuses
-insert into branches (university_id, name, slug, city) select id, 'Main Campus Lahore',                  'lahore-main',    'Lahore'     from universities where slug = 'uet-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',                   'faisalabad',     'Faisalabad' from universities where slug = 'uet-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Gujranwala Campus',                   'gujranwala',     'Gujranwala' from universities where slug = 'uet-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Taxila Campus',                       'taxila',         'Taxila'     from universities where slug = 'uet-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Kala Shah Kaku Campus',               'ksk',            'Kala Shah Kaku' from universities where slug = 'uet-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Narowal Campus',                      'narowal',        'Narowal'    from universities where slug = 'uet-lahore';
+-- ── SZABIST — 3 campuses ─────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',     'karachi',      'Karachi'     from universities where slug = 'szabist';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'szabist';
+insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus',          'hyderabad',    'Hyderabad'   from universities where slug = 'szabist';
 
--- University of Lahore campuses
-insert into branches (university_id, name, slug, city) select id, 'Defence Road Campus (Main)',          'defence-road',   'Lahore'     from universities where slug = 'university-of-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'university-of-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Gujrat Campus',                       'gujrat',         'Gujrat'     from universities where slug = 'university-of-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Sargodha Campus',                     'sargodha',       'Sargodha'   from universities where slug = 'university-of-lahore';
-insert into branches (university_id, name, slug, city) select id, 'Lahore Raiwind Road Campus',          'raiwind',        'Lahore'     from universities where slug = 'university-of-lahore';
+-- ── Bahria University — 5 campuses ───────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus (E-8)',    'islamabad-e8', 'Islamabad'   from universities where slug = 'bahria-university';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus (H-11)',   'islamabad-h11','Islamabad'   from universities where slug = 'bahria-university';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',            'karachi',      'Karachi'     from universities where slug = 'bahria-university';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Health Sciences',   'karachi-hs',   'Karachi'     from universities where slug = 'bahria-university';
+insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',             'lahore',       'Lahore'      from universities where slug = 'bahria-university';
 
--- Riphah campuses
-insert into branches (university_id, name, slug, city) select id, 'Islamabad — I-14 Campus',             'i14',            'Islamabad'  from universities where slug = 'riphah';
-insert into branches (university_id, name, slug, city) select id, 'Islamabad — Faisal Town Campus',      'faisal-town',    'Islamabad'  from universities where slug = 'riphah';
-insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',                       'lahore',         'Lahore'     from universities where slug = 'riphah';
-insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',                   'faisalabad',     'Faisalabad' from universities where slug = 'riphah';
-insert into branches (university_id, name, slug, city) select id, 'Rawalpindi Campus',                   'rawalpindi',     'Rawalpindi' from universities where slug = 'riphah';
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',                      'karachi',        'Karachi'    from universities where slug = 'riphah';
+-- ── Air University — 4 campuses ──────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus (Main)',   'islamabad',    'Islamabad'   from universities where slug = 'air-university';
+insert into branches (university_id, name, slug, city) select id, 'Multan Campus',             'multan',       'Multan'      from universities where slug = 'air-university';
+insert into branches (university_id, name, slug, city) select id, 'Kamra Campus (Aviation City)','kamra',      'Kamra'       from universities where slug = 'air-university';
+insert into branches (university_id, name, slug, city) select id, 'Kharian Campus',            'kharian',      'Kharian'     from universities where slug = 'air-university';
 
--- SZABIST campuses
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',               'karachi',        'Karachi'    from universities where slug = 'szabist';
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'szabist';
-insert into branches (university_id, name, slug, city) select id, 'Larkana Campus',                      'larkana',        'Larkana'    from universities where slug = 'szabist';
-insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus',                    'hyderabad',      'Hyderabad'  from universities where slug = 'szabist';
+-- ── NUML — 4 campuses ────────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus (Main)',   'islamabad',    'Islamabad'   from universities where slug = 'numl';
+insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',             'lahore',       'Lahore'      from universities where slug = 'numl';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',            'karachi',      'Karachi'     from universities where slug = 'numl';
+insert into branches (university_id, name, slug, city) select id, 'Peshawar Campus',           'peshawar',     'Peshawar'    from universities where slug = 'numl';
 
--- Iqra University campuses
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',               'karachi',        'Karachi'    from universities where slug = 'iqra-university';
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'iqra-university';
-insert into branches (university_id, name, slug, city) select id, 'Peshawar Campus',                     'peshawar',       'Peshawar'   from universities where slug = 'iqra-university';
-insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus',                    'hyderabad',      'Hyderabad'  from universities where slug = 'iqra-university';
+-- ── University of Education — 3 campuses ─────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Lahore Campus (Main)',      'lahore-main',  'Lahore'      from universities where slug = 'university-of-education';
+insert into branches (university_id, name, slug, city) select id, 'Multan Campus',             'multan',       'Multan'      from universities where slug = 'university-of-education';
+insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',         'faisalabad',   'Faisalabad'  from universities where slug = 'university-of-education';
 
--- Punjab University campuses
-insert into branches (university_id, name, slug, city) select id, 'Main Campus Lahore',                  'lahore-main',    'Lahore'     from universities where slug = 'punjab-university';
-insert into branches (university_id, name, slug, city) select id, 'Gujranwala Campus',                   'gujranwala',     'Gujranwala' from universities where slug = 'punjab-university';
-insert into branches (university_id, name, slug, city) select id, 'Jhelum Campus',                       'jhelum',         'Jhelum'     from universities where slug = 'punjab-university';
+-- ── LUMS — single campus ─────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'DHA, Lahore (Main)',        'lahore-main',  'Lahore'      from universities where slug = 'lums';
 
--- University of Education campuses
-insert into branches (university_id, name, slug, city) select id, 'Lahore — Bank Road (Main)',           'bank-road',      'Lahore'     from universities where slug = 'university-of-education';
-insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',                   'faisalabad',     'Faisalabad' from universities where slug = 'university-of-education';
-insert into branches (university_id, name, slug, city) select id, 'Multan Campus',                       'multan',         'Multan'     from universities where slug = 'university-of-education';
-insert into branches (university_id, name, slug, city) select id, 'DG Khan Campus',                      'dg-khan',        'Dera Ghazi Khan' from universities where slug = 'university-of-education';
-insert into branches (university_id, name, slug, city) select id, 'Okara Campus',                        'okara',          'Okara'      from universities where slug = 'university-of-education';
+-- ── IBA — single campus ──────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Main Campus, Karachi',      'karachi-main', 'Karachi'     from universities where slug = 'iba';
 
--- Hamdard University campuses
-insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',               'karachi',        'Karachi'    from universities where slug = 'hamdard-university';
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'hamdard-university';
+-- ── Quaid-i-Azam University — single campus ──────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'qau';
 
--- University of Gujrat campuses
-insert into branches (university_id, name, slug, city) select id, 'Gujrat Campus (Main)',                'gujrat-main',    'Gujrat'     from universities where slug = 'university-of-gujrat';
-insert into branches (university_id, name, slug, city) select id, 'Hafizabad Campus',                    'hafizabad',      'Hafizabad'  from universities where slug = 'university-of-gujrat';
-insert into branches (university_id, name, slug, city) select id, 'Sialkot Campus',                      'sialkot',        'Sialkot'    from universities where slug = 'university-of-gujrat';
+-- ── Aga Khan University — single campus ──────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',     'karachi-main', 'Karachi'     from universities where slug = 'aku';
 
--- MUET campuses
-insert into branches (university_id, name, slug, city) select id, 'Jamshoro Campus (Main)',              'jamshoro',       'Jamshoro'   from universities where slug = 'muet';
-insert into branches (university_id, name, slug, city) select id, 'Khairpur Campus',                     'khairpur',       'Khairpur'   from universities where slug = 'muet';
-insert into branches (university_id, name, slug, city) select id, 'Mirpurkhas Campus',                   'mirpurkhas',     'Mirpurkhas' from universities where slug = 'muet';
+-- ── University of Lahore — 5 campuses ────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Defence Road Campus (Main)','defence-road', 'Lahore'      from universities where slug = 'university-of-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'university-of-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Gujrat Campus',             'gujrat',       'Gujrat'      from universities where slug = 'university-of-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Sargodha Campus',           'sargodha',     'Sargodha'    from universities where slug = 'university-of-lahore';
+insert into branches (university_id, name, slug, city) select id, 'Raiwind Road Campus',       'raiwind',      'Lahore'      from universities where slug = 'university-of-lahore';
 
--- ISRA University campuses
-insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus (Main)',             'hyderabad',      'Hyderabad'  from universities where slug = 'isra-university';
-insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',                    'islamabad',      'Islamabad'  from universities where slug = 'isra-university';
+-- ── Riphah International — 6 campuses ────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Islamabad — I-14 Campus',   'i14',          'Islamabad'   from universities where slug = 'riphah';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad — Faisal Town',   'faisal-town',  'Islamabad'   from universities where slug = 'riphah';
+insert into branches (university_id, name, slug, city) select id, 'Lahore Campus',             'lahore',       'Lahore'      from universities where slug = 'riphah';
+insert into branches (university_id, name, slug, city) select id, 'Faisalabad Campus',         'faisalabad',   'Faisalabad'  from universities where slug = 'riphah';
+insert into branches (university_id, name, slug, city) select id, 'Rawalpindi Campus',         'rawalpindi',   'Rawalpindi'  from universities where slug = 'riphah';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus',            'karachi',      'Karachi'     from universities where slug = 'riphah';
 
--- IUB campuses
-insert into branches (university_id, name, slug, city) select id, 'Bahawalpur Campus (Main)',            'bahawalpur',     'Bahawalpur' from universities where slug = 'iub';
-insert into branches (university_id, name, slug, city) select id, 'Rahim Yar Khan Campus',               'ryk',            'Rahim Yar Khan' from universities where slug = 'iub';
+-- ── Iqra University — 5 campuses ─────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',     'karachi',      'Karachi'     from universities where slug = 'iqra-university';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Gulshan)',  'karachi-gulshan','Karachi'   from universities where slug = 'iqra-university';
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (North)',    'karachi-north','Karachi'     from universities where slug = 'iqra-university';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'iqra-university';
+insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus',          'hyderabad',    'Hyderabad'   from universities where slug = 'iqra-university';
+
+-- ── Hamdard University — 2 campuses ──────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Karachi Campus (Main)',     'karachi',      'Karachi'     from universities where slug = 'hamdard-university';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'hamdard-university';
+
+-- ── University of Gujrat — 3 campuses ────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Gujrat Campus (Main)',      'gujrat-main',  'Gujrat'      from universities where slug = 'university-of-gujrat';
+insert into branches (university_id, name, slug, city) select id, 'Hafizabad Campus',          'hafizabad',    'Hafizabad'   from universities where slug = 'university-of-gujrat';
+insert into branches (university_id, name, slug, city) select id, 'Sialkot Campus',            'sialkot',      'Sialkot'     from universities where slug = 'university-of-gujrat';
+
+-- ── MUET — 3 campuses ────────────────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Jamshoro Campus (Main)',    'jamshoro',     'Jamshoro'    from universities where slug = 'muet';
+insert into branches (university_id, name, slug, city) select id, 'Khairpur Campus',           'khairpur',     'Khairpur'    from universities where slug = 'muet';
+insert into branches (university_id, name, slug, city) select id, 'Mirpurkhas Campus',         'mirpurkhas',   'Mirpurkhas'  from universities where slug = 'muet';
+
+-- ── ISRA University — 2 campuses ─────────────────────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Hyderabad Campus (Main)',   'hyderabad',    'Hyderabad'   from universities where slug = 'isra-university';
+insert into branches (university_id, name, slug, city) select id, 'Islamabad Campus',          'islamabad',    'Islamabad'   from universities where slug = 'isra-university';
+
+-- ── Islamia University Bahawalpur — 2 campuses ───────────────────────────────
+insert into branches (university_id, name, slug, city) select id, 'Bahawalpur Campus (Main)',  'bahawalpur',   'Bahawalpur'  from universities where slug = 'iub';
+insert into branches (university_id, name, slug, city) select id, 'Rahim Yar Khan Campus',     'ryk',          'Rahim Yar Khan' from universities where slug = 'iub';
 
 -- ─── Common Subjects ─────────────────────────────────────────────────────────
 insert into subjects (name, faculty) values
