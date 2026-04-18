@@ -11,7 +11,7 @@ export function UniversityTicker() {
   const doubled = [...UNIVERSITIES, ...UNIVERSITIES];
 
   return (
-    <section className="py-12 border-y border-[rgb(var(--border))] overflow-hidden bg-[rgb(var(--muted)/0.3)]">
+    <section id="universities" className="py-12 border-y border-[rgb(var(--border))] overflow-hidden bg-[rgb(var(--muted)/0.3)]">
       <div className="flex gap-8 animate-marquee whitespace-nowrap">
         {doubled.map((uni, i) => (
           <span

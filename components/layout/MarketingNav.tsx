@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "#features",      label: "Features" },
   { href: "#universities",  label: "Universities" },
-  { href: "#jobs",          label: "Jobs" },
-  { href: "#notes",         label: "Notes" },
-  { href: "#ai",            label: "AI" },
+  { href: "/jobs",          label: "Jobs" },
+  { href: "/notes",         label: "Notes" },
+  { href: "/ai",            label: "AI" },
 ];
 
 export function MarketingNav() {
