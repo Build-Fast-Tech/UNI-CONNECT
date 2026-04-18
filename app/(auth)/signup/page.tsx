@@ -27,7 +27,10 @@ export default function SignupPage() {
       return;
     }
     setLoading(true);
-    const supabase = createClient();
+    let supabase;
+    try { supabase = createClient(); } catch (e: any) {
+      setError(e.message); setLoading(false); return;
+    }
     const { error: err } = await supabase.auth.signUp({
       email,
       password,
