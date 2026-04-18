@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export default function SignupPage() {
@@ -28,19 +27,27 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error: err } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/onboarding`,
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const res = await fetch(`${url}/auth/v1/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": key,
+          "Authorization": `Bearer ${key}`,
         },
+        body: JSON.stringify({
+          email,
+          password,
+          data: { full_name: fullName },
+          gotrue_meta_security: {},
+        }),
       });
-      if (err) { setError(err.message); setLoading(false); return; }
+      const json = await res.json();
+      if (!res.ok) { setError(json.msg || json.message || "Signup failed"); setLoading(false); return; }
       setDone(true);
     } catch (e: any) {
-      setError(e?.message ?? String(e));
+      setError(`Error: ${e?.message ?? String(e)}`);
       setLoading(false);
     }
   };
