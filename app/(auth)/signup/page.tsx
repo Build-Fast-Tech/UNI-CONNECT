@@ -27,8 +27,13 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!url || !url.startsWith("https://")) {
+        setError(`URL not set. Value: "${url ?? "undefined"}"`);
+        setLoading(false);
+        return;
+      }
       const res = await fetch(`${url}/auth/v1/signup`, {
         method: "POST",
         headers: {
