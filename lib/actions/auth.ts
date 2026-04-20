@@ -48,12 +48,25 @@ export async function signInAction(data: {
 
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     });
 
     if (error) return { error: error.message };
+
+    // Check if onboarding is complete
+    if (signInData.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("university_id")
+        .eq("id", signInData.user.id)
+        .single();
+
+      if (!profile?.university_id) {
+        redirect("/onboarding");
+      }
+    }
   } catch (e: any) {
     return { error: e?.message ?? String(e) };
   }
