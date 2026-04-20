@@ -34,13 +34,18 @@ export async function GET() {
     .eq("id", user.id)
     .single();
 
+  // Test UPDATE via RLS
+  const { error: updateTestError } = await supabase
+    .from("profiles")
+    .update({ bio: "__diagnostic_test__" })
+    .eq("id", user.id);
+
   return Response.json({
     user_id: user.id,
-    user_email: user.email,
     db_profile: profile ?? null,
     db_error: profileError?.message ?? null,
-    upsert_with_admin: upsertError ? upsertError.message : "success",
     read_with_rls: rlsProfile ?? null,
     rls_read_error: rlsError?.message ?? null,
+    update_via_rls: updateTestError ? "BLOCKED: " + updateTestError.message : "success",
   });
 }
