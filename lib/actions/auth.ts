@@ -39,44 +39,40 @@ export async function signInAction(data: {
   email: string;
   password: string;
 }): Promise<{ error?: string }> {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) {
-      return { error: `Server config missing: URL=${url ? "ok" : "missing"} KEY=${key ? "ok" : "missing"}` };
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    return { error: `Server config missing: URL=${url ? "ok" : "missing"} KEY=${key ? "ok" : "missing"}` };
+  }
+
+  const supabase = await createClient();
+
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({
+    email: data.email,
+    password: data.password,
+  });
+
+  if (error) return { error: error.message };
+
+  // Check if onboarding is complete
+  if (signInData.user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("university_id")
+      .eq("id", signInData.user.id)
+      .single();
+
+    if (!profile?.university_id) {
+      redirect("/onboarding");
     }
 
-    const supabase = await createClient();
-
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
+    // Mark onboarding complete so proxy.ts stops redirecting
+    const cookieStore = await cookies();
+    cookieStore.set("uc_onboarded", "1", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
     });
-
-    if (error) return { error: error.message };
-
-    // Check if onboarding is complete
-    if (signInData.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("university_id")
-        .eq("id", signInData.user.id)
-        .single();
-
-      if (!profile?.university_id) {
-        redirect("/onboarding");
-      }
-
-      // Mark onboarding complete so proxy.ts stops redirecting
-      const cookieStore = await cookies();
-      cookieStore.set("uc_onboarded", "1", {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-        sameSite: "lax",
-      });
-    }
-  } catch (e: any) {
-    return { error: e?.message ?? String(e) };
   }
 
   redirect("/feed");
