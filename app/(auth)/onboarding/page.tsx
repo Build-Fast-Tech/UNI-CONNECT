@@ -115,7 +115,9 @@ export default function OnboardingPage() {
     }, { onConflict: "id" });
 
     if (updateError) {
-      setError(updateError.message);
+      const msg = updateError.message ?? JSON.stringify(updateError);
+      alert("Save failed: " + msg);
+      setError(msg);
       setLoading(false);
       return;
     }

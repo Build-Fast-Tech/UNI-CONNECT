@@ -53,6 +53,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [sendError, setSendError] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -208,12 +209,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       textareaRef.current.style.height = "auto";
     }
 
-    await supabase.from("messages").insert({
+    const { error } = await supabase.from("messages").insert({
       channel_id: channelId,
       sender_id: userId,
       content,
     });
 
+    if (error) setSendError(error.message);
     setSending(false);
     textareaRef.current?.focus();
   };
@@ -347,6 +349,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
       {/* Input */}
       <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))]">
+        {sendError && (
+          <p className="text-xs text-[rgb(var(--destructive))] mb-2 px-1">{sendError}</p>
+        )}
         <form onSubmit={handleSend}>
           <div className={cn(
             "flex items-end gap-2 rounded-2xl border px-3 py-2.5 transition-all duration-200",
