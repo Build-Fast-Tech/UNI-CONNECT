@@ -34,18 +34,26 @@ export async function GET() {
     .eq("id", user.id)
     .single();
 
-  // Test UPDATE via RLS
+  // Write a timestamped value then read it back immediately
+  const testValue = "test_" + Date.now();
   const { error: updateTestError } = await supabase
     .from("profiles")
-    .update({ bio: "__diagnostic_test__" })
+    .update({ bio: testValue })
     .eq("id", user.id);
+
+  const { data: afterUpdate } = await supabase
+    .from("profiles")
+    .select("bio, avatar_url, linkedin, github")
+    .eq("id", user.id)
+    .single();
 
   return Response.json({
     user_id: user.id,
-    db_profile: profile ?? null,
-    db_error: profileError?.message ?? null,
-    read_with_rls: rlsProfile ?? null,
-    rls_read_error: rlsError?.message ?? null,
-    update_via_rls: updateTestError ? "BLOCKED: " + updateTestError.message : "success",
+    full_name: rlsProfile?.full_name,
+    update_error: updateTestError?.message ?? null,
+    wrote_value: testValue,
+    read_back_bio: afterUpdate?.bio,
+    save_works: afterUpdate?.bio === testValue,
+    avatar_url: afterUpdate?.avatar_url,
   });
 }
