@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 
 const SYSTEM_PROMPT = `You are UniConnect AI — a helpful study companion for Pakistani university students. Help with explaining concepts, answering subject questions (CS, Engineering, Business, Medicine), career advice for Pakistan, and study tips. Be concise and friendly. Respond in English but feel free to use Urdu words naturally.`;
@@ -23,12 +23,8 @@ export async function POST(req: Request) {
       noteContext?: string;
     };
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-    // gemini-pro doesn't support systemInstruction — prepend it to history
     const contextLine = noteContext
-      ? `\n\nNote context the student is asking about:\n${noteContext.slice(0, 3000)}`
+      ? `\n\nNote context:\n${noteContext.slice(0, 3000)}`
       : "";
 
     const filtered = messages
@@ -38,31 +34,30 @@ export async function POST(req: Request) {
     const firstUserIdx = filtered.findIndex(m => m.role === "user");
     const trimmed = firstUserIdx >= 0 ? filtered.slice(firstUserIdx) : filtered;
 
-    // Build history (all but last message)
-    const prior = trimmed.slice(0, -1);
-    const history = prior.map((m, i) => ({
+    const history = trimmed.slice(0, -1).map(m => ({
       role: m.role === "assistant" ? "model" : "user",
-      parts: [{
-        text: i === 0 && m.role === "user"
-          ? `${SYSTEM_PROMPT}${contextLine}\n\n${m.content}`
-          : m.content,
-      }],
+      parts: [{ text: m.content }],
     }));
 
-    const lastContent = trimmed[trimmed.length - 1]?.content ?? messages[messages.length - 1].content;
-    // If this is the very first message (no history), prepend system prompt
+    const lastContent = trimmed[trimmed.length - 1]?.content
+      ?? messages[messages.length - 1].content;
+
     const userText = history.length === 0
       ? `${SYSTEM_PROMPT}${contextLine}\n\n${lastContent}`
       : lastContent;
 
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessageStream(userText);
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const response = await ai.models.generateContentStream({
+      model: "gemini-2.0-flash",
+      contents: [...history, { role: "user", parts: [{ text: userText }] }],
+    });
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
+        for await (const chunk of response) {
+          const text = chunk.text;
           if (text) controller.enqueue(encoder.encode(text));
         }
         controller.close();
