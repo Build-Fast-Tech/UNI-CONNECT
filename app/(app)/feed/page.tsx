@@ -61,7 +61,7 @@ export default function FeedPage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setLoading(false); return; }
 
       const [{ data: profile }, { data: notesData }, { data: jobsData }] = await Promise.all([
         supabase

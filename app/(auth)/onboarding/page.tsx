@@ -100,14 +100,16 @@ export default function OnboardingPage() {
       }
     }
 
-    const { error: updateError } = await supabase.from("profiles").update({
+    const { error: updateError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      full_name: user.user_metadata?.full_name ?? "",
       university_id: selectedUni?.id,
       branch_id: selectedBranch?.id ?? null,
       department: department || null,
       year_of_study: year ? YEARS.indexOf(year) + 1 : null,
       bio: bio || null,
       avatar_url: avatar_url ?? null,
-    }).eq("id", user.id);
+    }, { onConflict: "id" });
 
     if (updateError) {
       setError(updateError.message);
