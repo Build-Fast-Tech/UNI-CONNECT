@@ -15,7 +15,7 @@ import type { Database } from "@/types/database";
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type University = Database["public"]["Tables"]["universities"]["Row"];
 
-const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"];
+const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Graduate"];
 
 export default function MyProfilePage() {
   const supabase = createClient();

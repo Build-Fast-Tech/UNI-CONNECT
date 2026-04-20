@@ -13,13 +13,13 @@ type University = Database["public"]["Tables"]["universities"]["Row"];
 type Branch = Database["public"]["Tables"]["branches"]["Row"];
 
 const DEPARTMENTS = [
-  "Computer Science", "Software Engineering", "Electrical Engineering",
+  "Artificial Intelligence", "Computer Science", "Software Engineering", "Electrical Engineering",
   "Mechanical Engineering", "Civil Engineering", "Business Administration",
   "Economics", "Mathematics", "Physics", "Chemistry", "Biology",
   "Medical Sciences", "Law", "Architecture", "Media Studies", "Psychology",
 ];
 
-const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"];
+const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Graduate"];
 
 const STEP_LABELS = ["University", "Details", "Profile"];
 
