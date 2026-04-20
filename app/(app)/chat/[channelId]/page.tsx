@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, use, useCallback } from "react";
 import { Send, Paperclip, Globe, Building2, MessageCircle, Smile } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { UserHoverCard } from "@/components/ui/UserHoverCard";
 
 interface Profile {
   full_name: string;
@@ -285,7 +286,17 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           >
             {/* Avatar column */}
             {showHeader(i) ? (
-              <Avatar name={msg.sender?.full_name} url={msg.sender?.avatar_url} />
+              <UserHoverCard
+                userId={msg.sender_id}
+                name={msg.sender?.full_name ?? "Unknown"}
+                avatarUrl={msg.sender?.avatar_url}
+                uniShort={(msg.sender?.universities as any)?.short_name}
+                myId={userId}
+              >
+                <button className="flex-shrink-0">
+                  <Avatar name={msg.sender?.full_name} url={msg.sender?.avatar_url} />
+                </button>
+              </UserHoverCard>
             ) : (
               <div className="w-8 flex-shrink-0 flex items-center justify-center">
                 <span className="text-[10px] text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -298,12 +309,20 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             <div className="flex-1 min-w-0">
               {showHeader(i) && (
                 <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mb-0.5">
-                  <span className={cn(
-                    "text-sm font-semibold leading-tight",
-                    msg.sender_id === userId ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--fg))]"
-                  )}>
-                    {msg.sender_id === userId ? "You" : (msg.sender?.full_name ?? "Unknown")}
-                  </span>
+                  <UserHoverCard
+                    userId={msg.sender_id}
+                    name={msg.sender?.full_name ?? "Unknown"}
+                    avatarUrl={msg.sender?.avatar_url}
+                    uniShort={(msg.sender?.universities as any)?.short_name}
+                    myId={userId}
+                  >
+                    <span className={cn(
+                      "text-sm font-semibold leading-tight cursor-pointer hover:underline",
+                      msg.sender_id === userId ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--fg))]"
+                    )}>
+                      {msg.sender_id === userId ? "You" : (msg.sender?.full_name ?? "Unknown")}
+                    </span>
+                  </UserHoverCard>
                   {msg.sender?.universities && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] leading-tight">
                       {(msg.sender.universities as any).short_name}

@@ -16,6 +16,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/types/database";
+import { UserHoverCard } from "@/components/ui/UserHoverCard";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -336,9 +337,16 @@ export default function NoteDetailPage({
               {note.profiles && (
                 <div className="flex items-center gap-2 text-[rgb(var(--muted-fg))]">
                   <User className="w-4 h-4 flex-shrink-0" />
-                  <Link href={`/profile/${note.profiles.id}`} className="hover:text-[rgb(var(--fg))] transition-colors">
-                    {note.profiles.full_name}
-                  </Link>
+                  <UserHoverCard
+                    userId={note.profiles.id}
+                    name={note.profiles.full_name}
+                    avatarUrl={note.profiles.avatar_url}
+                    myId={userId}
+                  >
+                    <span className="hover:text-[rgb(var(--fg))] transition-colors cursor-pointer">
+                      {note.profiles.full_name}
+                    </span>
+                  </UserHoverCard>
                 </div>
               )}
               {note.file_size_bytes && (
