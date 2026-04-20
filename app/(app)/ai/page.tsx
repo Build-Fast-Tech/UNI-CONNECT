@@ -28,7 +28,15 @@ function AIChat() {
   const noteId = searchParams.get("note");
   const supabase = createClient();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const STORAGE_KEY = noteId ? `uc_ai_msgs_note_${noteId}` : "uc_ai_msgs";
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(noteId ? `uc_ai_msgs_note_${noteId}` : "uc_ai_msgs");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [noteContext, setNoteContext] = useState<string>("");
@@ -37,6 +45,12 @@ function AIChat() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length === 0) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(messages)); } catch {}
+  }, [messages, STORAGE_KEY]);
 
   useEffect(() => {
     if (!noteId) return;
@@ -173,7 +187,7 @@ function AIChat() {
         </div>
         {messages.length > 0 && (
           <button
-            onClick={() => { setMessages([]); setLimitReached(false); }}
+            onClick={() => { setMessages([]); setLimitReached(false); try { localStorage.removeItem(STORAGE_KEY); } catch {} }}
             className="ml-auto text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
             title="Clear chat"
           >
