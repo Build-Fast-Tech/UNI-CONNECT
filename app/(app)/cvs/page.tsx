@@ -49,7 +49,7 @@ export default function CVsPage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setLoading(false); return; }
 
       const { data: profile } = await supabase
         .from("profiles")

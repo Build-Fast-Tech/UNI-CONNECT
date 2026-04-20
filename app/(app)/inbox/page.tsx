@@ -41,7 +41,7 @@ export default function InboxPage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setLoading(false); return; }
       setMyId(user.id);
 
       const { data: dms } = await supabase

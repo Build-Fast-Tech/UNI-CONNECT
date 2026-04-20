@@ -36,7 +36,7 @@ export default function MyProfilePage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setLoadingDone(true); return; }
 
       const { data } = await supabase
         .from("profiles")
