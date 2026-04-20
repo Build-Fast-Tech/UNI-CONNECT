@@ -426,7 +426,7 @@ export default function NoteDetailPage({
             </Link>
 
             {/* Edit (uploader only) */}
-            {userId && note.profiles?.id === userId && (
+            {userId && note.uploader_id === userId && (
               <button
                 onClick={openEdit}
                 className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors border border-[rgb(var(--border))]"
