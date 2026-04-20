@@ -27,13 +27,14 @@ const FILE_ICONS: Record<string, React.ElementType> = {
 const SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
 const CATEGORIES = [
-  { id: "all",        label: "All",         icon: BookOpen },
-  { id: "notes",      label: "Notes",       icon: FileText },
-  { id: "quiz",       label: "Quizzes",     icon: PenLine },
-  { id: "assignment", label: "Assignments", icon: ClipboardList },
-  { id: "sessional",  label: "Sessionals",  icon: ScrollText },
-  { id: "final",      label: "Finals",      icon: GraduationCap },
-  { id: "other",      label: "Other",       icon: Archive },
+  { id: "all",        label: "All",              icon: BookOpen },
+  { id: "notes",      label: "Notes",            icon: FileText },
+  { id: "quiz",       label: "Quizzes",          icon: PenLine },
+  { id: "assignment", label: "Assignments",      icon: ClipboardList },
+  { id: "sessional",  label: "Sessionals",       icon: ScrollText },
+  { id: "final",      label: "Finals",           icon: GraduationCap },
+  { id: "textbook",   label: "Textbooks",        icon: BookOpen },
+  { id: "other",      label: "Other",            icon: Archive },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]["id"];
@@ -44,6 +45,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   assignment: "bg-orange-500/10 text-orange-500",
   sessional:  "bg-yellow-500/10 text-yellow-600",
   final:      "bg-red-500/10 text-red-500",
+  textbook:   "bg-green-500/10 text-green-600",
   other:      "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",
 };
 
@@ -355,6 +357,7 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
                 {note.universities.short_name}
               </span>
             )}
+            {(note as any).year && <span>{(note as any).year}</span>}
             {note.semester && <span>{note.semester} sem</span>}
           </div>
           <div className="flex items-center gap-3">

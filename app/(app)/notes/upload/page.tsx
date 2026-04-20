@@ -20,8 +20,14 @@ const CATEGORIES = [
   { value: "assignment", label: "Assignment" },
   { value: "sessional",  label: "Sessional" },
   { value: "final",      label: "Final Exam" },
+  { value: "textbook",   label: "Textbook / Solution" },
   { value: "other",      label: "Other" },
 ];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i);
+
+const NO_YEAR_REQUIRED = ["textbook", "other"];
 const MAX_SIZE  = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -48,6 +54,7 @@ export default function UploadNotePage() {
   const [customSubject, setCustomSubject] = useState("");
   const [courseCode, setCourseCode] = useState("");
   const [semester,   setSemester]   = useState("");
+  const [year,       setYear]       = useState<string>(String(CURRENT_YEAR));
   const [category,   setCategory]   = useState("notes");
   const [file,       setFile]       = useState<File | null>(null);
 
@@ -108,8 +115,10 @@ export default function UploadNotePage() {
     setError("");
 
     const finalSubject = subject === "__custom__" ? customSubject.trim() : subject;
-    if (!title.trim())    { setError("Title is required."); return; }
-    if (!finalSubject)    { setError("Subject is required."); return; }
+    const yearRequired = !NO_YEAR_REQUIRED.includes(category);
+    if (!title.trim())               { setError("Title is required."); return; }
+    if (!finalSubject)               { setError("Subject is required."); return; }
+    if (yearRequired && !year)       { setError("Year is required."); return; }
 
     setUploading(true);
     setProgress(10);
@@ -147,6 +156,7 @@ export default function UploadNotePage() {
         subject:         finalSubject,
         course_code:     courseCode.trim() || null,
         semester:        semester || null,
+        year:            year ? parseInt(year) : null,
         category:        category,
         university_id:   uniId,
         file_url:        urlData.publicUrl,
@@ -388,8 +398,27 @@ export default function UploadNotePage() {
           </div>
         </div>
 
-        {/* Semester + University */}
-        <div className="grid sm:grid-cols-2 gap-4">
+        {/* Year + Semester + University */}
+        <div className="grid sm:grid-cols-3 gap-4">
+          {/* Year */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Year {!NO_YEAR_REQUIRED.includes(category) && <span className="text-[rgb(var(--destructive))]">*</span>}
+            </label>
+            <select
+              value={year}
+              onChange={e => setYear(e.target.value)}
+              className={cn(
+                "w-full h-11 px-3 rounded-xl text-sm",
+                "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
+                "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+              )}
+            >
+              {NO_YEAR_REQUIRED.includes(category) && <option value="">N/A</option>}
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1.5">Semester</label>
             <select
