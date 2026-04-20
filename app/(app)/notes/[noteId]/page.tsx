@@ -6,7 +6,7 @@ import {
   Download, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck,
   Share2, Flag, ArrowLeft, FileText, User,
   Calendar, GraduationCap, ChevronLeft, ChevronRight,
-  ZoomIn, ZoomOut, Bot,
+  ZoomIn, ZoomOut, Bot, Pencil, X, Check,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +39,15 @@ export default function NoteDetailPage({
   const [bookmarked, setBookmarked] = useState(false);
   const [userVote,   setUserVote]   = useState<1 | -1 | 0>(0);
   const [upvotes,    setUpvotes]    = useState(0);
+
+  // Edit state
+  const [editing,     setEditing]    = useState(false);
+  const [editTitle,   setEditTitle]  = useState("");
+  const [editDesc,    setEditDesc]   = useState("");
+  const [editSubject, setEditSubject]= useState("");
+  const [editCourse,  setEditCourse] = useState("");
+  const [editSemester,setEditSemester]=useState("");
+  const [saving,      setSaving]     = useState(false);
 
   // PDF viewer state
   const [numPages,   setNumPages]   = useState<number>(0);
@@ -115,6 +124,43 @@ export default function NoteDetailPage({
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
+  };
+
+  const openEdit = () => {
+    if (!note) return;
+    setEditTitle(note.title);
+    setEditDesc(note.description || "");
+    setEditSubject(note.subject);
+    setEditCourse(note.course_code || "");
+    setEditSemester(note.semester || "");
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!note || !editTitle.trim()) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("notes")
+      .update({
+        title:       editTitle.trim(),
+        description: editDesc.trim() || null,
+        subject:     editSubject.trim(),
+        course_code: editCourse.trim() || null,
+        semester:    editSemester || null,
+      })
+      .eq("id", noteId);
+    setSaving(false);
+    if (!error) {
+      setNote(n => n ? {
+        ...n,
+        title:       editTitle.trim(),
+        description: editDesc.trim() || null,
+        subject:     editSubject.trim(),
+        course_code: editCourse.trim() || null,
+        semester:    editSemester || null,
+      } : n);
+      setEditing(false);
+    }
   };
 
   const isPDF = note?.file_type?.includes("pdf");
@@ -379,6 +425,16 @@ export default function NoteDetailPage({
               </button>
             </Link>
 
+            {/* Edit (uploader only) */}
+            {userId && note.profiles?.id === userId && (
+              <button
+                onClick={openEdit}
+                className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors border border-[rgb(var(--border))]"
+              >
+                <Pencil className="w-3 h-3" /> Edit note details
+              </button>
+            )}
+
             {/* Report */}
             <button className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--destructive))] transition-colors">
               <Flag className="w-3 h-3" /> Report
@@ -386,6 +442,97 @@ export default function NoteDetailPage({
           </div>
         </motion.div>
       </div>
+
+      {/* Edit modal */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl p-6 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Edit note details</h2>
+              <button onClick={() => setEditing(false)} className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1">Title *</label>
+                <input
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  maxLength={120}
+                  className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1">Description</label>
+                <textarea
+                  value={editDesc}
+                  onChange={e => setEditDesc(e.target.value)}
+                  rows={3}
+                  maxLength={400}
+                  className="w-full px-3 py-2 rounded-xl text-sm resize-none bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1">Subject</label>
+                  <input
+                    value={editSubject}
+                    onChange={e => setEditSubject(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1">Course code</label>
+                  <input
+                    value={editCourse}
+                    onChange={e => setEditCourse(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1">Semester</label>
+                <select
+                  value={editSemester}
+                  onChange={e => setEditSemester(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                >
+                  <option value="">No semester</option>
+                  {["1st","2nd","3rd","4th","5th","6th","7th","8th"].map(s => (
+                    <option key={s} value={s}>{s} Semester</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setEditing(false)}
+                className="flex-1 h-10 rounded-xl text-sm font-medium border border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={saving || !editTitle.trim()}
+                className="flex-1 h-10 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <div className="w-4 h-4 border-2 border-[rgb(var(--primary-fg))] border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <><Check className="w-4 h-4" /> Save</>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
