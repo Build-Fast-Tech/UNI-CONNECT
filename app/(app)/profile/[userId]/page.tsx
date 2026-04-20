@@ -166,37 +166,36 @@ export default function PublicProfilePage({
       </motion.div>
 
       {/* Links */}
-      {(profile.linkedin || profile.github || profile.portfolio_url) && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="theme-card p-6"
-        >
-          <h2 className="text-sm font-semibold mb-4">Links</h2>
-          <div className="space-y-2">
-            {[
-              { label: "LinkedIn",  value: profile.linkedin,      icon: Link2 },
-              { label: "GitHub",    value: profile.github,        icon: GitBranch },
-              { label: "Portfolio", value: profile.portfolio_url, icon: Globe },
-            ].filter(l => l.value).map(({ label, value, icon: Icon }) => (
-              <a
-                key={label}
-                href={value!.startsWith("http") ? value! : `https://${value}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  "flex items-center gap-2.5 text-sm text-[rgb(var(--primary))] hover:underline"
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-                <ExternalLink className="w-3 h-3 opacity-60" />
-              </a>
-            ))}
-          </div>
-        </motion.div>
-      )}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="theme-card p-6"
+      >
+        <h2 className="text-sm font-semibold mb-4">Links</h2>
+        <div className="space-y-2">
+          {[
+            { label: "LinkedIn",  value: profile.linkedin,      icon: Link2 },
+            { label: "GitHub",    value: profile.github,        icon: GitBranch },
+            { label: "Portfolio", value: profile.portfolio_url, icon: Globe },
+          ].filter(l => l.value).map(({ label, value, icon: Icon }) => (
+            <a
+              key={label}
+              href={value!.startsWith("http") ? value! : `https://${value}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 text-sm text-[rgb(var(--primary))] hover:underline"
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+              <ExternalLink className="w-3 h-3 opacity-60" />
+            </a>
+          ))}
+          {!profile.linkedin && !profile.github && !profile.portfolio_url && (
+            <p className="text-sm text-[rgb(var(--muted-fg))]">No links added yet.</p>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }
