@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       systemInstruction: systemWithContext,
     });
 
@@ -70,8 +70,9 @@ export async function POST(req: Request) {
         "X-Content-Type-Options": "nosniff",
       },
     });
-  } catch (err) {
-    console.error("AI route error:", err);
-    return new Response("Internal server error", { status: 500 });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    console.error("AI route error:", msg);
+    return new Response(msg, { status: 500 });
   }
 }

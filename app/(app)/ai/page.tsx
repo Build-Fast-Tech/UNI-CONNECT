@@ -136,7 +136,10 @@ function AIChat() {
         return;
       }
 
-      if (!res.ok || !res.body) throw new Error("Request failed");
+      if (!res.ok || !res.body) {
+        const errText = await res.text();
+        throw new Error(errText || "Request failed");
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -155,11 +158,14 @@ function AIChat() {
       setMessages(prev => prev.map(m =>
         m.id === assistantId ? { ...m, streaming: false } : m
       ));
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI chat error:", err);
+      const errMsg = err?.message && err.message !== "Request failed"
+        ? `Error: ${err.message}`
+        : "Sorry, something went wrong. Please try again.";
       setMessages(prev => prev.map(m =>
         m.id === assistantId
-          ? { ...m, content: "Sorry, something went wrong. Please try again.", streaming: false }
+          ? { ...m, content: errMsg, streaming: false }
           : m
       ));
     }
