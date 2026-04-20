@@ -42,12 +42,13 @@ export default function NotesPage() {
     Promise.all([
       supabase
         .from("notes")
-        .select("*, profiles(full_name, avatar_url, university_id), universities(short_name)")
+        .select("*, profiles!uploader_id(full_name, avatar_url, university_id), universities!university_id(short_name)")
         .eq("status", "published")
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("subjects").select("name").order("name"),
-    ]).then(([{ data: notesData }, { data: subjectsData }]) => {
+    ]).then(([{ data: notesData, error: notesErr }, { data: subjectsData }]) => {
+      if (notesErr) console.error("notes fetch error:", notesErr);
       setNotes(notesData || []);
       setSubjects((subjectsData || []).map(s => s.name));
       setLoading(false);

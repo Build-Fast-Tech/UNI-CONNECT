@@ -52,7 +52,7 @@ export default function NoteDetailPage({
         supabase.auth.getUser(),
         supabase
           .from("notes")
-          .select("*, profiles(id, full_name, avatar_url), universities(short_name, slug)")
+          .select("*, profiles!uploader_id(id, full_name, avatar_url), universities!university_id(short_name, slug)")
           .eq("id", noteId)
           .single(),
       ]);
