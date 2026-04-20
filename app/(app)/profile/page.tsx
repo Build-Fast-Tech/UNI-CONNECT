@@ -94,19 +94,10 @@ export default function MyProfilePage() {
       avatar_url = urlData.publicUrl;
     }
 
-    const { data: updated, error: updateErr } = await (supabase.from("profiles") as any)
-      .upsert({
-        id: profile.id,
-        email: profile.email,
-        full_name: profile.full_name,
-        bio,
-        linkedin,
-        github,
-        portfolio_url: portfolio,
-        avatar_url,
-      }, { onConflict: "id" })
-      .select()
-      .single();
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({ bio, linkedin, github, portfolio_url: portfolio, avatar_url })
+      .eq("id", profile.id);
 
     if (updateErr) {
       alert("Profile save failed: " + updateErr.message);
@@ -114,7 +105,7 @@ export default function MyProfilePage() {
       return;
     }
 
-    if (updated) setProfile(updated);
+    setProfile({ ...profile, bio, linkedin, github, portfolio_url: portfolio, avatar_url });
     setAvatarFile(null);
     setEditing(false);
     setSaving(false);
