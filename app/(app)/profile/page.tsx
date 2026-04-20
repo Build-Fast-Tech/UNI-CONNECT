@@ -85,18 +85,27 @@ export default function MyProfilePage() {
         .from("avatars")
         .upload(path, avatarFile, { upsert: true });
 
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-        avatar_url = urlData.publicUrl;
+      if (uploadErr) {
+        alert("Avatar upload failed: " + uploadErr.message);
+        setSaving(false);
+        return;
       }
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      avatar_url = urlData.publicUrl;
     }
 
-    const { data: updated } = await supabase
+    const { data: updated, error: updateErr } = await supabase
       .from("profiles")
       .update({ bio, linkedin, github, portfolio_url: portfolio, avatar_url })
       .eq("id", profile.id)
       .select()
       .single();
+
+    if (updateErr) {
+      alert("Profile save failed: " + updateErr.message);
+      setSaving(false);
+      return;
+    }
 
     if (updated) setProfile(updated);
     setAvatarFile(null);
