@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, X, Briefcase } from "lucide-react";
+import { ArrowLeft, Plus, X, Briefcase, Lock } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -103,6 +103,24 @@ export default function PostJobPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  const [roleChecked, setRoleChecked] = useState(false);
+  const [canPost, setCanPost] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      setCanPost(profile?.role === "employer" || profile?.role === "admin");
+      setRoleChecked(true);
+    };
+    checkRole();
+  }, []);
+
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState("");
   const [type, setType] = useState<JobType>("internship");
@@ -160,6 +178,34 @@ export default function PostJobPage() {
   };
 
   const applyPlaceholder = APPLY_METHODS.find(m => m.value === applyMethod)?.placeholder ?? "";
+
+  if (!roleChecked) return null;
+
+  if (!canPost) {
+    return (
+      <div className="max-w-md mx-auto text-center space-y-5 py-16">
+        <div className="w-16 h-16 rounded-full bg-[rgb(var(--muted))] flex items-center justify-center mx-auto">
+          <Lock className="w-7 h-7 text-[rgb(var(--muted-fg))]" />
+        </div>
+        <h2 className="text-2xl font-bold">Employer Access Required</h2>
+        <p className="text-[rgb(var(--muted-fg))] text-sm leading-relaxed">
+          Only approved employers can post jobs on UniConnect.
+          Submit an application and we&apos;ll review it within 24–48 hours.
+        </p>
+        <Link
+          href="/employer/apply"
+          className="inline-block px-6 py-3 rounded-xl bg-[rgb(var(--primary))] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+        >
+          Apply to Become an Employer
+        </Link>
+        <div>
+          <Link href="/jobs" className="text-sm text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors">
+            ← Back to Jobs
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, MessageSquare, FileText, Briefcase,
   FileUser, Bot, User, Inbox, GraduationCap, Settings,
-  MessageSquarePlus, Info,
+  MessageSquarePlus, Info, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
   { href: "/feed",          icon: LayoutDashboard, label: "Feed" },
   { href: "/universities",  icon: GraduationCap,   label: "Universities" },
-  { href: "/chat",           icon: MessageSquare,   label: "Chat" },
+  { href: "/chat",          icon: MessageSquare,   label: "Chat" },
   { href: "/notes",         icon: FileText,        label: "Notes" },
   { href: "/jobs",          icon: Briefcase,       label: "Jobs" },
   { href: "/cvs",           icon: FileUser,        label: "CVs" },
@@ -30,6 +32,17 @@ const BOTTOM_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("profiles").select("role").eq("id", user.id).single().then(({ data }) => {
+        setIsAdmin(data?.role === "admin");
+      });
+    });
+  }, []);
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/feed" && pathname.startsWith(href));
@@ -76,6 +89,20 @@ export function Sidebar() {
 
       {/* Bottom items */}
       <div className="px-2 pt-2 border-t border-[rgb(var(--border))] space-y-0.5 mt-2">
+        {isAdmin && (
+          <Link
+            href="/admin/employers"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+              isActive("/admin")
+                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
+            )}
+          >
+            <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+            Admin
+          </Link>
+        )}
         {BOTTOM_ITEMS.map((item) => {
           const active = isActive(item.href);
           return (
