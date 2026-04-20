@@ -4,10 +4,10 @@ import { useRef, useEffect, useState } from "react";
 import { useInView } from "framer-motion";
 
 const STATS = [
-  { value: 250, suffix: "+", label: "Universities" },
-  { value: 10000, suffix: "+", label: "Notes Shared" },
-  { value: 500, suffix: "+", label: "Jobs Posted" },
+  { value: 100, suffix: "+", label: "Universities" },
   { value: 24, suffix: "/7", label: "AI Help" },
+  { value: 100, suffix: "%", label: "Free to Join" },
+  { value: 1, suffix: " App", label: "Everything in" },
 ];
 
 function CountUp({ end, suffix, active }: { end: number; suffix: string; active: boolean }) {

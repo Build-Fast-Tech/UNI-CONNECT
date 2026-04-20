@@ -30,7 +30,7 @@ function AvatarStack() {
         transition={{ delay: 1.4 }}
         className="text-sm text-[rgb(var(--muted-fg))]"
       >
-        <span className="text-[rgb(var(--fg))] font-semibold">2,400+</span> students already joined
+        Join Pakistani university students
       </motion.p>
     </div>
   );

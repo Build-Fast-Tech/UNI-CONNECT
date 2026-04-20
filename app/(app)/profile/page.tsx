@@ -21,6 +21,7 @@ export default function MyProfilePage() {
   const supabase = createClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [university, setUniversity] = useState<University | null>(null);
+  const [loadingDone, setLoadingDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -60,6 +61,7 @@ export default function MyProfilePage() {
           setUniversity(uni);
         }
       }
+      setLoadingDone(true);
     })();
   }, []);
 
@@ -114,7 +116,7 @@ export default function MyProfilePage() {
     setEditing(false);
   };
 
-  if (!profile) {
+  if (!loadingDone) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
         {[1, 2, 3].map(i => (
@@ -122,6 +124,20 @@ export default function MyProfilePage() {
             <div className="h-4 bg-[rgb(var(--muted))] rounded w-3/4" />
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="theme-card p-8 text-center space-y-4">
+          <p className="text-lg font-semibold">Profile not set up yet</p>
+          <p className="text-sm text-[rgb(var(--muted-fg))]">Complete onboarding to set up your profile.</p>
+          <a href="/onboarding" className="inline-block mt-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium">
+            Complete Onboarding
+          </a>
+        </div>
       </div>
     );
   }
