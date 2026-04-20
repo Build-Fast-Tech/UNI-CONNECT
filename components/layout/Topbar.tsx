@@ -41,20 +41,6 @@ export function Topbar() {
       "border-b border-[rgb(var(--border))] bg-[rgb(var(--card)/0.8)] backdrop-blur-xl",
       "sticky top-0 z-30"
     )}>
-      {/* Left: avatar + bell */}
-      <div className="flex items-center gap-2">
-        <Link href="/profile">
-          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-            {avatarUrl
-              ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-              : initials}
-          </div>
-        </Link>
-        <Link href="/inbox" className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
-          <Bell className="w-5 h-5 text-[rgb(var(--muted-fg))]" />
-        </Link>
-      </div>
-
       {/* Search */}
       <div className="flex-1 max-w-md">
         <div className="relative">
@@ -72,8 +58,20 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* Right: theme switcher */}
-      <ThemeSwitcher />
+      {/* Right: theme switcher + bell + avatar */}
+      <div className="ml-auto flex items-center gap-2">
+        <ThemeSwitcher />
+        <Link href="/inbox" className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
+          <Bell className="w-5 h-5 text-[rgb(var(--muted-fg))]" />
+        </Link>
+        <Link href="/profile">
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+            {avatarUrl
+              ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+              : initials}
+          </div>
+        </Link>
+      </div>
     </header>
   );
 }
