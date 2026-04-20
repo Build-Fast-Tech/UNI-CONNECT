@@ -5,11 +5,27 @@ import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+
+interface Result {
+  id: string;
+  type: "note" | "job" | "university";
+  title: string;
+  sub: string;
+  href: string;
+}
 
 export function Topbar() {
+  const router = useRouter();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initials, setInitials] = useState("U");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Result[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -35,6 +51,74 @@ export function Topbar() {
     })();
   }, []);
 
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const runSearch = async (q: string) => {
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    setSearching(true);
+    const supabase = createClient();
+    const [{ data: notes }, { data: jobs }, { data: unis }] = await Promise.all([
+      supabase
+        .from("notes")
+        .select("id, title, subject")
+        .eq("status", "published")
+        .ilike("title", `%${q}%`)
+        .limit(4),
+      supabase
+        .from("jobs")
+        .select("id, title, company_name")
+        .eq("status", "active")
+        .ilike("title", `%${q}%`)
+        .limit(3),
+      supabase
+        .from("universities")
+        .select("id, name, short_name, slug")
+        .or(`name.ilike.%${q}%,short_name.ilike.%${q}%`)
+        .limit(3),
+    ]);
+
+    const mapped: Result[] = [
+      ...(notes || []).map(n => ({ id: n.id, type: "note" as const, title: n.title, sub: n.subject, href: `/notes/${n.id}` })),
+      ...(jobs  || []).map(j => ({ id: j.id, type: "job"  as const, title: j.title, sub: j.company_name, href: `/jobs/${j.id}` })),
+      ...(unis  || []).map(u => ({ id: u.id, type: "university" as const, title: u.name, sub: u.short_name, href: `/universities/${(u as any).slug}` })),
+    ];
+
+    setResults(mapped);
+    setOpen(true);
+    setSearching(false);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearch(q), 300);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && query.trim()) {
+      setOpen(false);
+      router.push(`/notes?q=${encodeURIComponent(query.trim())}`);
+    }
+    if (e.key === "Escape") setOpen(false);
+  };
+
+  const TYPE_LABEL: Record<string, string> = { note: "Note", job: "Job", university: "University" };
+  const TYPE_COLOR: Record<string, string> = {
+    note: "bg-blue-500/10 text-blue-500",
+    job: "bg-green-500/10 text-green-600",
+    university: "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]",
+  };
+
   return (
     <header className={cn(
       "h-14 flex items-center gap-4 px-4 sm:px-6",
@@ -42,12 +126,16 @@ export function Topbar() {
       "sticky top-0 z-30"
     )}>
       {/* Search */}
-      <div className="flex-1 max-w-md">
+      <div className="flex-1 max-w-md" ref={wrapperRef}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
           <input
             type="search"
-            placeholder="Search notes, jobs, students…"
+            value={query}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { if (results.length > 0) setOpen(true); }}
+            placeholder="Search notes, jobs, universities…"
             className={cn(
               "w-full h-9 pl-9 pr-4 rounded-xl text-sm",
               "bg-[rgb(var(--muted))] border border-[rgb(var(--border))]",
@@ -55,10 +143,38 @@ export function Topbar() {
               "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
             )}
           />
+
+          {/* Dropdown */}
+          {open && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 overflow-hidden">
+              {searching && (
+                <p className="text-xs text-[rgb(var(--muted-fg))] px-4 py-3">Searching…</p>
+              )}
+              {!searching && results.length === 0 && query.trim() && (
+                <p className="text-xs text-[rgb(var(--muted-fg))] px-4 py-3">No results for &ldquo;{query}&rdquo;</p>
+              )}
+              {results.map(r => (
+                <Link
+                  key={r.id}
+                  href={r.href}
+                  onClick={() => { setOpen(false); setQuery(""); }}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-[rgb(var(--muted))] transition-colors"
+                >
+                  <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0", TYPE_COLOR[r.type])}>
+                    {TYPE_LABEL[r.type]}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{r.title}</p>
+                    <p className="text-xs text-[rgb(var(--muted-fg))] truncate">{r.sub}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right: theme switcher + bell + avatar */}
+      {/* Right */}
       <div className="ml-auto flex items-center gap-2">
         <ThemeSwitcher />
         <Link href="/inbox" className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">

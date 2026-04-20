@@ -52,7 +52,7 @@ export default function UniversitiesPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-bold mb-1">Universities</h1>
         <p className="text-[rgb(var(--muted-fg))]">
-          Explore {universities.length > 0 ? `${universities.length}+` : ""} Pakistani universities on UniConnect.
+          Explore {universities.length > 0 ? universities.length : ""} Pakistani universities on UniConnect.
         </p>
       </motion.div>
 
