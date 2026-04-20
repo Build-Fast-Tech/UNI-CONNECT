@@ -122,6 +122,8 @@ export default function OnboardingPage() {
       return;
     }
 
+    // Mark onboarding complete so proxy.ts stops redirecting
+    document.cookie = "uc_onboarded=1; path=/; max-age=31536000; SameSite=Lax";
     router.push("/feed");
   };
 

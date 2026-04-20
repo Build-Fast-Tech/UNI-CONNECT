@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 
 export async function signUpAction(data: {
   email: string;
@@ -66,6 +66,14 @@ export async function signInAction(data: {
       if (!profile?.university_id) {
         redirect("/onboarding");
       }
+
+      // Mark onboarding complete so proxy.ts stops redirecting
+      const cookieStore = await cookies();
+      cookieStore.set("uc_onboarded", "1", {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: "lax",
+      });
     }
   } catch (e: any) {
     return { error: e?.message ?? String(e) };
