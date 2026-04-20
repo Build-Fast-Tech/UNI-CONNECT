@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, MessageSquare, FileText, Briefcase,
-  FileUser, Bot, User, Inbox, GraduationCap, Settings
+  FileUser, Bot, User, Inbox, GraduationCap, Settings,
+  MessageSquarePlus, Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,8 +22,10 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_ITEMS = [
-  { href: "/profile",           icon: User,     label: "Profile" },
-  { href: "/profile/settings",  icon: Settings, label: "Settings" },
+  { href: "/profile",           icon: User,               label: "Profile" },
+  { href: "/feedback",          icon: MessageSquarePlus,  label: "Feedback" },
+  { href: "/about",             icon: Info,               label: "About" },
+  { href: "/profile/settings",  icon: Settings,           label: "Settings" },
 ];
 
 export function Sidebar() {
