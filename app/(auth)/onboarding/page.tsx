@@ -100,7 +100,7 @@ export default function OnboardingPage() {
       }
     }
 
-    const { error: updateError } = await supabase.from("profiles").upsert({
+    const { error: updateError } = await (supabase.from("profiles") as any).upsert({
       id: user.id,
       full_name: user.user_metadata?.full_name ?? "",
       university_id: selectedUni?.id,
