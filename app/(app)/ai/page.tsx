@@ -155,7 +155,8 @@ function AIChat() {
       setMessages(prev => prev.map(m =>
         m.id === assistantId ? { ...m, streaming: false } : m
       ));
-    } catch {
+    } catch (err) {
+      console.error("AI chat error:", err);
       setMessages(prev => prev.map(m =>
         m.id === assistantId
           ? { ...m, content: "Sorry, something went wrong. Please try again.", streaming: false }

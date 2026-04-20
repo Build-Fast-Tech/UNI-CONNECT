@@ -40,7 +40,11 @@ export async function POST(req: Request) {
       systemInstruction: systemWithContext,
     });
 
-    const history = messages.slice(0, -1).map(m => ({
+    // Gemini requires history to start with "user" and alternate roles
+    const priorMessages = messages.slice(0, -1).filter(m => !m.content.startsWith("I've loaded"));
+    const firstUserIdx = priorMessages.findIndex(m => m.role === "user");
+    const trimmed = firstUserIdx >= 0 ? priorMessages.slice(firstUserIdx) : [];
+    const history = trimmed.map(m => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
