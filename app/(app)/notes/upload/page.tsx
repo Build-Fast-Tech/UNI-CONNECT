@@ -13,6 +13,15 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+
+const CATEGORIES = [
+  { value: "notes",      label: "Notes" },
+  { value: "quiz",       label: "Quiz" },
+  { value: "assignment", label: "Assignment" },
+  { value: "sessional",  label: "Sessional" },
+  { value: "final",      label: "Final Exam" },
+  { value: "other",      label: "Other" },
+];
 const MAX_SIZE  = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -39,6 +48,7 @@ export default function UploadNotePage() {
   const [customSubject, setCustomSubject] = useState("");
   const [courseCode, setCourseCode] = useState("");
   const [semester,   setSemester]   = useState("");
+  const [category,   setCategory]   = useState("notes");
   const [file,       setFile]       = useState<File | null>(null);
 
   // upload state
@@ -128,7 +138,7 @@ export default function UploadNotePage() {
     const { data: urlData } = supabase.storage.from("notes").getPublicUrl(filePath);
 
     // Insert note record
-    const { data: note, error: dbErr } = await supabase
+    const { data: note, error: dbErr } = await (supabase as any)
       .from("notes")
       .insert({
         uploader_id:     user.id,
@@ -137,6 +147,7 @@ export default function UploadNotePage() {
         subject:         finalSubject,
         course_code:     courseCode.trim() || null,
         semester:        semester || null,
+        category:        category,
         university_id:   uniId,
         file_url:        urlData.publicUrl,
         file_type:       file.type,
@@ -352,6 +363,28 @@ export default function UploadNotePage() {
                 "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
               )}
             />
+          </div>
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Category <span className="text-[rgb(var(--destructive))]">*</span></label>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map(c => (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => setCategory(c.value)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200",
+                  category === c.value
+                    ? "bg-[rgb(var(--primary))] text-white border-transparent"
+                    : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
           </div>
         </div>
 

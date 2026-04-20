@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   Search, Upload, BookOpen, Download, ThumbsUp,
   Filter, X, FileText, FileImage, Archive,
+  ClipboardList, GraduationCap, PenLine, ScrollText,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +26,27 @@ const FILE_ICONS: Record<string, React.ElementType> = {
 
 const SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
+const CATEGORIES = [
+  { id: "all",        label: "All",         icon: BookOpen },
+  { id: "notes",      label: "Notes",       icon: FileText },
+  { id: "quiz",       label: "Quizzes",     icon: PenLine },
+  { id: "assignment", label: "Assignments", icon: ClipboardList },
+  { id: "sessional",  label: "Sessionals",  icon: ScrollText },
+  { id: "final",      label: "Finals",      icon: GraduationCap },
+  { id: "other",      label: "Other",       icon: Archive },
+] as const;
+
+type CategoryId = typeof CATEGORIES[number]["id"];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  notes:      "bg-blue-500/10 text-blue-500",
+  quiz:       "bg-purple-500/10 text-purple-500",
+  assignment: "bg-orange-500/10 text-orange-500",
+  sessional:  "bg-yellow-500/10 text-yellow-600",
+  final:      "bg-red-500/10 text-red-500",
+  other:      "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",
+};
+
 export default function NotesPage() {
   const supabase = createClient();
   const [notes, setNotes]       = useState<Note[]>([]);
@@ -32,6 +54,7 @@ export default function NotesPage() {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
 
   // filters
   const [filterSubject,  setFilterSubject]  = useState("");
@@ -64,14 +87,18 @@ export default function NotesPage() {
         n.subject.toLowerCase().includes(q) ||
         (n.course_code || "").toLowerCase().includes(q) ||
         (n.description || "").toLowerCase().includes(q);
+      const matchCategory = activeCategory === "all" || (n as any).category === activeCategory;
       const matchSubject   = !filterSubject  || n.subject === filterSubject;
       const matchSemester  = !filterSemester || n.semester === filterSemester;
       const matchType      = !filterType     || (n.file_type || "").includes(filterType);
-      return matchSearch && matchSubject && matchSemester && matchType;
+      return matchSearch && matchCategory && matchSubject && matchSemester && matchType;
     });
-  }, [notes, search, filterSubject, filterSemester, filterType]);
+  }, [notes, search, activeCategory, filterSubject, filterSemester, filterType]);
 
   const activeFilters = [filterSubject, filterSemester, filterType].filter(Boolean).length;
+
+  const countFor = (cat: CategoryId) =>
+    cat === "all" ? notes.length : notes.filter(n => (n as any).category === cat).length;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -84,7 +111,7 @@ export default function NotesPage() {
         <div>
           <h1 className="text-3xl font-bold mb-1">Notes</h1>
           <p className="text-[rgb(var(--muted-fg))]">
-            {notes.length > 0 ? `${notes.length} notes` : "Global notes library"} — shared by students across Pakistan.
+            {notes.length > 0 ? `${notes.length} files` : "Global notes library"} — shared by students across Pakistan.
           </p>
         </div>
         <Link href="/notes/upload">
@@ -94,11 +121,47 @@ export default function NotesPage() {
         </Link>
       </motion.div>
 
+      {/* Category tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.04 }}
+        className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
+      >
+        {CATEGORIES.map(({ id, label, icon: Icon }) => {
+          const count = countFor(id);
+          const active = activeCategory === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveCategory(id)}
+              className={cn(
+                "flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-200 border",
+                active
+                  ? "bg-[rgb(var(--primary))] text-white border-transparent"
+                  : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+              {count > 0 && (
+                <span className={cn(
+                  "text-xs px-1.5 py-0.5 rounded-full",
+                  active ? "bg-white/20 text-white" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </motion.div>
+
       {/* Search + filter bar */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
+        transition={{ delay: 0.08 }}
         className="space-y-3"
       >
         <div className="flex gap-3">
@@ -136,7 +199,6 @@ export default function NotesPage() {
           </button>
         </div>
 
-        {/* Filter panel */}
         {showFilters && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -144,7 +206,6 @@ export default function NotesPage() {
             exit={{ opacity: 0, height: 0 }}
             className="theme-card p-4 grid sm:grid-cols-3 gap-4"
           >
-            {/* Subject */}
             <div>
               <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
               <select
@@ -161,7 +222,6 @@ export default function NotesPage() {
               </select>
             </div>
 
-            {/* Semester */}
             <div>
               <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Semester</label>
               <select
@@ -178,7 +238,6 @@ export default function NotesPage() {
               </select>
             </div>
 
-            {/* File type */}
             <div>
               <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">File type</label>
               <select
@@ -226,13 +285,13 @@ export default function NotesPage() {
       ) : filtered.length === 0 ? (
         <div className="theme-card p-16 text-center">
           <BookOpen className="w-12 h-12 text-[rgb(var(--muted-fg))] mx-auto mb-3" />
-          <p className="font-semibold mb-1">No notes found</p>
+          <p className="font-semibold mb-1">No files found</p>
           <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">
-            {notes.length === 0 ? "Be the first to upload notes!" : "Try different search terms or filters."}
+            {notes.length === 0 ? "Be the first to upload!" : "Try different filters or search terms."}
           </p>
           <Link href="/notes/upload">
             <button className="px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity">
-              Upload notes
+              Upload now
             </button>
           </Link>
         </div>
@@ -250,6 +309,9 @@ export default function NotesPage() {
 function NoteCard({ note, index }: { note: Note; index: number }) {
   const ext = (note.file_type || "pdf").replace("application/", "").replace("vnd.openxmlformats-officedocument.", "").split(".").pop() || "pdf";
   const Icon = FILE_ICONS[ext] || FileText;
+  const category = (note as any).category as string | undefined;
+  const categoryLabel = CATEGORIES.find(c => c.id === category)?.label;
+  const categoryColor = CATEGORY_COLORS[category || "other"];
 
   return (
     <motion.div
@@ -261,17 +323,22 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
         href={`/notes/${note.id}`}
         className="theme-card p-5 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-200 group"
       >
-        {/* File type badge + subject */}
         <div className="flex items-start justify-between gap-2">
           <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
             <Icon className="w-5 h-5 text-[rgb(var(--primary))]" />
           </div>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] truncate max-w-[60%]">
-            {note.subject}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            {categoryLabel && category !== "notes" && (
+              <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", categoryColor)}>
+                {categoryLabel}
+              </span>
+            )}
+            <span className="text-xs px-2.5 py-1 rounded-full bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] truncate max-w-[120px]">
+              {note.subject}
+            </span>
+          </div>
         </div>
 
-        {/* Title */}
         <div className="flex-1">
           <h3 className="font-semibold text-sm leading-snug group-hover:text-[rgb(var(--primary))] transition-colors line-clamp-2">
             {note.title}
@@ -281,7 +348,6 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between text-xs text-[rgb(var(--muted-fg))]">
           <div className="flex items-center gap-2">
             {note.universities?.short_name && (
