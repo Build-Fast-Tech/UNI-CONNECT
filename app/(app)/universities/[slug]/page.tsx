@@ -190,11 +190,6 @@ export default function UniversityHubPage({
                 {uni.province && `, ${uni.province}`}
               </span>
             )}
-            {uni.total_students && (
-              <span className="flex items-center gap-1.5">
-                <Users className="w-4 h-4" /> {uni.total_students.toLocaleString()} students
-              </span>
-            )}
             {uni.founding_year && (
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4" /> Est. {uni.founding_year}

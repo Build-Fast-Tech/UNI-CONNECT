@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Users, GraduationCap, ExternalLink } from "lucide-react";
+import { Search, MapPin, GraduationCap, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -208,12 +208,6 @@ function UniversityCard({
             <span className="flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {uni.city}
-            </span>
-          )}
-          {uni.total_students && (
-            <span className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              {uni.total_students.toLocaleString()}
             </span>
           )}
           {uni.website && (

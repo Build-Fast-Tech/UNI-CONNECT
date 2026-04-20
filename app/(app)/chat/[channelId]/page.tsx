@@ -5,6 +5,8 @@ import { Send, Paperclip, Globe, Building2, MessageCircle, Smile } from "lucide-
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 
 interface Profile {
   full_name: string;
@@ -55,11 +57,30 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [onlineCount, setOnlineCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sendError, setSendError] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const insertEmoji = (emoji: { native: string }) => {
+    setInput(prev => prev + emoji.native);
+    textareaRef.current?.focus();
+    resizeTextarea();
+  };
 
   // Auto-resize textarea
   const resizeTextarea = () => {
@@ -367,7 +388,18 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       </div>
 
       {/* Input */}
-      <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))]">
+      <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))] relative">
+        {showEmojiPicker && (
+          <div ref={emojiPickerRef} className="absolute bottom-full right-3 mb-2 z-50">
+            <Picker
+              data={data}
+              onEmojiSelect={insertEmoji}
+              theme="auto"
+              previewPosition="none"
+              skinTonePosition="none"
+            />
+          </div>
+        )}
         {sendError && (
           <p className="text-xs text-[rgb(var(--destructive))] mb-2 px-1">{sendError}</p>
         )}
@@ -397,7 +429,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
             <button
               type="button"
-              className="flex-shrink-0 mb-0.5 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
+              onClick={() => setShowEmojiPicker(p => !p)}
+              className={cn(
+                "flex-shrink-0 mb-0.5 transition-colors",
+                showEmojiPicker
+                  ? "text-[rgb(var(--primary))]"
+                  : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+              )}
             >
               <Smile className="w-4 h-4" />
             </button>
