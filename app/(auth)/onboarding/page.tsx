@@ -80,8 +80,10 @@ export default function OnboardingPage() {
   };
 
   const handleComplete = async () => {
-    setLoading(true);
     setError("");
+    if (!avatarFile && !avatarPreview) { setError("Please upload a profile picture."); return; }
+    if (!bio.trim()) { setError("Please write a short bio."); return; }
+    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
 
@@ -102,6 +104,7 @@ export default function OnboardingPage() {
 
     const { error: updateError } = await (supabase.from("profiles") as any).upsert({
       id: user.id,
+      email: user.email,
       full_name: user.user_metadata?.full_name ?? "",
       university_id: selectedUni?.id,
       branch_id: selectedBranch?.id ?? null,
@@ -351,7 +354,7 @@ export default function OnboardingPage() {
             >
               <h2 className="text-2xl font-bold mb-1">Your profile</h2>
               <p className="text-sm text-[rgb(var(--muted-fg))] mb-6">
-                Optional — you can always update this later.
+                A photo and bio are required to complete your profile.
               </p>
 
               {/* Avatar upload */}
