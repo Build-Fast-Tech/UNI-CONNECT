@@ -28,13 +28,18 @@ export default function SignupPage() {
       return;
     }
     setLoading(true);
-    const result = await signUpAction({ email, password, fullName });
-    if (result.error) {
-      setError(result.error);
+    try {
+      const result = await signUpAction({ email, password, fullName });
+      if (result.error) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+      setDone(true);
+    } catch (err: any) {
+      setError(err?.message ?? "Something went wrong. Please try again.");
       setLoading(false);
-      return;
     }
-    setDone(true);
   };
 
   const handleResend = async () => {
