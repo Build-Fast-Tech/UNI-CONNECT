@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, MessageSquare, FileText, Briefcase,
@@ -10,7 +10,7 @@ import {
   MessageSquarePlus, Info, ShieldCheck, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
+import { useCurrentUser } from "@/components/providers/UserProvider";
 
 const NAV_ITEMS = [
   { href: "/feed",          icon: LayoutDashboard, label: "Feed" },
@@ -138,17 +138,8 @@ function SidebarContent({
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase.from("profiles").select("role").eq("id", user.id).single().then(({ data }) => {
-        setIsAdmin(data?.role === "admin");
-      });
-    });
-  }, []);
+  const { role } = useCurrentUser();
+  const isAdmin = role === "admin";
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {

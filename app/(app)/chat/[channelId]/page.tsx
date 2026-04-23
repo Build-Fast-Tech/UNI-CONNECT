@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import { useChatShell } from "@/components/chat/ChatShell";
-import data from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
+
+// Emoji picker is ~200KB + its data file is ~180KB. Load both only when the
+// user actually opens the picker.
+const EmojiPicker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
 
 interface Profile {
   full_name: string;
@@ -60,6 +63,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [loading, setLoading] = useState(true);
   const [sendError, setSendError] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiData, setEmojiData] = useState<unknown>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -83,6 +87,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setInput(prev => prev + emoji.native);
     textareaRef.current?.focus();
     resizeTextarea();
+  };
+
+  const toggleEmojiPicker = async () => {
+    if (!showEmojiPicker && !emojiData) {
+      const mod = await import("@emoji-mart/data");
+      setEmojiData(mod.default);
+    }
+    setShowEmojiPicker(p => !p);
   };
 
   // Auto-resize textarea
@@ -467,10 +479,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
       {/* Input */}
       <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))] relative">
-        {showEmojiPicker && (
+        {showEmojiPicker && emojiData && (
           <div ref={emojiPickerRef} className="absolute bottom-full right-3 mb-2 z-50">
-            <Picker
-              data={data}
+            <EmojiPicker
+              data={emojiData}
               onEmojiSelect={insertEmoji}
               theme="auto"
               previewPosition="none"
@@ -507,7 +519,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
             <button
               type="button"
-              onClick={() => setShowEmojiPicker(p => !p)}
+              onClick={toggleEmojiPicker}
               className={cn(
                 "flex-shrink-0 mb-0.5 transition-colors",
                 showEmojiPicker

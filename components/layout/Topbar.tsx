@@ -3,6 +3,7 @@
 import { Search, Bell, Menu } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
+import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
@@ -22,38 +23,13 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const router = useRouter();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [initials, setInitials] = useState("U");
+  const { avatarUrl, initials } = useCurrentUser();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url")
-        .eq("id", user.id)
-        .single();
-      if (data) {
-        setAvatarUrl(data.avatar_url);
-        setInitials(
-          data.full_name
-            .split(" ")
-            .map((n: string) => n[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2)
-        );
-      }
-    })();
-  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
