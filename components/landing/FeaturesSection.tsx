@@ -96,7 +96,7 @@ const FEATURES = [
   {
     icon: Bot,
     title: "AI study companion",
-    description: "Ask anything, analyze your notes, prepare for exams. Powered by Claude AI, available 24/7.",
+    description: "Ask anything, analyze your notes, prepare for exams. Powered by Google Gemini, available 24/7.",
     preview: (
       <div className="mt-4 space-y-2">
         <div className="p-2 rounded-lg bg-[rgb(var(--muted)/0.5)] text-xs text-[rgb(var(--muted-fg))]">

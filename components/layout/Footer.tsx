@@ -62,7 +62,7 @@ export function Footer() {
             <span className="text-[rgb(var(--primary))]">Pakistan</span> 🇵🇰
           </p>
           <p className="text-xs text-[rgb(var(--muted-fg))]">
-            Stack: Next.js · Supabase · Claude AI · Vercel
+            Stack: Next.js · Supabase · Google Gemini · Vercel
           </p>
         </div>
       </div>

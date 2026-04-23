@@ -2,6 +2,10 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "development") {
+    return new Response("Not found", { status: 404 });
+  }
+
   // Get current user
   const supabase = await createServerClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
