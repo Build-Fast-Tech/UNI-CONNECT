@@ -3,10 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 
 const SYSTEM_PROMPT = `You are UniConnect AI — a helpful study companion for Pakistani university students. Help with explaining concepts, answering subject questions (CS, Engineering, Business, Medicine), career advice for Pakistan, and study tips. Be concise and friendly. Respond in English but feel free to use Urdu words naturally.`;
 
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
 export async function POST(req: Request) {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      return new Response("AI feature is not configured yet.", { status: 503 });
+      return new Response("AI is not configured: GEMINI_API_KEY is missing.", { status: 503 });
     }
 
     const supabase = await createClient();
@@ -18,10 +20,15 @@ export async function POST(req: Request) {
       return new Response("Daily limit reached (50 messages/day)", { status: 429 });
     }
 
-    const { messages, noteContext } = await req.json() as {
+    const body = await req.json() as {
       messages: { role: "user" | "assistant"; content: string }[];
       noteContext?: string;
     };
+    const { messages, noteContext } = body;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response("No messages provided", { status: 400 });
+    }
 
     const contextLine = noteContext
       ? `\n\nNote context:\n${noteContext.slice(0, 3000)}`
@@ -34,13 +41,16 @@ export async function POST(req: Request) {
     const firstUserIdx = filtered.findIndex(m => m.role === "user");
     const trimmed = firstUserIdx >= 0 ? filtered.slice(firstUserIdx) : filtered;
 
+    if (trimmed.length === 0) {
+      return new Response("No valid user message", { status: 400 });
+    }
+
     const history = trimmed.slice(0, -1).map(m => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
 
-    const lastContent = trimmed[trimmed.length - 1]?.content
-      ?? messages[messages.length - 1].content;
+    const lastContent = trimmed[trimmed.length - 1].content;
 
     const userText = history.length === 0
       ? `${SYSTEM_PROMPT}${contextLine}\n\n${lastContent}`
@@ -48,19 +58,33 @@ export async function POST(req: Request) {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const response = await ai.models.generateContentStream({
-      model: "gemini-2.0-flash",
-      contents: [...history, { role: "user", parts: [{ text: userText }] }],
-    });
+    let response;
+    try {
+      response = await ai.models.generateContentStream({
+        model: MODEL,
+        contents: [...history, { role: "user", parts: [{ text: userText }] }],
+      });
+    } catch (sdkErr: any) {
+      const msg = sdkErr?.message ?? String(sdkErr);
+      console.error(`Gemini SDK error (model=${MODEL}):`, msg);
+      return new Response(`Gemini error: ${msg}`, { status: 502 });
+    }
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        for await (const chunk of response) {
-          const text = chunk.text;
-          if (text) controller.enqueue(encoder.encode(text));
+        try {
+          for await (const chunk of response) {
+            const text = chunk.text;
+            if (text) controller.enqueue(encoder.encode(text));
+          }
+          controller.close();
+        } catch (streamErr: any) {
+          const msg = streamErr?.message ?? String(streamErr);
+          console.error("Gemini stream error:", msg);
+          controller.enqueue(encoder.encode(`\n\n[Stream error: ${msg}]`));
+          controller.close();
         }
-        controller.close();
       },
     });
 
@@ -68,6 +92,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-cache, no-transform",
       },
     });
   } catch (err: any) {
