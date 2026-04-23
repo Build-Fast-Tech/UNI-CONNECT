@@ -66,6 +66,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const profileCache = useRef<Map<string, Profile>>(new Map());
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -135,7 +136,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         .order("created_at", { ascending: true })
         .limit(60);
 
-      if (msgs) setMessages(msgs as unknown as Message[]);
+      if (msgs) {
+        const typed = msgs as unknown as Message[];
+        setMessages(typed);
+        // Seed profile cache so realtime inserts don't need to re-join profiles.
+        typed.forEach(m => {
+          if (m.sender_id && m.sender && !profileCache.current.has(m.sender_id)) {
+            profileCache.current.set(m.sender_id, m.sender);
+          }
+        });
+      }
       setLoading(false);
     };
 
@@ -147,7 +157,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     if (!loading) scrollToBottom(false);
   }, [loading]);
 
-  // Realtime: new messages
+  // Realtime: new messages.
+  // Uses payload.new for the row fields and a cached profile to avoid a 4-table
+  // re-join on every incoming message. Only fetches a profile when we have never
+  // seen this sender on this channel before.
   useEffect(() => {
     const sub = supabase
       .channel(`chat:${channelId}`)
@@ -160,15 +173,42 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           filter: `channel_id=eq.${channelId}`,
         },
         async (payload) => {
-          const { data: msg } = await supabase
-            .from("messages")
-            .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name))")
-            .eq("id", payload.new.id)
-            .single();
-          if (msg) {
-            setMessages(prev => [...prev, msg as unknown as Message]);
-            setTimeout(() => scrollToBottom(), 80);
+          const row = payload.new as {
+            id: string;
+            content: string;
+            created_at: string;
+            sender_id: string;
+            is_deleted?: boolean;
+          };
+          if (row.is_deleted) return;
+
+          let sender = profileCache.current.get(row.sender_id) ?? null;
+          if (!sender) {
+            const { data } = await supabase
+              .from("profiles")
+              .select("full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name)")
+              .eq("id", row.sender_id)
+              .single();
+            if (data) {
+              sender = data as unknown as Profile;
+              profileCache.current.set(row.sender_id, sender);
+            }
           }
+
+          const newMsg: Message = {
+            id: row.id,
+            content: row.content,
+            created_at: row.created_at,
+            sender_id: row.sender_id,
+            sender,
+          };
+
+          setMessages(prev => {
+            // Dedupe: ignore if we already appended optimistically.
+            if (prev.some(m => m.id === row.id)) return prev;
+            return [...prev, newMsg];
+          });
+          setTimeout(() => scrollToBottom(), 80);
         }
       )
       .subscribe();
@@ -228,18 +268,45 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     if (typingTimer.current) clearTimeout(typingTimer.current);
     broadcastTyping(false);
 
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
 
-    const { error } = await supabase.from("messages").insert({
-      channel_id: channelId,
-      sender_id: userId,
-      content,
-    });
+    const { data: inserted, error } = await supabase
+      .from("messages")
+      .insert({
+        channel_id: channelId,
+        sender_id: userId,
+        content,
+      })
+      .select("id, content, created_at, sender_id")
+      .single();
 
-    if (error) setSendError(error.message);
+    if (error) {
+      setSendError(error.message);
+    } else if (inserted) {
+      // Optimistic append with cached self profile so the message appears
+      // without waiting for realtime echo. The realtime handler dedupes by id.
+      const selfProfile = profileCache.current.get(userId) ?? {
+        full_name: myName,
+        avatar_url: myAvatar,
+        username: null,
+        branch: null,
+        universities: null,
+      };
+      setMessages(prev => {
+        if (prev.some(m => m.id === inserted.id)) return prev;
+        return [...prev, {
+          id: inserted.id,
+          content: inserted.content,
+          created_at: inserted.created_at,
+          sender_id: inserted.sender_id,
+          sender: selfProfile as Profile,
+        }];
+      });
+      setTimeout(() => scrollToBottom(), 50);
+    }
+
     setSending(false);
     textareaRef.current?.focus();
   };
