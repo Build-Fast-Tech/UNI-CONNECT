@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
-import { Send, Paperclip, Globe, Building2, MessageCircle, Smile } from "lucide-react";
+import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
+import { useChatShell } from "@/components/chat/ChatShell";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 
@@ -45,6 +46,7 @@ function Avatar({ name, url, size = "sm" }: { name?: string; url?: string | null
 export default function ChatChannelPage({ params }: { params: Promise<{ channelId: string }> }) {
   const { channelId } = use(params);
   const supabase = createClient();
+  const chatShell = useChatShell();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [channel, setChannel] = useState<Channel | null>(null);
@@ -266,6 +268,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     <>
       {/* Header */}
       <div className="h-14 flex items-center gap-3 px-4 border-b border-[rgb(var(--border))] bg-[rgb(var(--card)/0.6)] backdrop-blur-sm flex-shrink-0">
+        {chatShell && (
+          <button
+            onClick={chatShell.openChannels}
+            className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors flex-shrink-0"
+            aria-label="Open channels"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         {channelIcon}
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold leading-tight truncate">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Menu } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,11 @@ interface Result {
   href: string;
 }
 
-export function Topbar() {
+interface TopbarProps {
+  onMenuClick?: () => void;
+}
+
+export function Topbar({ onMenuClick }: TopbarProps) {
   const router = useRouter();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initials, setInitials] = useState("U");
@@ -51,7 +55,6 @@ export function Topbar() {
     })();
   }, []);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -121,12 +124,28 @@ export function Topbar() {
 
   return (
     <header className={cn(
-      "h-14 flex items-center gap-4 px-4 sm:px-6",
+      "h-14 flex items-center gap-2 sm:gap-4 px-3 sm:px-6",
       "border-b border-[rgb(var(--border))] bg-[rgb(var(--card)/0.8)] backdrop-blur-xl",
       "sticky top-0 z-30"
     )}>
+      {/* Mobile menu button */}
+      {onMenuClick && (
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-1 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors flex-shrink-0"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Mobile logo (visible only when desktop sidebar is hidden) */}
+      <Link href="/feed" className="lg:hidden font-bold text-base tracking-tight flex-shrink-0">
+        Uni<span className="text-[rgb(var(--primary))]">Connect</span>
+      </Link>
+
       {/* Search */}
-      <div className="flex-1 max-w-md" ref={wrapperRef}>
+      <div className="flex-1 max-w-md min-w-0" ref={wrapperRef}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
           <input
@@ -135,16 +154,15 @@ export function Topbar() {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => { if (results.length > 0) setOpen(true); }}
-            placeholder="Search notes, jobs, universities…"
+            placeholder="Search notes, jobs…"
             className={cn(
-              "w-full h-9 pl-9 pr-4 rounded-xl text-sm",
+              "w-full h-9 pl-9 pr-3 rounded-xl text-sm",
               "bg-[rgb(var(--muted))] border border-[rgb(var(--border))]",
               "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
               "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
             )}
           />
 
-          {/* Dropdown */}
           {open && (
             <div className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 overflow-hidden">
               {searching && (
@@ -174,8 +192,7 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* Right */}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1 sm:gap-2 flex-shrink-0">
         <ThemeSwitcher />
         <Link href="/inbox" className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
           <Bell className="w-5 h-5 text-[rgb(var(--muted-fg))]" />

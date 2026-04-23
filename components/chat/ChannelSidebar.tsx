@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Building2, Plus, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Globe, Building2, Plus, User, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -15,13 +16,29 @@ interface Channel {
   avatarChar?: string;
 }
 
-function ChannelItem({ channel, icon, label }: { channel: Channel; icon: React.ReactNode; label: string }) {
+interface ChannelSidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+function ChannelItem({
+  channel,
+  icon,
+  label,
+  onClick,
+}: {
+  channel: Channel;
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
   const active = pathname === `/chat/${channel.id}`;
 
   return (
     <Link
       href={`/chat/${channel.id}`}
+      onClick={onClick}
       className={cn(
         "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-200",
         active
@@ -35,102 +52,36 @@ function ChannelItem({ channel, icon, label }: { channel: Channel; icon: React.R
   );
 }
 
-export function ChannelSidebar() {
-  const supabase = createClient();
-  const [globalChannel, setGlobalChannel] = useState<Channel | null>(null);
-  const [uniChannels, setUniChannels] = useState<Channel[]>([]);
-  const [dmChannels, setDmChannels] = useState<Channel[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-
-      // Global channel
-      const { data: global } = await supabase
-        .from("channels")
-        .select("id, type, name")
-        .eq("type", "global")
-        .single();
-      if (global) setGlobalChannel(global);
-
-      // Profile → university
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("university_id, universities(short_name)")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.university_id) {
-        // Try to find existing university channel
-        let { data: existing } = await supabase
-          .from("channels")
-          .select("id, type, name")
-          .eq("type", "university")
-          .eq("university_id", profile.university_id)
-          .single();
-
-        if (!existing) {
-          const uniName = (profile.universities as any)?.short_name ?? "University";
-          const { data: created } = await supabase
-            .from("channels")
-            .insert({
-              type: "university",
-              university_id: profile.university_id,
-              name: `${uniName} General`,
-            })
-            .select("id, type, name")
-            .single();
-          existing = created;
-        }
-
-        if (existing) {
-          const uniShort = (profile.universities as any)?.short_name ?? "";
-          setUniChannels([{ ...existing, meta: uniShort }]);
-        }
-      }
-
-      // DM channels
-      const { data: dms } = await supabase
-        .from("channels")
-        .select("id, type, dm_user_a, dm_user_b")
-        .eq("type", "dm")
-        .or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`)
-        .limit(15);
-
-      if (dms && dms.length > 0) {
-        const otherIds = dms.map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean);
-        const { data: dmProfiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", otherIds as string[]);
-
-        const profileMap = new Map(dmProfiles?.map(p => [p.id, p]) ?? []);
-
-        setDmChannels(dms.map(d => {
-          const otherId = d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a;
-          const otherProfile = profileMap.get(otherId ?? "");
-          return {
-            id: d.id,
-            type: "dm",
-            name: otherProfile?.full_name ?? "Unknown",
-            avatarChar: otherProfile?.full_name?.charAt(0).toUpperCase() ?? "?",
-          };
-        }));
-      }
-    };
-
-    init();
-  }, []);
-
+function ChannelList({
+  globalChannel,
+  uniChannels,
+  dmChannels,
+  onLinkClick,
+  showCloseButton,
+  onClose,
+}: {
+  globalChannel: Channel | null;
+  uniChannels: Channel[];
+  dmChannels: Channel[];
+  onLinkClick?: () => void;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+}) {
   return (
-    <div className="w-56 flex-shrink-0 border-r border-[rgb(var(--border))] flex flex-col overflow-hidden bg-[rgb(var(--card))]">
-      <div className="px-4 pt-4 pb-2 flex-shrink-0">
+    <>
+      <div className="px-4 pt-4 pb-2 flex-shrink-0 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">
           Channels
         </p>
+        {showCloseButton && (
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors"
+            aria-label="Close channels"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
@@ -139,6 +90,7 @@ export function ChannelSidebar() {
             channel={globalChannel}
             icon={<Globe className="w-4 h-4" />}
             label={globalChannel.name ?? "All-Pakistan Chat"}
+            onClick={onLinkClick}
           />
         )}
 
@@ -153,6 +105,7 @@ export function ChannelSidebar() {
                 channel={ch}
                 icon={<Building2 className="w-4 h-4" />}
                 label={ch.name ?? ch.meta ?? "University"}
+                onClick={onLinkClick}
               />
             ))}
           </div>
@@ -187,10 +140,148 @@ export function ChannelSidebar() {
                 </div>
               }
               label={ch.name ?? "Unknown"}
+              onClick={onLinkClick}
             />
           ))}
         </div>
       </div>
-    </div>
+    </>
+  );
+}
+
+export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarProps) {
+  const supabase = createClient();
+  const [globalChannel, setGlobalChannel] = useState<Channel | null>(null);
+  const [uniChannels, setUniChannels] = useState<Channel[]>([]);
+  const [dmChannels, setDmChannels] = useState<Channel[]>([]);
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: global } = await supabase
+        .from("channels")
+        .select("id, type, name")
+        .eq("type", "global")
+        .single();
+      if (global) setGlobalChannel(global);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("university_id, universities(short_name)")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.university_id) {
+        let { data: existing } = await supabase
+          .from("channels")
+          .select("id, type, name")
+          .eq("type", "university")
+          .eq("university_id", profile.university_id)
+          .single();
+
+        if (!existing) {
+          const uniName = (profile.universities as any)?.short_name ?? "University";
+          const { data: created } = await supabase
+            .from("channels")
+            .insert({
+              type: "university",
+              university_id: profile.university_id,
+              name: `${uniName} General`,
+            })
+            .select("id, type, name")
+            .single();
+          existing = created;
+        }
+
+        if (existing) {
+          const uniShort = (profile.universities as any)?.short_name ?? "";
+          setUniChannels([{ ...existing, meta: uniShort }]);
+        }
+      }
+
+      const { data: dms } = await supabase
+        .from("channels")
+        .select("id, type, dm_user_a, dm_user_b")
+        .eq("type", "dm")
+        .or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`)
+        .limit(15);
+
+      if (dms && dms.length > 0) {
+        const otherIds = dms.map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean);
+        const { data: dmProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", otherIds as string[]);
+
+        const profileMap = new Map(dmProfiles?.map(p => [p.id, p]) ?? []);
+
+        setDmChannels(dms.map(d => {
+          const otherId = d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a;
+          const otherProfile = profileMap.get(otherId ?? "");
+          return {
+            id: d.id,
+            type: "dm",
+            name: otherProfile?.full_name ?? "Unknown",
+            avatarChar: otherProfile?.full_name?.charAt(0).toUpperCase() ?? "?",
+          };
+        }));
+      }
+    };
+
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [mobileOpen]);
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex w-56 flex-shrink-0 border-r border-[rgb(var(--border))] flex-col overflow-hidden bg-[rgb(var(--card))]">
+        <ChannelList
+          globalChannel={globalChannel}
+          uniChannels={uniChannels}
+          dmChannels={dmChannels}
+        />
+      </div>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/60 z-40 md:hidden"
+              onClick={onClose}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            />
+            <motion.div
+              className="fixed top-0 left-0 bottom-0 w-64 z-50 md:hidden flex flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            >
+              <ChannelList
+                globalChannel={globalChannel}
+                uniChannels={uniChannels}
+                dmChannels={dmChannels}
+                onLinkClick={onClose}
+                showCloseButton
+                onClose={onClose}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
