@@ -63,7 +63,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [loading, setLoading] = useState(true);
   const [sendError, setSendError] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [emojiData, setEmojiData] = useState<unknown>(null);
+  // The @emoji-mart/data JSON shape is not exported as a type; `any` is the
+  // type the Picker itself expects for its `data` prop.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [emojiData, setEmojiData] = useState<any>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -310,7 +313,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         if (prev.some(m => m.id === inserted.id)) return prev;
         return [...prev, {
           id: inserted.id,
-          content: inserted.content,
+          content: inserted.content ?? content,
           created_at: inserted.created_at,
           sender_id: inserted.sender_id,
           sender: selfProfile as Profile,

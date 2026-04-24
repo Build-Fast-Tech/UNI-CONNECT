@@ -115,7 +115,8 @@ export async function POST(req: Request) {
     const fromName = profile?.full_name ?? "Unknown";
     const fromEmail = profile?.email ?? user.email ?? "unknown@unknown";
 
-    const { error: insertError } = await supabase
+    // suggestions table isn't in the generated types yet; see types/database.ts
+    const { error: insertError } = await (supabase as any)
       .from("suggestions")
       .insert({
         user_id: user.id,
