@@ -231,7 +231,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     return () => { supabase.removeChannel(sub); };
   }, [channelId]);
 
-  // Presence: online count + typing
+  // Presence: online count + Discord-style typing. We key presence on userId
+  // so duplicate tabs for the same user collapse into a single entry, and we
+  // filter by userId instead of name so people with matching names still see
+  // each other typing.
   useEffect(() => {
     if (!userId || !myName) return;
 
@@ -242,35 +245,53 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
     presenceChan
       .on("presence", { event: "sync" }, () => {
-        const state = presenceChan.presenceState<{ name: string; typing: boolean }>();
+        const state = presenceChan.presenceState<{ name: string; typing: boolean; userId: string }>();
         const entries = Object.values(state).flat();
         setOnlineCount(entries.length);
         setTypingNames(
           entries
-            .filter(e => e.typing && e.name !== myName)
-            .map(e => e.name.split(" ")[0])
+            .filter(e => e.typing && e.userId !== userId)
+            .map(e => (e.name ?? "").split(" ")[0])
+            .filter(Boolean),
         );
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          await presenceChan.track({ name: myName, typing: false });
+          await presenceChan.track({ name: myName, typing: false, userId });
         }
       });
 
     return () => { supabase.removeChannel(presenceChan); };
   }, [channelId, userId, myName]);
 
+  // Coalesce typing broadcasts — only send `track()` when the state actually
+  // changes, instead of once per keystroke.
+  const typingStateRef = useRef(false);
   const broadcastTyping = async (isTyping: boolean) => {
-    await presenceRef.current?.track({ name: myName, typing: isTyping });
+    if (!userId || !myName) return;
+    if (typingStateRef.current === isTyping) return;
+    typingStateRef.current = isTyping;
+    try {
+      await presenceRef.current?.track({ name: myName, typing: isTyping, userId });
+    } catch {
+      // presence not ready yet; on next render the track will retry.
+      typingStateRef.current = !isTyping;
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     resizeTextarea();
 
-    broadcastTyping(true);
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => broadcastTyping(false), 2000);
+    if (e.target.value.trim().length > 0) {
+      broadcastTyping(true);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => broadcastTyping(false), 3000);
+    } else {
+      // Cleared the field — stop typing immediately.
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      broadcastTyping(false);
+    }
   };
 
   const handleSend = async (e?: React.FormEvent) => {

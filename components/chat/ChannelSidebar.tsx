@@ -1,19 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, Building2, Plus, User, X } from "lucide-react";
+import { Globe, Building2, Plus, User, X, Pin, PinOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
+
+type ChannelKind = "global" | "university" | "branch" | "dm";
 
 interface Channel {
   id: string;
-  type: string;
-  name: string | null;
+  kind: ChannelKind;
+  name: string;
   meta?: string;
   avatarChar?: string;
+  lastMessage: string | null;
+  lastAt: string | null;
 }
 
 interface ChannelSidebarProps {
@@ -21,34 +25,83 @@ interface ChannelSidebarProps {
   onClose?: () => void;
 }
 
-function ChannelItem({
+const PINS_KEY = (uid: string) => `uc_pinned_chats_${uid}`;
+
+function readPins(uid: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(PINS_KEY(uid));
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+function writePins(uid: string, pins: Set<string>) {
+  try {
+    localStorage.setItem(PINS_KEY(uid), JSON.stringify([...pins]));
+  } catch {}
+}
+
+function ChannelRow({
   channel,
   icon,
-  label,
-  onClick,
+  active,
+  pinned,
+  onPinToggle,
+  onLinkClick,
 }: {
   channel: Channel;
   icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
+  active: boolean;
+  pinned: boolean;
+  onPinToggle: (id: string) => void;
+  onLinkClick?: () => void;
 }) {
-  const pathname = usePathname();
-  const active = pathname === `/chat/${channel.id}`;
-
   return (
-    <Link
-      href={`/chat/${channel.id}`}
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-200",
-        active
-          ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]"
-          : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
-      )}
-    >
-      <span className="flex-shrink-0">{icon}</span>
-      <span className="truncate">{label}</span>
-    </Link>
+    <div className={cn("group relative", pinned && "bg-[rgb(var(--primary)/0.04)] rounded-xl")}>
+      <Link
+        href={`/chat/${channel.id}`}
+        onClick={onLinkClick}
+        className={cn(
+          "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-200",
+          active
+            ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]"
+            : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]",
+        )}
+      >
+        <span className="flex-shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="truncate">{channel.name}</span>
+            {pinned && <Pin className="w-3 h-3 flex-shrink-0 fill-current opacity-70" />}
+          </div>
+          {channel.lastMessage && (
+            <p className="text-[11px] opacity-70 truncate leading-tight">
+              {channel.lastMessage}
+            </p>
+          )}
+        </div>
+        {channel.lastAt && (
+          <span className="text-[10px] opacity-60 flex-shrink-0">
+            {formatRelativeTime(channel.lastAt)}
+          </span>
+        )}
+      </Link>
+
+      <button
+        onClick={e => { e.preventDefault(); e.stopPropagation(); onPinToggle(channel.id); }}
+        title={pinned ? "Unpin" : "Pin"}
+        aria-label={pinned ? "Unpin chat" : "Pin chat"}
+        className={cn(
+          "absolute right-1 top-1.5 p-1 rounded-md transition-opacity",
+          pinned
+            ? "opacity-90 text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.12)]"
+            : "opacity-0 group-hover:opacity-80 text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]",
+        )}
+      >
+        {pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+      </button>
+    </div>
   );
 }
 
@@ -56,6 +109,8 @@ function ChannelList({
   globalChannel,
   uniChannels,
   dmChannels,
+  pins,
+  onTogglePin,
   onLinkClick,
   showCloseButton,
   onClose,
@@ -63,10 +118,38 @@ function ChannelList({
   globalChannel: Channel | null;
   uniChannels: Channel[];
   dmChannels: Channel[];
+  pins: Set<string>;
+  onTogglePin: (id: string) => void;
   onLinkClick?: () => void;
   showCloseButton?: boolean;
   onClose?: () => void;
 }) {
+  const pathname = usePathname();
+  const activeId = pathname?.match(/^\/chat\/([^/]+)/)?.[1] ?? null;
+
+  // WhatsApp-style sort: pinned first, then by most recent message.
+  const sortFn = (a: Channel, b: Channel) => {
+    const pa = pins.has(a.id) ? 1 : 0;
+    const pb = pins.has(b.id) ? 1 : 0;
+    if (pa !== pb) return pb - pa;
+    const ta = new Date(a.lastAt ?? 0).getTime();
+    const tb = new Date(b.lastAt ?? 0).getTime();
+    return tb - ta;
+  };
+
+  const dmsSorted = [...dmChannels].sort(sortFn);
+  const unisSorted = [...uniChannels].sort(sortFn);
+
+  const iconFor = (ch: Channel): React.ReactNode => {
+    if (ch.kind === "global") return <Globe className="w-4 h-4" />;
+    if (ch.kind === "university" || ch.kind === "branch") return <Building2 className="w-4 h-4" />;
+    return (
+      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-[8px] font-bold text-white">
+        {ch.avatarChar ?? <User className="w-3 h-3" />}
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="px-4 pt-4 pb-2 flex-shrink-0 flex items-center justify-between">
@@ -86,26 +169,30 @@ function ChannelList({
 
       <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
         {globalChannel && (
-          <ChannelItem
+          <ChannelRow
             channel={globalChannel}
-            icon={<Globe className="w-4 h-4" />}
-            label={globalChannel.name ?? "All-Pakistan Chat"}
-            onClick={onLinkClick}
+            icon={iconFor(globalChannel)}
+            active={activeId === globalChannel.id}
+            pinned={pins.has(globalChannel.id)}
+            onPinToggle={onTogglePin}
+            onLinkClick={onLinkClick}
           />
         )}
 
-        {uniChannels.length > 0 && (
+        {unisSorted.length > 0 && (
           <div className="pt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-3 mb-1">
               My University
             </p>
-            {uniChannels.map(ch => (
-              <ChannelItem
+            {unisSorted.map(ch => (
+              <ChannelRow
                 key={ch.id}
                 channel={ch}
-                icon={<Building2 className="w-4 h-4" />}
-                label={ch.name ?? ch.meta ?? "University"}
-                onClick={onLinkClick}
+                icon={iconFor(ch)}
+                active={activeId === ch.id}
+                pinned={pins.has(ch.id)}
+                onPinToggle={onTogglePin}
+                onLinkClick={onLinkClick}
               />
             ))}
           </div>
@@ -116,31 +203,30 @@ function ChannelList({
             <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">
               Direct Messages
             </p>
-            <button
+            <Link
+              href="/inbox"
               className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
               title="New DM"
             >
               <Plus className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
 
-          {dmChannels.length === 0 && (
+          {dmsSorted.length === 0 && (
             <p className="text-xs text-[rgb(var(--muted-fg))] px-3 py-1.5">
               No conversations yet
             </p>
           )}
 
-          {dmChannels.map(ch => (
-            <ChannelItem
+          {dmsSorted.map(ch => (
+            <ChannelRow
               key={ch.id}
               channel={ch}
-              icon={
-                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-[8px] font-bold text-white">
-                  {ch.avatarChar ?? <User className="w-3 h-3" />}
-                </div>
-              }
-              label={ch.name ?? "Unknown"}
-              onClick={onLinkClick}
+              icon={iconFor(ch)}
+              active={activeId === ch.id}
+              pinned={pins.has(ch.id)}
+              onPinToggle={onTogglePin}
+              onLinkClick={onLinkClick}
             />
           ))}
         </div>
@@ -151,21 +237,52 @@ function ChannelList({
 
 export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarProps) {
   const supabase = createClient();
+  const [myId, setMyId] = useState<string | null>(null);
   const [globalChannel, setGlobalChannel] = useState<Channel | null>(null);
   const [uniChannels, setUniChannels] = useState<Channel[]>([]);
   const [dmChannels, setDmChannels] = useState<Channel[]>([]);
+  const [pins, setPins] = useState<Set<string>>(new Set());
+
+  const togglePin = useCallback((channelId: string) => {
+    if (!myId) return;
+    setPins(prev => {
+      const next = new Set(prev);
+      if (next.has(channelId)) next.delete(channelId);
+      else next.add(channelId);
+      writePins(myId, next);
+      return next;
+    });
+  }, [myId]);
+
+  // Helper: fetch the most recent message per channel in one query.
+  const fetchLastMessages = useCallback(async (channelIds: string[]) => {
+    if (channelIds.length === 0) return new Map<string, { content: string | null; created_at: string }>();
+    const { data } = await supabase
+      .from("messages")
+      .select("channel_id, content, created_at")
+      .in("channel_id", channelIds)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false });
+    const map = new Map<string, { content: string | null; created_at: string }>();
+    for (const m of data ?? []) {
+      if (!map.has(m.channel_id)) map.set(m.channel_id, { content: m.content, created_at: m.created_at });
+    }
+    return map;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setMyId(user.id);
+      setPins(readPins(user.id));
 
       const { data: global } = await supabase
         .from("channels")
         .select("id, type, name")
         .eq("type", "global")
         .single();
-      if (global) setGlobalChannel(global);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -173,16 +290,18 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
         .eq("id", user.id)
         .single();
 
+      // University channel find-or-create.
+      let uniChannel: { id: string; name: string | null } | null = null;
       if (profile?.university_id) {
         let { data: existing } = await supabase
           .from("channels")
-          .select("id, type, name")
+          .select("id, name")
           .eq("type", "university")
           .eq("university_id", profile.university_id)
           .single();
 
         if (!existing) {
-          const uniName = (profile.universities as any)?.short_name ?? "University";
+          const uniName = (profile.universities as unknown as { short_name?: string } | null)?.short_name ?? "University";
           const { data: created } = await supabase
             .from("channels")
             .insert({
@@ -190,15 +309,11 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
               university_id: profile.university_id,
               name: `${uniName} General`,
             })
-            .select("id, type, name")
+            .select("id, name")
             .single();
           existing = created;
         }
-
-        if (existing) {
-          const uniShort = (profile.universities as any)?.short_name ?? "";
-          setUniChannels([{ ...existing, meta: uniShort }]);
-        }
+        uniChannel = existing;
       }
 
       const { data: dms } = await supabase
@@ -206,32 +321,103 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
         .select("id, type, dm_user_a, dm_user_b")
         .eq("type", "dm")
         .or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`)
-        .limit(15);
+        .limit(30);
+
+      const dmIds = (dms ?? []).map(d => d.id);
+      const channelIds = [
+        ...(global ? [global.id] : []),
+        ...(uniChannel ? [uniChannel.id] : []),
+        ...dmIds,
+      ];
+      const lastMsgMap = await fetchLastMessages(channelIds);
+
+      if (global) {
+        const last = lastMsgMap.get(global.id);
+        setGlobalChannel({
+          id: global.id,
+          kind: "global",
+          name: global.name ?? "All-Pakistan Chat",
+          lastMessage: last?.content ?? null,
+          lastAt: last?.created_at ?? null,
+        });
+      }
+
+      if (uniChannel) {
+        const uniShort = (profile?.universities as unknown as { short_name?: string } | null)?.short_name ?? "";
+        const last = lastMsgMap.get(uniChannel.id);
+        setUniChannels([{
+          id: uniChannel.id,
+          kind: "university",
+          name: uniChannel.name ?? "University",
+          meta: uniShort,
+          lastMessage: last?.content ?? null,
+          lastAt: last?.created_at ?? null,
+        }]);
+      }
 
       if (dms && dms.length > 0) {
-        const otherIds = dms.map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean);
+        const otherIds = dms.map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean) as string[];
         const { data: dmProfiles } = await supabase
           .from("profiles")
           .select("id, full_name")
-          .in("id", otherIds as string[]);
-
+          .in("id", otherIds);
         const profileMap = new Map(dmProfiles?.map(p => [p.id, p]) ?? []);
 
         setDmChannels(dms.map(d => {
-          const otherId = d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a;
-          const otherProfile = profileMap.get(otherId ?? "");
+          const otherId = (d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a) ?? "";
+          const otherProfile = profileMap.get(otherId);
+          const last = lastMsgMap.get(d.id);
           return {
             id: d.id,
-            type: "dm",
+            kind: "dm",
             name: otherProfile?.full_name ?? "Unknown",
             avatarChar: otherProfile?.full_name?.charAt(0).toUpperCase() ?? "?",
+            lastMessage: last?.content ?? null,
+            lastAt: last?.created_at ?? null,
           };
         }));
       }
     };
-
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: bump any channel's preview + timestamp when a new message arrives.
+  useEffect(() => {
+    if (!myId) return;
+    const allIds = new Set<string>([
+      ...(globalChannel ? [globalChannel.id] : []),
+      ...uniChannels.map(c => c.id),
+      ...dmChannels.map(c => c.id),
+    ]);
+    if (allIds.size === 0) return;
+
+    const sub = supabase
+      .channel(`sidebar-preview-${myId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          const row = payload.new as {
+            channel_id: string;
+            content: string | null;
+            created_at: string;
+            is_deleted?: boolean;
+          };
+          if (row.is_deleted) return;
+          if (!allIds.has(row.channel_id)) return;
+          const apply = <T extends { id: string; lastMessage: string | null; lastAt: string | null }>(c: T) =>
+            c.id === row.channel_id ? { ...c, lastMessage: row.content, lastAt: row.created_at } : c;
+          setGlobalChannel(prev => prev ? apply(prev) : prev);
+          setUniChannels(prev => prev.map(apply));
+          setDmChannels(prev => prev.map(apply));
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(sub); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId, globalChannel?.id, uniChannels.length, dmChannels.length]);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -240,15 +426,19 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
     }
   }, [mobileOpen]);
 
+  const listProps = useMemo(() => ({
+    globalChannel,
+    uniChannels,
+    dmChannels,
+    pins,
+    onTogglePin: togglePin,
+  }), [globalChannel, uniChannels, dmChannels, pins, togglePin]);
+
   return (
     <>
       {/* Desktop sidebar */}
-      <div className="hidden md:flex w-56 flex-shrink-0 border-r border-[rgb(var(--border))] flex-col overflow-hidden bg-[rgb(var(--card))]">
-        <ChannelList
-          globalChannel={globalChannel}
-          uniChannels={uniChannels}
-          dmChannels={dmChannels}
-        />
+      <div className="hidden md:flex w-64 flex-shrink-0 border-r border-[rgb(var(--border))] flex-col overflow-hidden bg-[rgb(var(--card))]">
+        <ChannelList {...listProps} />
       </div>
 
       {/* Mobile drawer */}
@@ -264,16 +454,14 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
               transition={{ duration: 0.15 }}
             />
             <motion.div
-              className="fixed top-0 left-0 bottom-0 w-64 z-50 md:hidden flex flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
+              className="fixed top-0 left-0 bottom-0 w-72 z-50 md:hidden flex flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
             >
               <ChannelList
-                globalChannel={globalChannel}
-                uniChannels={uniChannels}
-                dmChannels={dmChannels}
+                {...listProps}
                 onLinkClick={onClose}
                 showCloseButton
                 onClose={onClose}
