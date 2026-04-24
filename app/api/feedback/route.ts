@@ -2,7 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
-const ADMIN_EMAIL = "abdullah.xf90@gmail.com";
+// Primary recipient. Honour ADMIN_EMAILS env (comma-separated) so deployments
+// can override without a code change.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "abdullah.xf90@gmail.com")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
 
 function renderHtml({
   fromName,
@@ -38,20 +43,20 @@ async function sendViaResend(opts: {
   if (!process.env.RESEND_API_KEY) return { ok: false, reason: "no_key" };
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const from = process.env.RESEND_FROM || "UniConnect Feedback <onboarding@resend.dev>";
+    const from = process.env.RESEND_FROM || "UniConnect <onboarding@resend.dev>";
     const result = await resend.emails.send({
       from,
-      to: ADMIN_EMAIL,
+      to: ADMIN_EMAILS,
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo,
     });
     if (result.error) {
-      return { ok: false, reason: result.error.message ?? "resend_error" };
+      return { ok: false, reason: `resend:${result.error.message ?? "unknown"}` };
     }
     return { ok: true, reason: "resend" };
   } catch (e: any) {
-    return { ok: false, reason: e?.message ?? "resend_exception" };
+    return { ok: false, reason: `resend:${e?.message ?? "exception"}` };
   }
 }
 
@@ -60,27 +65,27 @@ async function sendViaGmail(opts: {
   html: string;
   replyTo: string;
 }) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    return { ok: false, reason: "no_creds" };
-  }
+  const user = process.env.GMAIL_USER;
+  // Gmail app passwords are copied as "xxxx xxxx xxxx xxxx" with spaces — strip
+  // them because nodemailer's SMTP auth expects the raw 16-char string.
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
+  if (!user || !pass) return { ok: false, reason: "gmail:no_creds" };
+
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
+      auth: { user, pass },
     });
     await transporter.sendMail({
-      from: `"UniConnect Feedback" <${process.env.GMAIL_USER}>`,
-      to: ADMIN_EMAIL,
+      from: `"UniConnect Feedback" <${user}>`,
+      to: ADMIN_EMAILS,
       replyTo: opts.replyTo,
       subject: opts.subject,
       html: opts.html,
     });
     return { ok: true, reason: "gmail" };
   } catch (e: any) {
-    return { ok: false, reason: e?.message ?? "gmail_exception" };
+    return { ok: false, reason: `gmail:${e?.message ?? "exception"}` };
   }
 }
 
@@ -132,16 +137,23 @@ export async function POST(req: Request) {
     const subject = `[UniConnect] ${normalizedType.toUpperCase()} from ${fromName}`;
     const html = renderHtml({ fromName, fromEmail, type: normalizedType, message });
 
-    let emailResult = await sendViaResend({ subject, html, replyTo: fromEmail });
+    // Try Gmail first (most reliable when the app password is set correctly)
+    // and fall back to Resend. Collect failure reasons so the UI can surface
+    // them in dev without hiding the root cause.
+    const attempts: string[] = [];
+
+    let emailResult = await sendViaGmail({ subject, html, replyTo: fromEmail });
     if (!emailResult.ok) {
-      console.warn(`Resend failed (${emailResult.reason}); trying Gmail fallback.`);
-      emailResult = await sendViaGmail({ subject, html, replyTo: fromEmail });
+      attempts.push(emailResult.reason);
+      console.warn(`Gmail failed (${emailResult.reason}); trying Resend fallback.`);
+      emailResult = await sendViaResend({ subject, html, replyTo: fromEmail });
     }
 
     if (!emailResult.ok) {
-      console.error(`All email providers failed. Last reason: ${emailResult.reason}`);
+      attempts.push(emailResult.reason);
+      console.error(`All email providers failed: ${attempts.join(" | ")}`);
       return Response.json(
-        { saved: true, emailed: false, reason: emailResult.reason },
+        { saved: true, emailed: false, reason: attempts.join(" | ") },
         { status: 200 }
       );
     }

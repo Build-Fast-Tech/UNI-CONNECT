@@ -18,6 +18,7 @@ export default function FeedbackPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone]       = useState(false);
+  const [emailed, setEmailed] = useState(true);
   const [error, setError]     = useState("");
 
   const handleSubmit = async () => {
@@ -31,6 +32,8 @@ export default function FeedbackPage() {
         body: JSON.stringify({ type, message }),
       });
       if (!res.ok) throw new Error(await res.text());
+      const data = await res.json().catch(() => ({}));
+      setEmailed(data?.emailed !== false);
       setDone(true);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong. Please try again.");
@@ -52,9 +55,14 @@ export default function FeedbackPage() {
           </div>
           <h2 className="text-2xl font-bold">Thank you!</h2>
           <p className="text-sm text-[rgb(var(--muted-fg))] leading-relaxed">
-            Your feedback has been sent to the UniConnect team. We read every single message.
+            Your feedback is saved{emailed ? " and emailed to the UniConnect team" : ""}. We read every single message.
           </p>
-          <Button variant="outline" size="md" onClick={() => { setDone(false); setMessage(""); }}>
+          {!emailed && (
+            <p className="text-xs text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.08)] rounded-lg px-3 py-2">
+              Email delivery is currently unavailable, but your message has been stored and will be reviewed.
+            </p>
+          )}
+          <Button variant="outline" size="md" onClick={() => { setDone(false); setMessage(""); setEmailed(true); }}>
             Send another
           </Button>
         </motion.div>

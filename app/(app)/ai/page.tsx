@@ -42,6 +42,26 @@ function AIChat() {
   const [noteContext, setNoteContext] = useState<string>("");
   const [noteTitle, setNoteTitle] = useState<string>("");
   const [limitReached, setLimitReached] = useState(false);
+  const [usage, setUsage] = useState<{
+    used: number;
+    remaining: number;
+    limit: number;
+    unlimited: boolean;
+  } | null>(null);
+
+  const refreshUsage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/usage", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setUsage(data);
+      if (!data.unlimited && data.remaining <= 0) setLimitReached(true);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    refreshUsage();
+  }, [refreshUsage]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -123,6 +143,7 @@ function AIChat() {
             : m
         ));
         setLoading(false);
+        refreshUsage();
         return;
       }
 
@@ -170,7 +191,8 @@ function AIChat() {
       ));
     }
     setLoading(false);
-  }, [input, messages, loading, noteContext]);
+    refreshUsage();
+  }, [input, messages, loading, noteContext, refreshUsage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -186,12 +208,37 @@ function AIChat() {
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
           <Bot className="w-5 h-5 text-white" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="font-semibold text-sm leading-tight">UniConnect AI</h1>
-          <p className="text-xs text-[rgb(var(--muted-fg))]">
+          <p className="text-xs text-[rgb(var(--muted-fg))] truncate">
             {noteTitle ? `Context: ${noteTitle}` : "Your 24/7 study companion"}
           </p>
         </div>
+        {usage && (
+          <div
+            className={cn(
+              "hidden sm:flex items-center gap-1.5 ml-3 px-2.5 py-1 rounded-full text-[11px] font-medium",
+              usage.unlimited
+                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                : usage.remaining <= 5
+                  ? "bg-[rgb(var(--destructive)/0.1)] text-[rgb(var(--destructive))]"
+                  : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
+            )}
+            title={
+              usage.unlimited
+                ? "Unlimited usage"
+                : `${usage.used} used · ${usage.remaining} left today`
+            }
+          >
+            {usage.unlimited ? (
+              <>Unlimited</>
+            ) : (
+              <>
+                {usage.used}/{usage.limit} · {usage.remaining} left
+              </>
+            )}
+          </div>
+        )}
         {messages.length > 0 && (
           <button
             onClick={() => { setMessages([]); setLimitReached(false); try { localStorage.removeItem(STORAGE_KEY); } catch {} }}
@@ -324,7 +371,13 @@ function AIChat() {
           </div>
         )}
         <p className="text-[10px] text-[rgb(var(--muted-fg))] mt-1.5 px-1 text-center">
-          Powered by Gemini · 50 messages/day · Enter to send
+          Powered by Gemini ·{" "}
+          {usage
+            ? usage.unlimited
+              ? "Unlimited messages"
+              : `${usage.used}/${usage.limit} used · ${usage.remaining} remaining`
+            : "50 messages/day"}
+          {" "}· Enter to send
         </p>
       </div>
     </div>

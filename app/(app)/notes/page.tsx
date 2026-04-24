@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, mergeSubjects } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
 type Note = Database["public"]["Tables"]["notes"]["Row"] & {
@@ -77,7 +77,7 @@ export default function NotesPage() {
     ]).then(([{ data: notesData, error: notesErr }, { data: subjectsData }]) => {
       if (notesErr) console.error("notes fetch error:", notesErr);
       setNotes(notesData || []);
-      setSubjects((subjectsData || []).map(s => s.name));
+      setSubjects(mergeSubjects((subjectsData || []).map(s => s.name)));
       setLoading(false);
     });
   }, []);

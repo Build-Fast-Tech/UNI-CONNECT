@@ -89,7 +89,9 @@ export default function AboutPage() {
           Reach out directly — I read every email.
         </p>
         <a
-          href="mailto:abdullah.xf90@gmail.com"
+          href="https://mail.google.com/mail/?view=cm&fs=1&to=abdullah.xf90@gmail.com&su=UniConnect"
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           <Mail className="w-4 h-4" />

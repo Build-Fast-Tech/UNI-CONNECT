@@ -29,3 +29,46 @@ export const THEMES = [
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
+
+// Subjects that should always appear in the upload/filter dropdowns, even when
+// the `subjects` table hasn't been seeded. Merged with DB results in the UI.
+export const FALLBACK_SUBJECTS = [
+  "Applied Physics",
+  "Artificial Intelligence",
+  "Calculus I",
+  "Calculus II",
+  "Communication Skills",
+  "Computer Architecture",
+  "Computer Networks",
+  "Computer Organization & Assembly",
+  "Data Structures",
+  "Data Structures & Algorithms",
+  "Database Systems",
+  "Deep Learning",
+  "Differential Equations",
+  "Digital Logic Design (DLD)",
+  "Discrete Mathematics",
+  "Discrete Structures",
+  "English Composition",
+  "Information Security",
+  "Introduction to Computing",
+  "Islamic Studies",
+  "Linear Algebra",
+  "Machine Learning (ML)",
+  "Numerical Methods",
+  "Object Oriented Programming",
+  "Operating Systems",
+  "Pakistan Studies",
+  "Physics",
+  "Probability & Statistics",
+  "Programming Fundamentals",
+  "Software Engineering",
+  "Theory of Automata",
+  "Web Technologies",
+];
+
+export function mergeSubjects(fromDb: string[]): string[] {
+  return Array.from(new Set([...FALLBACK_SUBJECTS, ...fromDb])).sort((a, b) =>
+    a.localeCompare(b),
+  );
+}

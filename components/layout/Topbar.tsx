@@ -5,6 +5,7 @@ import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn } from "@/lib/utils";
+import { useInboxNotifications } from "@/lib/hooks/useInboxNotifications";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,8 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const router = useRouter();
-  const { avatarUrl, initials } = useCurrentUser();
+  const { userId, avatarUrl, initials } = useCurrentUser();
+  const { unreadCount, markAllRead } = useInboxNotifications(userId);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [searching, setSearching] = useState(false);
@@ -170,8 +172,24 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       <div className="ml-auto flex items-center gap-1 sm:gap-2 flex-shrink-0">
         <ThemeSwitcher />
-        <Link href="/inbox" className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
+        <Link
+          href="/inbox"
+          onClick={() => markAllRead()}
+          className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors"
+          aria-label={unreadCount > 0 ? `Inbox (${unreadCount} unread)` : "Inbox"}
+        >
           <Bell className="w-5 h-5 text-[rgb(var(--muted-fg))]" />
+          {unreadCount > 0 && (
+            <span
+              className={cn(
+                "absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full",
+                "bg-[rgb(var(--destructive))] text-white text-[10px] font-bold",
+                "flex items-center justify-center leading-none shadow",
+              )}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </Link>
         <Link href="/profile">
           <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">

@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, mergeSubjects } from "@/lib/utils";
 
 const SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
@@ -26,7 +26,11 @@ const CATEGORIES = [
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i);
+const EARLIEST_YEAR = 2000;
+const YEARS = Array.from(
+  { length: CURRENT_YEAR - EARLIEST_YEAR + 1 },
+  (_, i) => CURRENT_YEAR - i,
+);
 
 const NO_YEAR_REQUIRED = ["textbook", "other"];
 const MAX_SIZE  = 50 * 1024 * 1024; // 50 MB
@@ -86,7 +90,7 @@ export default function UploadNotePage() {
         const uni = (profile as { universities?: { name: string } | null }).universities;
         setUniName(uni?.name || "");
       }
-      setSubjects((subjectsData || []).map(s => s.name));
+      setSubjects(mergeSubjects((subjectsData || []).map(s => s.name)));
     })();
   }, []);
 
