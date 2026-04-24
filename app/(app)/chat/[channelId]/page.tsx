@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, use, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import { useChatShell } from "@/components/chat/ChatShell";
 
@@ -459,7 +459,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         ))}
 
-        {/* Typing indicator */}
+        {/* Typing indicator — Discord-style grouping */}
         {typingNames.length > 0 && (
           <div className="flex items-center gap-2 mt-2 text-xs text-[rgb(var(--muted-fg))]">
             <div className="flex gap-0.5 items-end">
@@ -471,9 +471,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                 />
               ))}
             </div>
-            <span>
-              {typingNames.join(", ")} {typingNames.length === 1 ? "is" : "are"} typing…
-            </span>
+            <span>{formatTypingNames(typingNames)}</span>
           </div>
         )}
 

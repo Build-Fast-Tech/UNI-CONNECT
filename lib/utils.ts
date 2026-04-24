@@ -72,3 +72,17 @@ export function mergeSubjects(fromDb: string[]): string[] {
     a.localeCompare(b),
   );
 }
+
+// Discord-style typing indicator text.
+//   1 name:    "Alice is typing…"
+//   2 names:   "Alice and Bob are typing…"
+//   3 names:   "Alice, Bob, and Carol are typing…"
+//   4+ names:  "Several people are typing…"
+export function formatTypingNames(names: string[]): string {
+  const n = names.length;
+  if (n === 0) return "";
+  if (n === 1) return `${names[0]} is typing…`;
+  if (n === 2) return `${names[0]} and ${names[1]} are typing…`;
+  if (n === 3) return `${names[0]}, ${names[1]}, and ${names[2]} are typing…`;
+  return "Several people are typing…";
+}
