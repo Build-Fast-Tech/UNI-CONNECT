@@ -9,15 +9,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
-interface Note { id: string; title: string; subject: string; downloads: number; upvotes: number; }
-interface Job  { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
+import { cn, formatRelativeTime } from "@/lib/utils";
 
-const MOCK_CHATS = [
-  { id: 1, name: "Study Group — CS 401", tag: "Pinned", time: "now",  msg: "Finalised the exam review doc. Check #library for the PDF.", initials: "SG", color: "#6366f1", likes: 4 },
-  { id: 2, name: "Prof. Nakamura",        tag: "",      time: "1h",   msg: "Office hours moved to Thursday 3 PM this week.",            initials: "PN", color: "#10b981", likes: 0 },
-  { id: 3, name: "Sarah Kim",             tag: "",      time: "32m",  msg: "Anyone want to grab coffee before the 2pm lecture?",       initials: "SK", color: "#f97316", likes: 2 },
-];
+interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; }
+interface Job     { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
+interface ChatMsg { id: string; content: string; created_at: string; sender_id: string; sender: { full_name: string; avatar_url: string | null } | null; }
 
 const MOCK_EVENTS = [
   { id: 1, day: "TODAY",    time: "2:00 PM", title: "CS 401 – Distributed Systems",   location: "Building 21, Rm 104",   color: "#6366f1" },
@@ -27,7 +23,6 @@ const MOCK_EVENTS = [
 
 const CHAT_TABS  = ["Global", "University", "Private"];
 const NOTE_CATS  = ["All", "Trending", "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
-const SEMESTER_DAYS = 21;
 
 // ─── Widgets ──────────────────────────────────────────────────────────────────
 
@@ -41,38 +36,20 @@ function HeroBanner() {
       <div className="absolute right-20 bottom-0 w-36 h-36 rounded-full bg-white/5 translate-y-1/3 pointer-events-none" />
 
       <div className="relative z-10">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 mb-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-300 animate-pulse" />
-          <span className="text-white/90 text-xs font-medium tracking-wide uppercase">Week 14 · Finals Season</span>
-        </div>
-
         <h1 className="text-2xl font-bold text-white mb-2 leading-snug">
-          Your semester ends in{" "}
-          <span className="underline decoration-yellow-300/70 decoration-2">{SEMESTER_DAYS} days.</span>
-          <br />Let&apos;s make it count.
+          Your university life,<br />all in one place.
         </h1>
-
         <p className="text-white/70 text-sm mb-4 max-w-sm">
-          UniAI is ready to help you review 4 subjects, 12 study groups are active on campus, and 3 new internships just dropped in your field.
+          Connect, learn, and discover opportunities — built for Pakistani university students.
         </p>
-
         <div className="flex items-center gap-3">
           <Link href="/ai" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-700 font-semibold text-sm hover:bg-white/90 transition-colors shadow-md">
-            Start Study Sprint <ArrowRight className="w-4 h-4" />
+            Start Learning <ArrowRight className="w-4 h-4" />
           </Link>
-          <button className="px-4 py-2 rounded-xl border border-white/30 text-white text-sm font-medium hover:bg-white/10 transition-colors">
-            View roadmap
-          </button>
+          <Link href="/notes" className="px-4 py-2 rounded-xl border border-white/30 text-white text-sm font-medium hover:bg-white/10 transition-colors">
+            Browse Notes
+          </Link>
         </div>
-      </div>
-
-      <div className="absolute right-5 bottom-5 flex items-center gap-2 z-10">
-        <div className="flex -space-x-1.5">
-          {["#ef4444", "#10b981", "#f59e0b"].map((c, i) => (
-            <div key={i} className="w-6 h-6 rounded-full border-2 border-indigo-500/60" style={{ backgroundColor: c }} />
-          ))}
-        </div>
-        <span className="text-white/70 text-xs">+294 studying now</span>
       </div>
     </div>
   );
@@ -93,7 +70,11 @@ function StatCard({ label, value, sub, icon: Icon, color }: { label: string; val
   );
 }
 
-function CommHub({ activeTab, setActiveTab }: { activeTab: number; setActiveTab: (i: number) => void }) {
+function CommHub({
+  messages, chatLoading, activeTab, setActiveTab,
+}: {
+  messages: ChatMsg[]; chatLoading: boolean; activeTab: number; setActiveTab: (i: number) => void;
+}) {
   return (
     <div className="theme-card p-0 flex flex-col overflow-hidden">
       <div className="flex items-start justify-between p-4 pb-3">
@@ -112,8 +93,6 @@ function CommHub({ activeTab, setActiveTab }: { activeTab: number; setActiveTab:
             className={cn("flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors",
               activeTab === i ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
             {t}
-            {i === 1 && <span className="text-[10px] opacity-60">411</span>}
-            {i === 2 && <span className="text-[10px] opacity-60">4</span>}
           </button>
         ))}
         <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
@@ -121,36 +100,44 @@ function CommHub({ activeTab, setActiveTab }: { activeTab: number; setActiveTab:
         </span>
       </div>
 
-      <div className="flex-1 p-4 space-y-4">
-        {MOCK_CHATS.map(chat => (
-          <div key={chat.id} className="flex gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: chat.color }}>
-              {chat.initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-sm font-medium">{chat.name}</span>
-                {chat.tag && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium">
-                    {chat.tag}
-                  </span>
-                )}
-                <span className="text-xs text-[rgb(var(--muted-fg))] ml-auto">{chat.time}</span>
+      <div className="flex-1 p-4 space-y-4 min-h-[200px]">
+        {chatLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-3 animate-pulse">
+              <div className="w-8 h-8 rounded-full bg-[rgb(var(--muted))] flex-shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 bg-[rgb(var(--muted))] rounded w-1/3" />
+                <div className="h-2.5 bg-[rgb(var(--muted))] rounded w-3/4" />
               </div>
-              <p className="text-xs text-[rgb(var(--muted-fg))]">{chat.msg}</p>
-              {chat.likes > 0 && <p className="mt-1 text-[11px] text-[rgb(var(--muted-fg))]">❤️ {chat.likes}</p>}
             </div>
-          </div>
-        ))}
+          ))
+        ) : messages.length === 0 ? (
+          <p className="text-xs text-center text-[rgb(var(--muted-fg))] py-6">No messages yet — be the first!</p>
+        ) : (
+          messages.map(msg => (
+            <div key={msg.id} className="flex gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {msg.sender?.avatar_url
+                  ? <img src={msg.sender.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (msg.sender?.full_name?.charAt(0).toUpperCase() ?? "?")}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-medium">{msg.sender?.full_name ?? "Unknown"}</span>
+                  <span className="text-xs text-[rgb(var(--muted-fg))] ml-auto">{formatRelativeTime(msg.created_at)}</span>
+                </div>
+                <p className="text-xs text-[rgb(var(--muted-fg))] break-words">{msg.content}</p>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="p-3 border-t border-[rgb(var(--border))]">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--muted))]">
-          <input className="flex-1 bg-transparent text-sm outline-none placeholder:text-[rgb(var(--muted-fg))]" placeholder="Message #university..." />
-          <button className="p-1.5 rounded-lg bg-[rgb(var(--primary))] text-white hover:opacity-90 transition-opacity">
-            <Send className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <Link href="/chat" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--muted))] hover:bg-[rgb(var(--primary)/0.08)] transition-colors group">
+          <span className="flex-1 text-sm text-[rgb(var(--muted-fg))] group-hover:text-[rgb(var(--fg))]">Open full chat to reply…</span>
+          <Send className="w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" />
+        </Link>
       </div>
     </div>
   );
@@ -162,7 +149,7 @@ function JobPortal({ jobs, loading }: { jobs: Job[]; loading: boolean }) {
       <div className="flex items-center justify-between mb-3">
         <p className="font-semibold text-sm">Job Portal</p>
         <Link href="/jobs" className="text-xs text-[rgb(var(--primary))] hover:underline flex items-center gap-0.5">
-          42 matches <ChevronRight className="w-3 h-3" />
+          View all <ChevronRight className="w-3 h-3" />
         </Link>
       </div>
 
@@ -346,10 +333,10 @@ function UniAIWidget({ onClose }: { onClose: () => void }) {
 
       <div className="p-4">
         <p className="text-xs text-[rgb(var(--fg))] leading-relaxed">
-          Hi! I noticed you have a Linear Algebra exam in 3 days. Want me to build a study plan from the top cheat sheets?
+          Hi! I&apos;m here to help with your studies, career prep, and more. Ask me anything!
         </p>
         <div className="mt-3 flex flex-col gap-1.5">
-          {["Summarise today's lecture", "Quiz me on eigenvalues", "Draft cover letter for Stripe"].map(action => (
+          {["Summarise today's lecture", "Help me find study notes", "Draft a cover letter"].map(action => (
             <Link key={action} href="/ai"
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--muted))] text-xs font-medium hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))] transition-colors">
               <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-[rgb(var(--primary))]" />
@@ -365,12 +352,14 @@ function UniAIWidget({ onClose }: { onClose: () => void }) {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [jobs, setJobs]   = useState<Job[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [chatTab, setChatTab]   = useState(1);
-  const [noteTab, setNoteTab]   = useState(1);
-  const [showAI, setShowAI]     = useState(true);
+  const [notes, setNotes]           = useState<Note[]>([]);
+  const [jobs, setJobs]             = useState<Job[]>([]);
+  const [chatMessages, setChatMsgs] = useState<ChatMsg[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [chatLoading, setChatLoad]  = useState(true);
+  const [chatTab, setChatTab]       = useState(1);
+  const [noteTab, setNoteTab]       = useState(1);
+  const [showAI, setShowAI]         = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
@@ -385,27 +374,40 @@ export default function FeedPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const { data: chan } = await supabase.from("channels").select("id").eq("type", "global").single();
+      if (chan) {
+        const { data: msgs } = await supabase
+          .from("messages")
+          .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url)")
+          .eq("channel_id", chan.id)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        if (msgs) setChatMsgs((msgs as unknown as ChatMsg[]).reverse());
+      }
+      setChatLoad(false);
+    })();
+  }, []);
+
   return (
     <div className="relative">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
         {/* Row 1: Hero + Stats */}
-        <div className="lg:col-span-2">
-          <HeroBanner />
-        </div>
+        <div className="lg:col-span-2"><HeroBanner /></div>
         <div className="flex flex-col gap-4">
-          <StatCard label="GPA This Term"   value="3.84" sub="+0.12 this semester" icon={TrendingUp} color="#6366f1" />
-          <StatCard label="Hours Studied"   value="47h"  sub="this week"           icon={Clock}      color="#10b981" />
-          <StatCard label="Applications"    value="8"    sub="3 pending review"    icon={Briefcase}  color="#f97316" />
+          <StatCard label="GPA This Term"  value="0.00" sub="not set yet"        icon={TrendingUp} color="#6366f1" />
+          <StatCard label="Hours Studied"  value="0h"   sub="this week"          icon={Clock}      color="#10b981" />
+          <StatCard label="Applications"   value="0"    sub="none submitted yet" icon={Briefcase}  color="#f97316" />
         </div>
 
         {/* Row 2: Comm Hub + Jobs / CV */}
         <div className="lg:col-span-2">
-          <CommHub activeTab={chatTab} setActiveTab={setChatTab} />
+          <CommHub messages={chatMessages} chatLoading={chatLoading} activeTab={chatTab} setActiveTab={setChatTab} />
         </div>
         <div className="flex flex-col gap-4">
           <JobPortal jobs={jobs} loading={loading} />
@@ -416,12 +418,9 @@ export default function FeedPage() {
         <div className="lg:col-span-2">
           <LibraryWidget notes={notes} loading={loading} activeTab={noteTab} setActiveTab={setNoteTab} />
         </div>
-        <div>
-          <CalendarWidget />
-        </div>
+        <div><CalendarWidget /></div>
       </motion.div>
 
-      {/* Floating UniAI widget */}
       <AnimatePresence>
         {showAI && <UniAIWidget onClose={() => setShowAI(false)} />}
       </AnimatePresence>
