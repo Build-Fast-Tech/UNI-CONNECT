@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
 
 // Email sending uses Node APIs (net sockets for SMTP); force the Node runtime
 // so this route doesn't accidentally get deployed on Edge, which would break
@@ -115,6 +116,18 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response("Unauthorized", { status: 401 });
+
+    // Rate limit: max 10 feedback submissions per hour per user.
+    const rl = rateLimit(rateLimitKey("feedback", user.id, req), {
+      windowMs: 60 * 60 * 1000,
+      max: 10,
+    });
+    if (!rl.ok) {
+      return new Response("Too many feedback submissions. Try again later.", {
+        status: 429,
+        headers: rateLimitHeaders(rl),
+      });
+    }
 
     let body: { type?: string; message?: string };
     try {

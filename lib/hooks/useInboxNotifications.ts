@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const LS_KEY = (userId: string) => `uc_inbox_last_seen_${userId}`;
+const DEFAULT_WINDOW_MS = 24 * 60 * 60 * 1000; // first-login lookback window
 
 function readLastSeen(userId: string): number {
   if (typeof window === "undefined") return 0;
@@ -22,18 +23,40 @@ function writeLastSeen(userId: string, ts: number) {
   } catch {}
 }
 
-// Short, non-jarring notification beep generated via Web Audio API so we don't
-// need to ship a binary asset.
-function playBeep() {
-  if (typeof window === "undefined") return;
+// ── Audio: module-scoped singleton so user-gesture resume works once per tab ─
+let audioCtx: AudioContext | null = null;
+let audioPrimed = false;
+
+function ensureAudioCtx(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (audioCtx) return audioCtx;
+  const w = window as unknown as {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+  };
+  const Ctx = w.AudioContext || w.webkitAudioContext;
+  if (!Ctx) return null;
   try {
-    const w = window as unknown as {
-      AudioContext?: typeof AudioContext;
-      webkitAudioContext?: typeof AudioContext;
-    };
-    const Ctx = w.AudioContext || w.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
+    audioCtx = new Ctx();
+  } catch {
+    audioCtx = null;
+  }
+  return audioCtx;
+}
+
+function primeAudio() {
+  if (audioPrimed) return;
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  ctx.resume().then(() => { audioPrimed = true; }).catch(() => {});
+}
+
+function playBeep() {
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  try {
+    // Resume in case the tab was inactive and the context got suspended.
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
     const now = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -42,12 +65,11 @@ function playBeep() {
     osc.frequency.setValueAtTime(880, now);
     osc.frequency.exponentialRampToValueAtTime(1320, now + 0.12);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    gain.gain.exponentialRampToValueAtTime(0.35, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
     osc.connect(gain).connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.3);
-    osc.onended = () => ctx.close().catch(() => {});
+    osc.stop(now + 0.34);
   } catch {}
 }
 
@@ -64,8 +86,25 @@ export function useInboxNotifications(userId: string | null): InboxNotifications
   const lastSeenRef = useRef<number>(0);
   const activeChannelRef = useRef<string | null>(null);
 
+  // Prime the AudioContext on the first user gesture so browsers let us play
+  // sound later without the autoplay block.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const unlock = () => {
+      primeAudio();
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   // Track which chat channel the user is currently viewing so we don't flag
-  // those messages as unread or beep when the user is already reading.
+  // those messages as unread or beep when the user is already reading them.
   useEffect(() => {
     const match = pathname?.match(/^\/chat\/([^/]+)/);
     activeChannelRef.current = match ? match[1] : null;
@@ -92,43 +131,56 @@ export function useInboxNotifications(userId: string | null): InboxNotifications
     setUnreadCount(0);
   }, [pathname, userId]);
 
-  // Initial load: fetch DM channels for this user, compute unread count since
-  // last-seen timestamp, then subscribe to realtime inserts.
-  useEffect(() => {
+  // Shared count-computation used by both the initial load and the polling
+  // fallback. Uses the latest lastSeenRef + DM channel set.
+  const refreshCount = useCallback(async () => {
     if (!userId) return;
+    const ids = [...dmChannelIdsRef.current];
+    if (ids.length === 0) return;
+    const sinceIso = new Date(lastSeenRef.current).toISOString();
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .in("channel_id", ids)
+      .neq("sender_id", userId)
+      .eq("is_deleted", false)
+      .gt("created_at", sinceIso);
+    if (typeof count === "number") setUnreadCount(count);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // Initial load: fetch DM channels, compute unread, subscribe, and start a
+  // polling safety net for environments where realtime is misconfigured.
+  useEffect(() => {
+    if (!userId) {
+      dmChannelIdsRef.current = new Set();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on sign-out
+      setUnreadCount(0);
+      return;
+    }
     let cancelled = false;
     let sub: ReturnType<typeof supabase.channel> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-    lastSeenRef.current = readLastSeen(userId) || Date.now();
+    const stored = readLastSeen(userId);
+    lastSeenRef.current = stored > 0 ? stored : Date.now() - DEFAULT_WINDOW_MS;
 
     (async () => {
-      const { data: dms } = await supabase
+      const { data: dms, error: dmErr } = await supabase
         .from("channels")
         .select("id")
         .eq("type", "dm")
         .or(`dm_user_a.eq.${userId},dm_user_b.eq.${userId}`);
 
       if (cancelled) return;
+      if (dmErr) console.warn("[inbox-notifications] channel fetch failed:", dmErr.message);
 
       const ids = (dms ?? []).map(d => d.id as string);
       dmChannelIdsRef.current = new Set(ids);
-
-      if (ids.length > 0) {
-        const sinceIso = new Date(lastSeenRef.current).toISOString();
-        const { count } = await supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .in("channel_id", ids)
-          .neq("sender_id", userId)
-          .eq("is_deleted", false)
-          .gt("created_at", sinceIso);
-        if (!cancelled) setUnreadCount(count ?? 0);
-      }
+      await refreshCount();
 
       if (cancelled) return;
 
-      // Single broad subscription to DM messages; filter client-side by channel
-      // membership in our cached set. This avoids one subscription per channel.
       sub = supabase
         .channel("inbox-notifications-" + userId)
         .on(
@@ -164,21 +216,38 @@ export function useInboxNotifications(userId: string | null): InboxNotifications
             if (row.type !== "dm") return;
             if (row.dm_user_a === userId || row.dm_user_b === userId) {
               dmChannelIdsRef.current.add(row.id);
+              refreshCount();
             }
           },
         )
         .subscribe();
+
+      // Safety net: re-count every 30s. Cheap (HEAD request), and protects
+      // against realtime drops, replica-identity misconfig, or stale tabs.
+      pollTimer = setInterval(() => {
+        if (document.visibilityState === "visible") refreshCount();
+      }, 30_000);
     })();
 
     return () => {
       cancelled = true;
       if (sub) supabase.removeChannel(sub);
+      if (pollTimer) clearInterval(pollTimer);
     };
-    // `supabase` is created per render but behaves as a singleton client;
-    // depending on it would cause the subscription to tear down/rebuild on
-    // every render.
+    // `supabase` is created per render but behaves as a singleton client.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Also refresh when the tab becomes visible again — covers the case where
+  // realtime drops while the tab is backgrounded.
+  useEffect(() => {
+    if (!userId) return;
+    const onVis = () => {
+      if (document.visibilityState === "visible") refreshCount();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [userId, refreshCount]);
 
   return { unreadCount, markAllRead };
 }

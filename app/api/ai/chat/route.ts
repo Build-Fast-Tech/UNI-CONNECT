@@ -1,5 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
+
+const MAX_MESSAGE_CHARS = 4000;
+const MAX_CONTEXT_CHARS = 12_000;
+const MAX_HISTORY = 30;
 
 const SYSTEM_PROMPT = `You are UniConnect AI — a helpful study companion for Pakistani university students. Help with explaining concepts, answering subject questions (CS, Engineering, Business, Medicine), career advice for Pakistan, and study tips. Be concise and friendly. Respond in English but feel free to use Urdu words naturally.`;
 
@@ -15,19 +22,49 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response("Unauthorized", { status: 401 });
 
+    // Short-window rate limit on top of the 50/day DB counter — blocks burst
+    // abuse and protects the Gemini quota even if the DB counter were bypassed.
+    const rl = rateLimit(rateLimitKey("ai-chat", user.id, req), {
+      windowMs: 60 * 1000,
+      max: 8,
+    });
+    if (!rl.ok) {
+      return new Response("You're sending messages too fast. Slow down.", {
+        status: 429,
+        headers: rateLimitHeaders(rl),
+      });
+    }
+
     const { data: canSend } = await supabase.rpc("can_send_ai_message", { uid: user.id });
     if (canSend === false) {
       return new Response("Daily limit reached (50 messages/day)", { status: 429 });
     }
 
-    const body = await req.json() as {
-      messages: { role: "user" | "assistant"; content: string }[];
+    let body: {
+      messages?: { role: "user" | "assistant"; content: string }[];
       noteContext?: string;
     };
-    const { messages, noteContext } = body;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response("Invalid JSON body", { status: 400 });
+    }
+    const rawMessages = Array.isArray(body.messages) ? body.messages : [];
+    const noteContext = typeof body.noteContext === "string" ? body.noteContext : undefined;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    if (rawMessages.length === 0) {
       return new Response("No messages provided", { status: 400 });
+    }
+
+    // Clamp shape + size so a hostile client can't smuggle a prompt-injection
+    // payload or blow past Gemini's input limits.
+    const messages = rawMessages
+      .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-MAX_HISTORY)
+      .map(m => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_CHARS) }));
+
+    if (messages.length === 0) {
+      return new Response("No valid messages", { status: 400 });
     }
 
     // Record the incoming user message so the 50/day counter is accurate.
@@ -59,13 +96,13 @@ export async function POST(req: Request) {
         await sb.from("ai_messages").insert({
           conversation_id: conversationId,
           role: "user",
-          content: lastUserMessage.content.slice(0, 4000),
+          content: lastUserMessage.content.slice(0, MAX_MESSAGE_CHARS),
         });
       }
     }
 
     const contextLine = noteContext
-      ? `\n\nNote context:\n${noteContext.slice(0, 3000)}`
+      ? `\n\nNote context:\n${noteContext.slice(0, MAX_CONTEXT_CHARS)}`
       : "";
 
     const filtered = messages
