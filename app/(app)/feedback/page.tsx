@@ -19,6 +19,7 @@ export default function FeedbackPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone]       = useState(false);
   const [emailed, setEmailed] = useState(true);
+  const [emailReason, setEmailReason] = useState("");
   const [error, setError]     = useState("");
 
   const handleSubmit = async () => {
@@ -34,6 +35,7 @@ export default function FeedbackPage() {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json().catch(() => ({}));
       setEmailed(data?.emailed !== false);
+      setEmailReason(typeof data?.reason === "string" ? data.reason : "");
       setDone(true);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong. Please try again.");
@@ -58,11 +60,18 @@ export default function FeedbackPage() {
             Your feedback is saved{emailed ? " and emailed to the UniConnect team" : ""}. We read every single message.
           </p>
           {!emailed && (
-            <p className="text-xs text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.08)] rounded-lg px-3 py-2">
-              Email delivery is currently unavailable, but your message has been stored and will be reviewed.
-            </p>
+            <div className="text-left text-xs text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.08)] rounded-lg px-3 py-2 space-y-1">
+              <p>
+                Email delivery is currently unavailable, but your message has been stored and will be reviewed.
+              </p>
+              {emailReason && (
+                <p className="font-mono break-all opacity-80">
+                  Reason: {emailReason}
+                </p>
+              )}
+            </div>
           )}
-          <Button variant="outline" size="md" onClick={() => { setDone(false); setMessage(""); setEmailed(true); }}>
+          <Button variant="outline" size="md" onClick={() => { setDone(false); setMessage(""); setEmailed(true); setEmailReason(""); }}>
             Send another
           </Button>
         </motion.div>

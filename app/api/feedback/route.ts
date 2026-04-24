@@ -2,6 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
+// Email sending uses Node APIs (net sockets for SMTP); force the Node runtime
+// so this route doesn't accidentally get deployed on Edge, which would break
+// nodemailer silently.
+export const runtime = "nodejs";
+
 // Primary recipient. Honour ADMIN_EMAILS env (comma-separated) so deployments
 // can override without a code change.
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "abdullah.xf90@gmail.com")
@@ -67,26 +72,42 @@ async function sendViaGmail(opts: {
 }) {
   const user = process.env.GMAIL_USER;
   // Gmail app passwords are copied as "xxxx xxxx xxxx xxxx" with spaces — strip
-  // them because nodemailer's SMTP auth expects the raw 16-char string.
+  // them because SMTP auth expects the raw 16-char string.
   const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
   if (!user || !pass) return { ok: false, reason: "gmail:no_creds" };
 
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user, pass },
-    });
-    await transporter.sendMail({
-      from: `"UniConnect Feedback" <${user}>`,
-      to: ADMIN_EMAILS,
-      replyTo: opts.replyTo,
-      subject: opts.subject,
-      html: opts.html,
-    });
-    return { ok: true, reason: "gmail" };
-  } catch (e: any) {
-    return { ok: false, reason: `gmail:${e?.message ?? "exception"}` };
+  // Two transport configs — try STARTTLS on 587 first (works on most serverless
+  // hosts where outbound 465 is blocked), fall back to implicit TLS on 465.
+  type GmailConfig = {
+    host: string;
+    port: number;
+    secure: boolean;
+    requireTLS?: boolean;
+    auth: { user: string; pass: string };
+  };
+  const configs: GmailConfig[] = [
+    { host: "smtp.gmail.com", port: 587, secure: false, requireTLS: true, auth: { user, pass } },
+    { host: "smtp.gmail.com", port: 465, secure: true, auth: { user, pass } },
+  ];
+
+  const errors: string[] = [];
+  for (const config of configs) {
+    try {
+      const transporter = nodemailer.createTransport(config);
+      await transporter.sendMail({
+        from: `"UniConnect Feedback" <${user}>`,
+        to: ADMIN_EMAILS,
+        replyTo: opts.replyTo,
+        subject: opts.subject,
+        html: opts.html,
+      });
+      return { ok: true, reason: "gmail" };
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      errors.push(`:${config.port} ${err.code ?? ""} ${err.message ?? String(e)}`.trim());
+    }
   }
+  return { ok: false, reason: `gmail:${errors.join(" | ")}` };
 }
 
 export async function POST(req: Request) {
