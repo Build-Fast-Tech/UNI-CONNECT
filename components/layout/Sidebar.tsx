@@ -60,7 +60,7 @@ interface SidebarProps { mobileOpen: boolean; onClose: () => void; }
 
 function SidebarContent({
   isAdmin, isActive, onLinkClick, showCloseButton, onClose,
-  unreadCount, fullName, initials, avatarUrl,
+  unreadCount, markAllRead, fullName, initials, avatarUrl,
 }: {
   isAdmin: boolean;
   isActive: (href: string, label: string) => boolean;
@@ -68,6 +68,7 @@ function SidebarContent({
   showCloseButton?: boolean;
   onClose?: () => void;
   unreadCount: number;
+  markAllRead: () => void;
   fullName: string;
   initials: string;
   avatarUrl: string | null;
@@ -175,7 +176,7 @@ function SidebarContent({
             <Link
               key={item.label}
               href={item.href}
-              onClick={onLinkClick}
+              onClick={() => { if (item.showBadge) markAllRead(); onLinkClick?.(); }}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative",
                 active
@@ -267,7 +268,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { role, userId, fullName, initials, avatarUrl } = useCurrentUser();
   const isAdmin = role === "admin";
-  const { unreadCount } = useInboxNotifications(userId);
+  const { unreadCount, markAllRead } = useInboxNotifications(userId);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -283,7 +284,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     return pathname === href || (href !== "/feed" && pathname.startsWith(href));
   };
 
-  const shared = { isAdmin, isActive, unreadCount, fullName, initials, avatarUrl };
+  const shared = { isAdmin, isActive, unreadCount, markAllRead, fullName, initials, avatarUrl };
 
   return (
     <>

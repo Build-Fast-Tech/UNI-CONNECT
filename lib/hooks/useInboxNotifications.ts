@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const LS_KEY = (userId: string) => `uc_inbox_last_seen_${userId}`;
-const DEFAULT_WINDOW_MS = 24 * 60 * 60 * 1000; // first-login lookback window
+// No lookback on first load — only count truly new messages received after this session started
 
 function readLastSeen(userId: string): number {
   if (typeof window === "undefined") return 0;
@@ -118,11 +118,13 @@ export function useInboxNotifications(userId: string | null): InboxNotifications
     setUnreadCount(0);
   }, [userId]);
 
-  // Clear badge automatically when user lands on inbox or a chat channel.
+  // Clear badge automatically when user lands on inbox, any chat channel, or /chat root.
   useEffect(() => {
     if (!userId) return;
     const onInboxRoute =
-      pathname === "/inbox" || (pathname?.startsWith("/chat/") ?? false);
+      pathname === "/inbox" ||
+      pathname === "/chat" ||
+      (pathname?.startsWith("/chat/") ?? false);
     if (!onInboxRoute) return;
     const now = Date.now();
     lastSeenRef.current = now;
@@ -163,7 +165,11 @@ export function useInboxNotifications(userId: string | null): InboxNotifications
     let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     const stored = readLastSeen(userId);
-    lastSeenRef.current = stored > 0 ? stored : Date.now() - DEFAULT_WINDOW_MS;
+    const now = Date.now();
+    // If no stored timestamp (first session / cleared storage), start from NOW
+    // so old messages are never counted as unread.
+    lastSeenRef.current = stored > 0 ? stored : now;
+    if (!stored) writeLastSeen(userId, now); // persist immediately
 
     (async () => {
       const { data: dms, error: dmErr } = await supabase
