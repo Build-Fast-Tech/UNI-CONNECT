@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, RotateCcw, Users, Copy, Plus, X, LogIn,
-  Brain, Coffee, Zap, Timer, BarChart3,
+  Brain, Coffee, Zap, Timer, BarChart3, Settings, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -29,6 +29,19 @@ const MODE_CONFIG: Record<TimerMode, { label: string; color: string; bg: string;
 
 const PRESET_COLORS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#10b981","#06b6d4","#3b82f6"];
 const PRESET_SUBJECTS = ["Mathematics","Physics","Chemistry","Computer Science","Linear Algebra","Data Structures","Calculus","Statistics","Economics","History"];
+
+const CONFIG_KEY = "uc_timer_config";
+
+interface SavedConfig { pomodoro: number; short_break: number; long_break: number; }
+
+function loadConfig(): SavedConfig {
+  if (typeof window === "undefined") return { pomodoro: 25, short_break: 5, long_break: 15 };
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (raw) return JSON.parse(raw) as SavedConfig;
+  } catch {}
+  return { pomodoro: 25, short_break: 5, long_break: 15 };
+}
 
 function playDing() {
   try {
@@ -82,9 +95,18 @@ export default function StudyPage() {
   const [todayMinutes, setTodayMinutes] = useState(0);
   const [copied, setCopied] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [addSubjectError, setAddSubjectError] = useState("");
+  const [addSubjectSuccess, setAddSubjectSuccess] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [timerConfig, setTimerConfig] = useState<SavedConfig>(loadConfig);
+  const [draftConfig, setDraftConfig] = useState<SavedConfig>(loadConfig);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const { state, setMode, start, pause, reset, onComplete, progress } = useTimer(sessionCode);
+  const { state, setMode, start, pause, reset, onComplete, progress } = useTimer(sessionCode, {
+    pomodoro:    timerConfig.pomodoro    * 60,
+    short_break: timerConfig.short_break * 60,
+    long_break:  timerConfig.long_break  * 60,
+  });
   const modeConfig = MODE_CONFIG[state.mode];
 
   // Load subjects
@@ -154,15 +176,38 @@ export default function StudyPage() {
 
   const addSubject = async () => {
     if (!newSubjectName.trim() || !userId) return;
+    setAddSubjectError("");
+    setAddSubjectSuccess(false);
     const { data, error } = await supabase.from("user_subjects")
       .insert({ user_id: userId, name: newSubjectName.trim(), color: newSubjectColor, credits: 3 })
       .select().single();
-    if (!error && data) {
+    if (error) {
+      if (error.code === "42P01") {
+        setAddSubjectError("Table not found — run migration 019 in Supabase SQL Editor.");
+      } else if (error.code === "42501" || error.message.includes("policy")) {
+        setAddSubjectError("Permission denied — run migration 019 in your Supabase SQL Editor to fix RLS.");
+      } else if (error.code === "23505") {
+        setAddSubjectError("You already have a subject with that name.");
+      } else {
+        setAddSubjectError(error.message);
+      }
+      return;
+    }
+    if (data) {
       setSubjects(p => [...p, data as UserSubject]);
       setSelectedSubject(data as UserSubject);
       setNewSubjectName("");
       setShowAddSubject(false);
+      setAddSubjectSuccess(true);
+      setTimeout(() => setAddSubjectSuccess(false), 3000);
     }
+  };
+
+  const saveTimerConfig = () => {
+    setTimerConfig(draftConfig);
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(draftConfig));
+    setShowSettings(false);
+    reset();
   };
 
   const endSession = async () => {
@@ -201,10 +246,75 @@ export default function StudyPage() {
               Today: {todayH > 0 ? `${todayH}h ` : ""}{todayM}m · {todayPomodoros} 🍅
             </p>
           </div>
-          <Link href="/study/analytics" className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors">
-            <BarChart3 className="w-4 h-4" /> Analytics
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setDraftConfig(timerConfig); setShowSettings(p => !p); }}
+              className={cn(
+                "p-2 rounded-xl transition-colors",
+                showSettings
+                  ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
+                  : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+              )}
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <Link href="/study/analytics" className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors">
+              <BarChart3 className="w-4 h-4" /> Analytics
+            </Link>
+          </div>
         </div>
+
+        {/* Timer Settings Panel */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="theme-card p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="font-semibold text-sm flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-[rgb(var(--primary))]" /> Timer Settings
+                  </p>
+                  <button onClick={() => setShowSettings(false)} className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  {[
+                    { key: "pomodoro" as const, label: "Pomodoro", color: "#6366f1", max: 60 },
+                    { key: "short_break" as const, label: "Short Break", color: "#10b981", max: 30 },
+                    { key: "long_break" as const, label: "Long Break", color: "#3b82f6", max: 60 },
+                  ].map(({ key, label, color, max }) => (
+                    <div key={key} className="text-center">
+                      <label className="block text-xs text-[rgb(var(--muted-fg))] mb-2 font-medium">{label}</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={1}
+                          max={max}
+                          value={draftConfig[key]}
+                          onChange={e => setDraftConfig(p => ({ ...p, [key]: Math.max(1, Math.min(max, Number(e.target.value))) }))}
+                          className="w-full h-12 text-center text-xl font-bold font-mono rounded-xl bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2"
+                          style={{ color, borderColor: color + "44" }}
+                        />
+                        <span className="text-[10px] text-[rgb(var(--muted-fg))] mt-1 block">minutes</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={saveTimerConfig}
+                  className="w-full py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Apply & Reset Timer
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Timer card — pomofocus style */}
         <div
@@ -305,9 +415,15 @@ export default function StudyPage() {
                           style={{ backgroundColor: c }} />
                       ))}
                     </div>
+                    {addSubjectError && (
+                      <p className="text-xs text-red-400 flex items-start gap-1.5 bg-red-500/10 px-2 py-1.5 rounded-lg">
+                        <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span>{addSubjectError}</span>
+                      </p>
+                    )}
                     <div className="flex gap-2">
                       <button onClick={addSubject} disabled={!newSubjectName.trim()} className="flex-1 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white text-sm font-medium disabled:opacity-40">Add</button>
-                      <button onClick={() => setShowAddSubject(false)} className="px-3 py-1.5 rounded-lg bg-[rgb(var(--border))] text-sm">Cancel</button>
+                      <button onClick={() => { setShowAddSubject(false); setAddSubjectError(""); }} className="px-3 py-1.5 rounded-lg bg-[rgb(var(--border))] text-sm">Cancel</button>
                     </div>
                   </div>
                 </motion.div>

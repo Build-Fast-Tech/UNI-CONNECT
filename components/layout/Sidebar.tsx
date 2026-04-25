@@ -44,9 +44,8 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: "/ai",           icon: Bot,           label: "UniAI Tutor", isNew: true },
-  { href: "/societies",    icon: Building,      label: "Societies" },
   { href: "/universities", icon: GraduationCap, label: "Universities" },
-  { href: "/feed",         icon: Users,         label: "Clubs & Events" },
+  { href: "/clubs",        icon: Users,         label: "Clubs & Events" },
   { href: "/feed",         icon: CalendarDays,  label: "Calendar" },
 ];
 
