@@ -73,6 +73,8 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subRef      = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const profileCache = useRef<Map<string, Profile>>(new Map());
 
   // Close emoji picker on outside click
@@ -234,9 +236,38 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           if (row.is_deleted) setMessages(prev => prev.filter(m => m.id !== row.id));
         }
       )
+      .on("broadcast", { event: "typing" }, (payload) => {
+        const data = payload.payload as { userId: string; name: string; typing: boolean };
+        const tid = data.userId;
+        const firstName = (data.name ?? "").split(" ")[0];
+
+        // Clear any existing auto-expire timer for this user
+        if (typingTimers.current.has(tid)) {
+          clearTimeout(typingTimers.current.get(tid)!);
+          typingTimers.current.delete(tid);
+        }
+
+        if (data.typing) {
+          setTypingNames(prev => prev.includes(firstName) ? prev : [...prev, firstName]);
+          // Auto-expire after 5 s in case the false broadcast is missed
+          const t = setTimeout(() => {
+            setTypingNames(prev => prev.filter(n => n !== firstName));
+            typingTimers.current.delete(tid);
+          }, 5000);
+          typingTimers.current.set(tid, t);
+        } else {
+          setTypingNames(prev => prev.filter(n => n !== firstName));
+        }
+      })
       .subscribe();
 
-    return () => { supabase.removeChannel(sub); };
+    subRef.current = sub;
+    return () => {
+      supabase.removeChannel(sub);
+      subRef.current = null;
+      typingTimers.current.forEach(t => clearTimeout(t));
+      typingTimers.current.clear();
+    };
   }, [channelId]);
 
   // Presence: online count + Discord-style typing. We key presence on userId
@@ -257,16 +288,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         // One entry per userId key — prevents multi-tab overcounting
         const entries = Object.values(state).map(subs => subs[0]).filter(Boolean);
         setOnlineCount(entries.length);
-        setTypingNames(
-          entries
-            .filter(e => e.typing && e.userId !== userId)
-            .map(e => (e.name ?? "").split(" ")[0])
-            .filter(Boolean),
-        );
+        // Typing is now handled via Broadcast, not Presence
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          await presenceChan.track({ name: myName, typing: false, userId });
+          await presenceChan.track({ name: myName, userId });
         }
       });
 
@@ -276,14 +302,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   // Coalesce typing broadcasts — only send `track()` when the state actually
   // changes, instead of once per keystroke.
   const typingStateRef = useRef(false);
-  const broadcastTyping = async (isTyping: boolean) => {
-    if (!userId || !myName || !presenceRef.current) return;
+  // Uses Broadcast (not Presence) — fire-and-forget, no sync delay.
+  const broadcastTyping = (isTyping: boolean) => {
+    if (!userId || !myName || !subRef.current) return;
     typingStateRef.current = isTyping;
-    try {
-      await presenceRef.current.track({ name: myName, typing: isTyping, userId });
-    } catch {
-      typingStateRef.current = !isTyping;
-    }
+    subRef.current.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { userId, name: myName, typing: isTyping },
+    });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
