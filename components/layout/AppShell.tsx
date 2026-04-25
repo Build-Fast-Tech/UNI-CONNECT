@@ -10,14 +10,16 @@ import { useCurrentUser } from "@/components/providers/UserProvider";
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { userId, username, loaded } = useCurrentUser();
-  const [resolvedUsername, setResolvedUsername] = useState<string | null>(null);
+  // Track username set during this session (before UserProvider re-fetches)
+  const [sessionUsername, setSessionUsername] = useState<string | null>(null);
 
-  const showModal = loaded && !!userId && !username && !resolvedUsername;
+  const hasUsername = !!username || !!sessionUsername;
+  const showModal = loaded && !!userId && !hasUsername;
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${showModal ? "pointer-events-none select-none" : ""}`}>
         <Topbar onMenuClick={() => setMobileNavOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
@@ -26,7 +28,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       {showModal && (
         <UsernameSetupModal
           userId={userId}
-          onDone={(u) => setResolvedUsername(u)}
+          onDone={(u) => setSessionUsername(u)}
         />
       )}
     </div>

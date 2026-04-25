@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { AtSign, CheckCircle, AlertTriangle, Loader2, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { motion } from "framer-motion";
+import { AtSign, CheckCircle, AlertTriangle, Loader2, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
-const PROMPTED_KEY = (uid: string) => `uc_u_prompted_${uid}`;
 
 interface Props {
   userId: string;
@@ -15,26 +14,12 @@ interface Props {
 }
 
 export function UsernameSetupModal({ userId, onDone }: Props) {
-  const [visible, setVisible] = useState(false);
   const [value, setValue] = useState("");
   const [checking, setChecking] = useState(false);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    // Show once — if already prompted, skip
-    if (typeof window === "undefined") return;
-    if (!localStorage.getItem(PROMPTED_KEY(userId))) {
-      setVisible(true);
-    }
-  }, [userId]);
-
-  const dismiss = () => {
-    localStorage.setItem(PROMPTED_KEY(userId), "1");
-    setVisible(false);
-  };
 
   const handleChange = (raw: string) => {
     const v = raw.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
@@ -46,7 +31,7 @@ export function UsernameSetupModal({ userId, onDone }: Props) {
     if (!v) return;
 
     if (!USERNAME_REGEX.test(v)) {
-      setError("3–20 chars, only lowercase letters, numbers, underscores.");
+      setError("3–20 chars — lowercase letters, numbers, and underscores only.");
       return;
     }
 
@@ -60,12 +45,12 @@ export function UsernameSetupModal({ userId, onDone }: Props) {
         .single();
       setChecking(false);
       setAvailable(!data);
-      if (data) setError("That username is already taken.");
+      if (data) setError("That username is already taken — try another.");
     }, 400);
   };
 
   const handleSave = async () => {
-    if (!value || !USERNAME_REGEX.test(value) || !available) return;
+    if (!value || !USERNAME_REGEX.test(value) || !available || saving) return;
     setSaving(true);
     const supabase = createClient();
     const { error: err } = await supabase
@@ -77,101 +62,116 @@ export function UsernameSetupModal({ userId, onDone }: Props) {
       setError(err.message.includes("unique") ? "That username is already taken." : err.message);
       return;
     }
-    localStorage.setItem(PROMPTED_KEY(userId), "1");
     onDone(value);
-    setVisible(false);
   };
 
+  const canSave = !!value && available === true && !error && !saving;
+
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ scale: 0.92, opacity: 0, y: 16 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.92, opacity: 0, y: 16 }}
-            transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            className="theme-card w-full max-w-md p-7 relative"
-          >
-            {/* Dismiss */}
-            <button
-              onClick={dismiss}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Icon */}
-            <div className="w-12 h-12 rounded-2xl bg-[rgb(var(--primary)/0.12)] flex items-center justify-center mb-5">
-              <AtSign className="w-6 h-6 text-[rgb(var(--primary))]" />
-            </div>
-
-            <h2 className="text-xl font-bold mb-1">Choose your username</h2>
-            <p className="text-sm text-[rgb(var(--muted-fg))] mb-6 leading-relaxed">
-              Your unique handle on UniConnect. Others can search and find you by this name.
-              Only lowercase letters, numbers, and underscores. 3–20 characters.
+    // Backdrop — pointer-events-none so clicking it does nothing (mandatory)
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 24 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        className="theme-card w-full max-w-md p-8"
+        // Stop any accidental propagation
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-[rgb(var(--primary)/0.12)] flex items-center justify-center flex-shrink-0">
+            <AtSign className="w-6 h-6 text-[rgb(var(--primary))]" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold leading-tight">Choose your username</h2>
+            <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5 flex items-center gap-1">
+              <Lock className="w-3 h-3" /> Required to continue
             </p>
+          </div>
+        </div>
 
-            <div className="space-y-3">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted-fg))] font-mono text-sm select-none">
-                  @
-                </span>
-                <input
-                  autoFocus
-                  type="text"
-                  value={value}
-                  onChange={e => handleChange(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") handleSave(); }}
-                  maxLength={20}
-                  placeholder="your_username"
-                  className="w-full h-11 pl-7 pr-10 rounded-xl text-sm font-mono bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {checking && <Loader2 className="w-4 h-4 animate-spin text-[rgb(var(--muted-fg))]" />}
-                  {!checking && available === true && <CheckCircle className="w-4 h-4 text-emerald-400" />}
-                  {!checking && available === false && <AlertTriangle className="w-4 h-4 text-red-400" />}
-                </span>
-              </div>
+        <p className="text-sm text-[rgb(var(--muted-fg))] mb-5 leading-relaxed">
+          Your unique handle on UniConnect. Others search for you by this name.
+          You can change it later in Settings.
+        </p>
 
-              {error && (
-                <p className="text-xs text-red-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {error}
-                </p>
+        <div className="space-y-3">
+          {/* Input */}
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted-fg))] font-mono text-sm select-none">
+              @
+            </span>
+            <input
+              autoFocus
+              type="text"
+              value={value}
+              onChange={e => handleChange(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleSave(); }}
+              maxLength={20}
+              placeholder="your_username"
+              className={cn(
+                "w-full h-11 pl-7 pr-10 rounded-xl text-sm font-mono",
+                "bg-[rgb(var(--input))] border text-[rgb(var(--fg))]",
+                "placeholder:text-[rgb(var(--muted-fg))]",
+                "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]",
+                error ? "border-red-500/50" : "border-[rgb(var(--border))]"
               )}
-              {available && !error && (
-                <p className="text-xs text-emerald-400 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3 flex-shrink-0" /> @{value} is available!
-                </p>
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {checking && (
+                <Loader2 className="w-4 h-4 animate-spin text-[rgb(var(--muted-fg))]" />
               )}
+              {!checking && available === true && (
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+              )}
+              {!checking && available === false && (
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+              )}
+            </span>
+          </div>
 
-              <button
-                onClick={handleSave}
-                disabled={!value || !available || saving || !!error}
-                className={cn(
-                  "w-full h-11 rounded-xl font-semibold text-sm transition-all",
-                  "bg-[rgb(var(--primary))] text-white",
-                  "hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                )}
-              >
-                {saving ? "Saving…" : "Set Username"}
-              </button>
+          {/* Feedback */}
+          {error && (
+            <p className="text-xs text-red-400 flex items-center gap-1.5">
+              <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {error}
+            </p>
+          )}
+          {!error && available === true && value && (
+            <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+              <CheckCircle className="w-3 h-3 flex-shrink-0" /> @{value} is available!
+            </p>
+          )}
+          {!error && !available && !checking && value && USERNAME_REGEX.test(value) && (
+            <p className="text-xs text-[rgb(var(--muted-fg))]">Checking availability…</p>
+          )}
 
-              <button
-                onClick={dismiss}
-                className="w-full text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors py-1"
-              >
-                I&apos;ll set it later in Settings
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <p className="text-xs text-[rgb(var(--muted-fg))]">
+            Rules: 3–20 characters · lowercase letters, numbers, underscores · no spaces
+          </p>
+
+          {/* Save button */}
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            className={cn(
+              "w-full h-11 rounded-xl font-semibold text-sm transition-all mt-1",
+              "bg-[rgb(var(--primary))] text-white",
+              canSave
+                ? "hover:opacity-90 active:scale-[0.98]"
+                : "opacity-40 cursor-not-allowed"
+            )}
+          >
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving…
+              </span>
+            ) : (
+              "Claim Username & Continue →"
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }
