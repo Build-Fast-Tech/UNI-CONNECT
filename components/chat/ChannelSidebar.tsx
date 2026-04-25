@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, Building2, Plus, User, X, Pin, PinOff } from "lucide-react";
+import { Globe, Building2, Plus, User, X, Pin, PinOff, Search, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
@@ -107,13 +107,122 @@ function ChannelRow({
   );
 }
 
+interface UserSearchResult {
+  id: string;
+  full_name: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+function UserSearch({ onLinkClick, myId }: { onLinkClick?: () => void; myId: string | null }) {
+  const supabase = createClient();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<UserSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const handleChange = (v: string) => {
+    const clean = v.replace(/^@/, "");
+    setQuery(clean);
+    setOpen(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!clean.trim()) { setResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, username, avatar_url")
+        .ilike("username", `${clean.trim()}%`)
+        .neq("id", myId ?? "")
+        .limit(6);
+      setResults((data as UserSearchResult[]) ?? []);
+      setOpen(true);
+      setSearching(false);
+    }, 300);
+  };
+
+  const openDm = async (partnerId: string) => {
+    if (!myId) return;
+    setOpen(false);
+    setQuery("");
+    setResults([]);
+
+    // Find or create DM channel
+    const { data: existing } = await supabase
+      .from("channels")
+      .select("id")
+      .eq("type", "dm")
+      .or(`and(dm_user_a.eq.${myId},dm_user_b.eq.${partnerId}),and(dm_user_a.eq.${partnerId},dm_user_b.eq.${myId})`)
+      .single();
+
+    let channelId = existing?.id;
+    if (!channelId) {
+      const { data: created } = await supabase
+        .from("channels")
+        .insert({ type: "dm", dm_user_a: myId, dm_user_b: partnerId })
+        .select("id")
+        .single();
+      channelId = created?.id;
+    }
+    if (!channelId) return;
+    if (onLinkClick) onLinkClick();
+    window.location.href = `/chat/${channelId}`;
+  };
+
+  return (
+    <div className="px-2 mb-2 relative" ref={wrapRef}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" />
+        <input
+          type="text"
+          value={query}
+          onChange={e => handleChange(e.target.value)}
+          onFocus={() => { if (results.length > 0) setOpen(true); }}
+          placeholder="Search by username"
+          className="w-full h-8 pl-8 pr-3 rounded-lg text-xs bg-[rgb(var(--muted))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--ring))]"
+        />
+        {searching && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 animate-spin text-[rgb(var(--muted-fg))]" />}
+      </div>
+      {open && results.length > 0 && (
+        <div className="absolute left-2 right-2 top-full mt-1 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 overflow-hidden">
+          {results.map(u => (
+            <button key={u.id} onClick={() => openDm(u.id)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[rgb(var(--muted))] transition-colors text-left">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 overflow-hidden">
+                {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : u.full_name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold truncate">{u.full_name}</p>
+                {u.username && <p className="text-[10px] text-[rgb(var(--primary))] font-mono truncate">@{u.username}</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {open && query && !searching && results.length === 0 && (
+        <div className="absolute left-2 right-2 top-full mt-1 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 px-3 py-2.5">
+          <p className="text-xs text-[rgb(var(--muted-fg))]">No user found for &ldquo;{query}&rdquo;</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChannelList({
   globalChannel, uniChannels, dmChannels, pins, onTogglePin, onLinkClick,
-  showCloseButton, onClose, onlineUsers,
+  showCloseButton, onClose, onlineUsers, myId,
 }: {
   globalChannel: Channel | null; uniChannels: Channel[]; dmChannels: Channel[];
   pins: Set<string>; onTogglePin: (id: string) => void; onLinkClick?: () => void;
-  showCloseButton?: boolean; onClose?: () => void; onlineUsers: Set<string>;
+  showCloseButton?: boolean; onClose?: () => void; onlineUsers: Set<string>; myId: string | null;
 }) {
   const pathname = usePathname();
   const activeId = pathname?.match(/^\/chat\/([^/]+)/)?.[1] ?? null;
@@ -170,12 +279,12 @@ function ChannelList({
         )}
 
         <div className="pt-4">
-          <div className="flex items-center justify-between px-3 mb-1">
+          <div className="flex items-center justify-between px-3 mb-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">Direct Messages</p>
-            <Link href="/inbox" className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors" title="New DM">
-              <Plus className="w-3.5 h-3.5" />
-            </Link>
           </div>
+
+          {/* Search by username */}
+          <UserSearch onLinkClick={onLinkClick} myId={myId} />
 
           {dmsSorted.length === 0 && (
             <p className="text-xs text-[rgb(var(--muted-fg))] px-3 py-1.5">No conversations yet</p>
@@ -344,8 +453,8 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
   }, [mobileOpen]);
 
   const listProps = useMemo(() => ({
-    globalChannel, uniChannels, dmChannels, pins, onTogglePin: togglePin, onlineUsers,
-  }), [globalChannel, uniChannels, dmChannels, pins, togglePin, onlineUsers]);
+    globalChannel, uniChannels, dmChannels, pins, onTogglePin: togglePin, onlineUsers, myId,
+  }), [globalChannel, uniChannels, dmChannels, pins, togglePin, onlineUsers, myId]);
 
   return (
     <>

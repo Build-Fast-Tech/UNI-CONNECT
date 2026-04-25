@@ -8,6 +8,7 @@ export async function signUpAction(data: {
   email: string;
   password: string;
   fullName: string;
+  username?: string;
 }): Promise<{ error?: string }> {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,15 +24,18 @@ export async function signUpAction(data: {
       email: data.email,
       password: data.password,
       options: {
-        data: { full_name: data.fullName },
-        emailRedirectTo: `${origin}/auth/callback?next=/onboarding`,
+        data: {
+          full_name: data.fullName,
+          ...(data.username ? { username: data.username.toLowerCase() } : {}),
+        },
+        emailRedirectTo: `${origin}/auth/callback?next=/feed`,
       },
     });
 
     if (error) return { error: error.message };
     return {};
-  } catch (e: any) {
-    return { error: e?.message ?? String(e) };
+  } catch (e: unknown) {
+    return { error: (e as Error)?.message ?? String(e) };
   }
 }
 

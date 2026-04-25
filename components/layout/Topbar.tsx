@@ -59,26 +59,18 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     const supabase = createClient();
     const usernameQuery = q.startsWith("@") ? q.slice(1) : q;
 
-    // Run all queries in parallel; use two separate ilike queries for people
-    // (avoids .or() + wildcard encoding issues in PostgREST)
+    // People search is username-only (strip @ if typed)
     const [
-      { data: notes }, { data: jobs }, { data: unis },
-      { data: byName }, { data: byUsername },
+      { data: notes }, { data: jobs }, { data: unis }, { data: byUsername },
     ] = await Promise.all([
       supabase.from("notes").select("id, title, subject").eq("status", "published").ilike("title", `%${q}%`).limit(3),
       supabase.from("jobs").select("id, title, company_name").eq("status", "active").ilike("title", `%${q}%`).limit(2),
       supabase.from("universities").select("id, name, short_name, slug").or(`name.ilike.%${q}%,short_name.ilike.%${q}%`).limit(2),
-      supabase.from("profiles").select("id, full_name, username, avatar_url").ilike("full_name", `%${usernameQuery}%`).limit(4),
-      supabase.from("profiles").select("id, full_name, username, avatar_url").ilike("username", `${usernameQuery}%`).limit(4),
+      supabase.from("profiles").select("id, full_name, username, avatar_url")
+        .ilike("username", `${usernameQuery}%`).limit(5),
     ]);
 
-    // Merge people results, username matches first, deduplicated
-    const seen = new Set<string>();
-    const people = [...(byUsername ?? []), ...(byName ?? [])].filter(u => {
-      if (seen.has(u.id)) return false;
-      seen.add(u.id);
-      return true;
-    }).slice(0, 5);
+    const people = byUsername ?? [];
 
     const mapped: Result[] = [
       ...people.map(u => ({

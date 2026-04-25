@@ -11,6 +11,7 @@ export interface CurrentUser {
   email: string | null;
   role: "student" | "employer" | "moderator" | "admin";
   universityId: string | null;
+  username: string | null;
   loaded: boolean;
 }
 
@@ -22,6 +23,7 @@ const DEFAULT_STATE: CurrentUser = {
   email: null,
   role: "student",
   universityId: null,
+  username: null,
   loaded: false,
 };
 
@@ -60,7 +62,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, avatar_url, role, university_id")
+        .select("full_name, avatar_url, role, university_id, username")
         .eq("id", user.id)
         .single();
 
@@ -75,6 +77,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         email: user.email ?? null,
         role: (profile?.role as CurrentUser["role"]) ?? "student",
         universityId: profile?.university_id ?? null,
+        username: profile?.username ?? null,
         loaded: true,
       });
     })();
