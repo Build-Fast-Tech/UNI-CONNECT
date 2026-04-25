@@ -12,10 +12,11 @@ import { useRouter } from "next/navigation";
 
 interface Result {
   id: string;
-  type: "note" | "job" | "university";
+  type: "note" | "job" | "university" | "user";
   title: string;
   sub: string;
   href: string;
+  avatar_url?: string | null;
 }
 
 interface TopbarProps {
@@ -56,13 +57,37 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     if (!q.trim()) { setResults([]); setOpen(false); return; }
     setSearching(true);
     const supabase = createClient();
-    const [{ data: notes }, { data: jobs }, { data: unis }] = await Promise.all([
-      supabase.from("notes").select("id, title, subject").eq("status", "published").ilike("title", `%${q}%`).limit(4),
-      supabase.from("jobs").select("id, title, company_name").eq("status", "active").ilike("title", `%${q}%`).limit(3),
-      supabase.from("universities").select("id, name, short_name, slug").or(`name.ilike.%${q}%,short_name.ilike.%${q}%`).limit(3),
+    const usernameQuery = q.startsWith("@") ? q.slice(1) : q;
+
+    // Run all queries in parallel; use two separate ilike queries for people
+    // (avoids .or() + wildcard encoding issues in PostgREST)
+    const [
+      { data: notes }, { data: jobs }, { data: unis },
+      { data: byName }, { data: byUsername },
+    ] = await Promise.all([
+      supabase.from("notes").select("id, title, subject").eq("status", "published").ilike("title", `%${q}%`).limit(3),
+      supabase.from("jobs").select("id, title, company_name").eq("status", "active").ilike("title", `%${q}%`).limit(2),
+      supabase.from("universities").select("id, name, short_name, slug").or(`name.ilike.%${q}%,short_name.ilike.%${q}%`).limit(2),
+      supabase.from("profiles").select("id, full_name, username, avatar_url").ilike("full_name", `%${usernameQuery}%`).limit(4),
+      supabase.from("profiles").select("id, full_name, username, avatar_url").ilike("username", `${usernameQuery}%`).limit(4),
     ]);
 
+    // Merge people results, username matches first, deduplicated
+    const seen = new Set<string>();
+    const people = [...(byUsername ?? []), ...(byName ?? [])].filter(u => {
+      if (seen.has(u.id)) return false;
+      seen.add(u.id);
+      return true;
+    }).slice(0, 5);
+
     const mapped: Result[] = [
+      ...people.map(u => ({
+        id: u.id, type: "user" as const,
+        title: u.full_name,
+        sub: u.username ? `@${u.username}` : "No username set",
+        href: `/profile/${u.id}`,
+        avatar_url: u.avatar_url,
+      })),
       ...(notes || []).map(n => ({ id: n.id, type: "note" as const, title: n.title, sub: n.subject, href: `/notes/${n.id}` })),
       ...(jobs  || []).map(j => ({ id: j.id, type: "job"  as const, title: j.title, sub: j.company_name, href: `/jobs/${j.id}` })),
       ...(unis  || []).map(u => ({ id: u.id, type: "university" as const, title: u.name, sub: u.short_name, href: `/universities/${(u as any).slug}` })),
@@ -85,11 +110,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     if (e.key === "Escape") setOpen(false);
   };
 
-  const TYPE_LABEL: Record<string, string> = { note: "Note", job: "Job", university: "University" };
+  const TYPE_LABEL: Record<string, string> = { note: "Note", job: "Job", university: "University", user: "Person" };
   const TYPE_COLOR: Record<string, string> = {
     note: "bg-blue-500/10 text-blue-500",
     job: "bg-green-500/10 text-green-600",
     university: "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]",
+    user: "bg-violet-500/10 text-violet-400",
   };
 
   return (
@@ -153,12 +179,22 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               {results.map(r => (
                 <Link key={r.id} href={r.href} onClick={() => { setOpen(false); setQuery(""); }}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-[rgb(var(--muted))] transition-colors">
-                  <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0", TYPE_COLOR[r.type])}>
-                    {TYPE_LABEL[r.type]}
-                  </span>
-                  <div className="min-w-0">
+                  {r.type === "user" ? (
+                    <div className="relative flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-xs font-bold text-white">
+                        {r.avatar_url
+                          ? <img src={r.avatar_url} alt="" className="w-full h-full object-cover" />
+                          : r.title.charAt(0).toUpperCase()}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0", TYPE_COLOR[r.type])}>
+                      {TYPE_LABEL[r.type]}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{r.title}</p>
-                    <p className="text-xs text-[rgb(var(--muted-fg))] truncate">{r.sub}</p>
+                    <p className={cn("text-xs truncate", r.type === "user" ? "text-blue-400 font-mono" : "text-[rgb(var(--muted-fg))]")}>{r.sub}</p>
                   </div>
                 </Link>
               ))}
