@@ -6,7 +6,7 @@ import {
   Download, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck,
   Share2, Flag, ArrowLeft, FileText, User,
   Calendar, GraduationCap, ChevronLeft, ChevronRight,
-  ZoomIn, ZoomOut, Bot, Pencil, X, Check,
+  ZoomIn, ZoomOut, Bot, Pencil, X, Check, Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -125,6 +125,13 @@ export default function NoteDetailPage({
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
+  };
+
+  const handleDeleteNote = async () => {
+    if (!note || !userId || note.uploader_id !== userId) return;
+    if (!confirm("Delete this note? This cannot be undone.")) return;
+    await supabase.from("notes").delete().eq("id", noteId).eq("uploader_id", userId);
+    router.push("/notes");
   };
 
   const openEdit = () => {
@@ -433,14 +440,23 @@ export default function NoteDetailPage({
               </button>
             </Link>
 
-            {/* Edit (uploader only) */}
+            {/* Edit / Delete (uploader only) */}
             {userId && note.uploader_id === userId && (
-              <button
-                onClick={openEdit}
-                className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors border border-[rgb(var(--border))]"
-              >
-                <Pencil className="w-3 h-3" /> Edit note details
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={openEdit}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors border border-[rgb(var(--border))]"
+                >
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
+                <button
+                  onClick={handleDeleteNote}
+                  className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg text-xs text-[rgb(var(--destructive))] hover:bg-red-500/10 transition-colors border border-[rgb(var(--border))]"
+                  title="Delete note"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
             )}
 
             {/* Report */}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu } from "lucide-react";
+import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
@@ -226,6 +226,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           setTimeout(() => scrollToBottom(), 80);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` },
+        (payload) => {
+          const row = payload.new as { id: string; is_deleted?: boolean };
+          if (row.is_deleted) setMessages(prev => prev.filter(m => m.id !== row.id));
+        }
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(sub); };
@@ -246,7 +254,8 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     presenceChan
       .on("presence", { event: "sync" }, () => {
         const state = presenceChan.presenceState<{ name: string; typing: boolean; userId: string }>();
-        const entries = Object.values(state).flat();
+        // One entry per userId key — prevents multi-tab overcounting
+        const entries = Object.values(state).map(subs => subs[0]).filter(Boolean);
         setOnlineCount(entries.length);
         setTypingNames(
           entries
@@ -302,6 +311,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setInput("");
     setSending(true);
     if (typingTimer.current) clearTimeout(typingTimer.current);
+    typingStateRef.current = true; // force broadcast even if cached state says false
     broadcastTyping(false);
 
     if (textareaRef.current) {
@@ -345,6 +355,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
     setSending(false);
     textareaRef.current?.focus();
+  };
+
+  const handleDelete = async (msgId: string) => {
+    await supabase.from("messages").update({ is_deleted: true }).eq("id", msgId).eq("sender_id", userId ?? "");
+    setMessages(prev => prev.filter(m => m.id !== msgId));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -477,6 +492,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                 {msg.content}
               </p>
             </div>
+            {msg.sender_id === userId && (
+              <button
+                onClick={() => handleDelete(msg.id)}
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))] transition-all self-start mt-0.5 flex-shrink-0"
+                title="Delete message"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))}
 

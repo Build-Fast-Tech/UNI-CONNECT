@@ -18,6 +18,7 @@ interface Channel {
   avatarChar?: string;
   lastMessage: string | null;
   lastAt: string | null;
+  partnerId?: string; // DM partner's userId
 }
 
 interface ChannelSidebarProps {
@@ -32,30 +33,17 @@ function readPins(uid: string): Set<string> {
   try {
     const raw = localStorage.getItem(PINS_KEY(uid));
     return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
+  } catch { return new Set(); }
 }
 function writePins(uid: string, pins: Set<string>) {
-  try {
-    localStorage.setItem(PINS_KEY(uid), JSON.stringify([...pins]));
-  } catch {}
+  try { localStorage.setItem(PINS_KEY(uid), JSON.stringify([...pins])); } catch {}
 }
 
 function ChannelRow({
-  channel,
-  icon,
-  active,
-  pinned,
-  onPinToggle,
-  onLinkClick,
+  channel, icon, active, pinned, onPinToggle, onLinkClick, isOnline,
 }: {
-  channel: Channel;
-  icon: React.ReactNode;
-  active: boolean;
-  pinned: boolean;
-  onPinToggle: (id: string) => void;
-  onLinkClick?: () => void;
+  channel: Channel; icon: React.ReactNode; active: boolean; pinned: boolean;
+  onPinToggle: (id: string) => void; onLinkClick?: () => void; isOnline?: boolean;
 }) {
   return (
     <div className={cn("group relative", pinned && "bg-[rgb(var(--primary)/0.04)] rounded-xl")}>
@@ -69,22 +57,25 @@ function ChannelRow({
             : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]",
         )}
       >
-        <span className="flex-shrink-0">{icon}</span>
+        {/* Icon with optional online dot */}
+        <span className="flex-shrink-0 relative">
+          {icon}
+          {isOnline && (
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[rgb(var(--card))]" />
+          )}
+        </span>
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <span className="truncate">{channel.name}</span>
             {pinned && <Pin className="w-3 h-3 flex-shrink-0 fill-current opacity-70" />}
           </div>
           {channel.lastMessage && (
-            <p className="text-[11px] opacity-70 truncate leading-tight">
-              {channel.lastMessage}
-            </p>
+            <p className="text-[11px] opacity-70 truncate leading-tight">{channel.lastMessage}</p>
           )}
         </div>
         {channel.lastAt && (
-          <span className="text-[10px] opacity-60 flex-shrink-0">
-            {formatRelativeTime(channel.lastAt)}
-          </span>
+          <span className="text-[10px] opacity-60 flex-shrink-0">{formatRelativeTime(channel.lastAt)}</span>
         )}
       </Link>
 
@@ -106,38 +97,24 @@ function ChannelRow({
 }
 
 function ChannelList({
-  globalChannel,
-  uniChannels,
-  dmChannels,
-  pins,
-  onTogglePin,
-  onLinkClick,
-  showCloseButton,
-  onClose,
+  globalChannel, uniChannels, dmChannels, pins, onTogglePin, onLinkClick,
+  showCloseButton, onClose, onlineUsers,
 }: {
-  globalChannel: Channel | null;
-  uniChannels: Channel[];
-  dmChannels: Channel[];
-  pins: Set<string>;
-  onTogglePin: (id: string) => void;
-  onLinkClick?: () => void;
-  showCloseButton?: boolean;
-  onClose?: () => void;
+  globalChannel: Channel | null; uniChannels: Channel[]; dmChannels: Channel[];
+  pins: Set<string>; onTogglePin: (id: string) => void; onLinkClick?: () => void;
+  showCloseButton?: boolean; onClose?: () => void; onlineUsers: Set<string>;
 }) {
   const pathname = usePathname();
   const activeId = pathname?.match(/^\/chat\/([^/]+)/)?.[1] ?? null;
 
-  // WhatsApp-style sort: pinned first, then by most recent message.
   const sortFn = (a: Channel, b: Channel) => {
     const pa = pins.has(a.id) ? 1 : 0;
     const pb = pins.has(b.id) ? 1 : 0;
     if (pa !== pb) return pb - pa;
-    const ta = new Date(a.lastAt ?? 0).getTime();
-    const tb = new Date(b.lastAt ?? 0).getTime();
-    return tb - ta;
+    return new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime();
   };
 
-  const dmsSorted = [...dmChannels].sort(sortFn);
+  const dmsSorted  = [...dmChannels].sort(sortFn);
   const unisSorted = [...uniChannels].sort(sortFn);
 
   const iconFor = (ch: Channel): React.ReactNode => {
@@ -153,15 +130,9 @@ function ChannelList({
   return (
     <>
       <div className="px-4 pt-4 pb-2 flex-shrink-0 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">
-          Channels
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">Channels</p>
         {showCloseButton && (
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors"
-            aria-label="Close channels"
-          >
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors" aria-label="Close channels">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -170,63 +141,41 @@ function ChannelList({
       <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
         {globalChannel && (
           <ChannelRow
-            channel={globalChannel}
-            icon={iconFor(globalChannel)}
-            active={activeId === globalChannel.id}
-            pinned={pins.has(globalChannel.id)}
-            onPinToggle={onTogglePin}
-            onLinkClick={onLinkClick}
+            channel={globalChannel} icon={iconFor(globalChannel)}
+            active={activeId === globalChannel.id} pinned={pins.has(globalChannel.id)}
+            onPinToggle={onTogglePin} onLinkClick={onLinkClick}
           />
         )}
 
         {unisSorted.length > 0 && (
           <div className="pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-3 mb-1">
-              My University
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-3 mb-1">My University</p>
             {unisSorted.map(ch => (
-              <ChannelRow
-                key={ch.id}
-                channel={ch}
-                icon={iconFor(ch)}
-                active={activeId === ch.id}
-                pinned={pins.has(ch.id)}
-                onPinToggle={onTogglePin}
-                onLinkClick={onLinkClick}
-              />
+              <ChannelRow key={ch.id} channel={ch} icon={iconFor(ch)}
+                active={activeId === ch.id} pinned={pins.has(ch.id)}
+                onPinToggle={onTogglePin} onLinkClick={onLinkClick} />
             ))}
           </div>
         )}
 
         <div className="pt-4">
           <div className="flex items-center justify-between px-3 mb-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">
-              Direct Messages
-            </p>
-            <Link
-              href="/inbox"
-              className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
-              title="New DM"
-            >
+            <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">Direct Messages</p>
+            <Link href="/inbox" className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors" title="New DM">
               <Plus className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           {dmsSorted.length === 0 && (
-            <p className="text-xs text-[rgb(var(--muted-fg))] px-3 py-1.5">
-              No conversations yet
-            </p>
+            <p className="text-xs text-[rgb(var(--muted-fg))] px-3 py-1.5">No conversations yet</p>
           )}
 
           {dmsSorted.map(ch => (
             <ChannelRow
-              key={ch.id}
-              channel={ch}
-              icon={iconFor(ch)}
-              active={activeId === ch.id}
-              pinned={pins.has(ch.id)}
-              onPinToggle={onTogglePin}
-              onLinkClick={onLinkClick}
+              key={ch.id} channel={ch} icon={iconFor(ch)}
+              active={activeId === ch.id} pinned={pins.has(ch.id)}
+              onPinToggle={onTogglePin} onLinkClick={onLinkClick}
+              isOnline={ch.partnerId ? onlineUsers.has(ch.partnerId) : false}
             />
           ))}
         </div>
@@ -237,24 +186,23 @@ function ChannelList({
 
 export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarProps) {
   const supabase = createClient();
-  const [myId, setMyId] = useState<string | null>(null);
+  const [myId, setMyId]                   = useState<string | null>(null);
   const [globalChannel, setGlobalChannel] = useState<Channel | null>(null);
-  const [uniChannels, setUniChannels] = useState<Channel[]>([]);
-  const [dmChannels, setDmChannels] = useState<Channel[]>([]);
-  const [pins, setPins] = useState<Set<string>>(new Set());
+  const [uniChannels, setUniChannels]     = useState<Channel[]>([]);
+  const [dmChannels, setDmChannels]       = useState<Channel[]>([]);
+  const [pins, setPins]                   = useState<Set<string>>(new Set());
+  const [onlineUsers, setOnlineUsers]     = useState<Set<string>>(new Set());
 
   const togglePin = useCallback((channelId: string) => {
     if (!myId) return;
     setPins(prev => {
       const next = new Set(prev);
-      if (next.has(channelId)) next.delete(channelId);
-      else next.add(channelId);
+      next.has(channelId) ? next.delete(channelId) : next.add(channelId);
       writePins(myId, next);
       return next;
     });
   }, [myId]);
 
-  // Helper: fetch the most recent message per channel in one query.
   const fetchLastMessages = useCallback(async (channelIds: string[]) => {
     if (channelIds.length === 0) return new Map<string, { content: string | null; created_at: string }>();
     const { data } = await supabase
@@ -271,6 +219,7 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load channels
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -278,111 +227,78 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
       setMyId(user.id);
       setPins(readPins(user.id));
 
-      const { data: global } = await supabase
-        .from("channels")
-        .select("id, type, name")
-        .eq("type", "global")
-        .single();
+      const { data: global } = await supabase.from("channels").select("id, type, name").eq("type", "global").single();
+      const { data: profile } = await supabase.from("profiles").select("university_id, universities(short_name)").eq("id", user.id).single();
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("university_id, universities(short_name)")
-        .eq("id", user.id)
-        .single();
-
-      // University channel find-or-create.
       let uniChannel: { id: string; name: string | null } | null = null;
       if (profile?.university_id) {
-        let { data: existing } = await supabase
-          .from("channels")
-          .select("id, name")
-          .eq("type", "university")
-          .eq("university_id", profile.university_id)
-          .single();
-
+        let { data: existing } = await supabase.from("channels").select("id, name").eq("type", "university").eq("university_id", profile.university_id).single();
         if (!existing) {
           const uniName = (profile.universities as unknown as { short_name?: string } | null)?.short_name ?? "University";
-          const { data: created } = await supabase
-            .from("channels")
-            .insert({
-              type: "university",
-              university_id: profile.university_id,
-              name: `${uniName} General`,
-            })
-            .select("id, name")
-            .single();
+          const { data: created } = await supabase.from("channels").insert({ type: "university", university_id: profile.university_id, name: `${uniName} General` }).select("id, name").single();
           existing = created;
         }
         uniChannel = existing;
       }
 
-      const { data: dms } = await supabase
-        .from("channels")
-        .select("id, type, dm_user_a, dm_user_b")
-        .eq("type", "dm")
-        .or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`)
-        .limit(30);
+      const { data: dms } = await supabase.from("channels").select("id, type, dm_user_a, dm_user_b").eq("type", "dm").or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`).limit(30);
 
       const dmIds = (dms ?? []).map(d => d.id);
-      const channelIds = [
-        ...(global ? [global.id] : []),
-        ...(uniChannel ? [uniChannel.id] : []),
-        ...dmIds,
-      ];
+      const channelIds = [...(global ? [global.id] : []), ...(uniChannel ? [uniChannel.id] : []), ...dmIds];
       const lastMsgMap = await fetchLastMessages(channelIds);
 
       if (global) {
         const last = lastMsgMap.get(global.id);
-        setGlobalChannel({
-          id: global.id,
-          kind: "global",
-          name: global.name ?? "All-Pakistan Chat",
-          lastMessage: last?.content ?? null,
-          lastAt: last?.created_at ?? null,
-        });
+        setGlobalChannel({ id: global.id, kind: "global", name: global.name ?? "All-Pakistan Chat", lastMessage: last?.content ?? null, lastAt: last?.created_at ?? null });
       }
 
       if (uniChannel) {
         const uniShort = (profile?.universities as unknown as { short_name?: string } | null)?.short_name ?? "";
         const last = lastMsgMap.get(uniChannel.id);
-        setUniChannels([{
-          id: uniChannel.id,
-          kind: "university",
-          name: uniChannel.name ?? "University",
-          meta: uniShort,
-          lastMessage: last?.content ?? null,
-          lastAt: last?.created_at ?? null,
-        }]);
+        setUniChannels([{ id: uniChannel.id, kind: "university", name: uniChannel.name ?? "University", meta: uniShort, lastMessage: last?.content ?? null, lastAt: last?.created_at ?? null }]);
       }
 
       if (dms && dms.length > 0) {
         const otherIds = dms.map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean) as string[];
-        const { data: dmProfiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", otherIds);
+        const { data: dmProfiles } = await supabase.from("profiles").select("id, full_name").in("id", otherIds);
         const profileMap = new Map(dmProfiles?.map(p => [p.id, p]) ?? []);
 
         setDmChannels(dms.map(d => {
           const otherId = (d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a) ?? "";
           const otherProfile = profileMap.get(otherId);
           const last = lastMsgMap.get(d.id);
-          return {
-            id: d.id,
-            kind: "dm",
-            name: otherProfile?.full_name ?? "Unknown",
-            avatarChar: otherProfile?.full_name?.charAt(0).toUpperCase() ?? "?",
-            lastMessage: last?.content ?? null,
-            lastAt: last?.created_at ?? null,
-          };
+          return { id: d.id, kind: "dm", name: otherProfile?.full_name ?? "Unknown", avatarChar: otherProfile?.full_name?.charAt(0).toUpperCase() ?? "?", lastMessage: last?.content ?? null, lastAt: last?.created_at ?? null, partnerId: otherId };
         }));
       }
     };
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Realtime: bump any channel's preview + timestamp when a new message arrives.
+  // Global presence — track who is online across the whole app
+  useEffect(() => {
+    if (!myId) return;
+    const pres = supabase.channel("presence:app", {
+      config: { presence: { key: myId } },
+    });
+    pres
+      .on("presence", { event: "sync" }, () => {
+        const state = pres.presenceState<{ userId: string }>();
+        const ids = new Set(
+          Object.values(state).map(subs => (subs[0] as { userId?: string })?.userId).filter((id): id is string => !!id)
+        );
+        setOnlineUsers(ids);
+      })
+      .subscribe(async status => {
+        if (status === "SUBSCRIBED") {
+          await pres.track({ userId: myId });
+        }
+      });
+    return () => { supabase.removeChannel(pres); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId]);
+
+  // Realtime: bump channel previews on new message
   useEffect(() => {
     if (!myId) return;
     const allIds = new Set<string>([
@@ -394,29 +310,19 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
 
     const sub = supabase
       .channel(`sidebar-preview-${myId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          const row = payload.new as {
-            channel_id: string;
-            content: string | null;
-            created_at: string;
-            is_deleted?: boolean;
-          };
-          if (row.is_deleted) return;
-          if (!allIds.has(row.channel_id)) return;
-          const apply = <T extends { id: string; lastMessage: string | null; lastAt: string | null }>(c: T) =>
-            c.id === row.channel_id ? { ...c, lastMessage: row.content, lastAt: row.created_at } : c;
-          setGlobalChannel(prev => prev ? apply(prev) : prev);
-          setUniChannels(prev => prev.map(apply));
-          setDmChannels(prev => prev.map(apply));
-        },
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        const row = payload.new as { channel_id: string; content: string | null; created_at: string; is_deleted?: boolean };
+        if (row.is_deleted || !allIds.has(row.channel_id)) return;
+        const apply = <T extends { id: string; lastMessage: string | null; lastAt: string | null }>(c: T) =>
+          c.id === row.channel_id ? { ...c, lastMessage: row.content, lastAt: row.created_at } : c;
+        setGlobalChannel(prev => prev ? apply(prev) : prev);
+        setUniChannels(prev => prev.map(apply));
+        setDmChannels(prev => prev.map(apply));
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(sub); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myId, globalChannel?.id, uniChannels.length, dmChannels.length]);
 
   useEffect(() => {
@@ -427,45 +333,26 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
   }, [mobileOpen]);
 
   const listProps = useMemo(() => ({
-    globalChannel,
-    uniChannels,
-    dmChannels,
-    pins,
-    onTogglePin: togglePin,
-  }), [globalChannel, uniChannels, dmChannels, pins, togglePin]);
+    globalChannel, uniChannels, dmChannels, pins, onTogglePin: togglePin, onlineUsers,
+  }), [globalChannel, uniChannels, dmChannels, pins, togglePin, onlineUsers]);
 
   return (
     <>
-      {/* Desktop sidebar */}
       <div className="hidden md:flex w-64 flex-shrink-0 border-r border-[rgb(var(--border))] flex-col overflow-hidden bg-[rgb(var(--card))]">
         <ChannelList {...listProps} />
       </div>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <>
-            <motion.div
-              className="fixed inset-0 bg-black/60 z-40 md:hidden"
-              onClick={onClose}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            />
+            <motion.div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={onClose}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} />
             <motion.div
               className="fixed top-0 left-0 bottom-0 w-72 z-50 md:hidden flex flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
+              initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
             >
-              <ChannelList
-                {...listProps}
-                onLinkClick={onClose}
-                showCloseButton
-                onClose={onClose}
-              />
+              <ChannelList {...listProps} onLinkClick={onClose} showCloseButton onClose={onClose} />
             </motion.div>
           </>
         )}

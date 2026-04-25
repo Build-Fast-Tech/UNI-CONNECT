@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Search, Upload, BookOpen, Download, ThumbsUp,
   Filter, X, FileText, FileImage, Archive,
-  ClipboardList, GraduationCap, PenLine, ScrollText,
+  ClipboardList, GraduationCap, PenLine, ScrollText, Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +56,7 @@ export default function NotesPage() {
   const [notes, setNotes]       = useState<Note[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [userId, setUserId]     = useState<string | null>(null);
   const [search, setSearch]     = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
@@ -64,6 +65,10 @@ export default function NotesPage() {
   const [filterSubject,  setFilterSubject]  = useState("");
   const [filterSemester, setFilterSemester] = useState("");
   const [filterType,     setFilterType]     = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -98,6 +103,11 @@ export default function NotesPage() {
       return matchSearch && matchCategory && matchSubject && matchSemester && matchType;
     });
   }, [notes, search, activeCategory, filterSubject, filterSemester, filterType]);
+
+  const deleteNote = async (id: string) => {
+    await supabase.from("notes").delete().eq("id", id).eq("uploader_id", userId ?? "");
+    setNotes(prev => prev.filter(n => n.id !== id));
+  };
 
   const activeFilters = [filterSubject, filterSemester, filterType].filter(Boolean).length;
 
@@ -302,7 +312,7 @@ export default function NotesPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((note, i) => (
-            <NoteCard key={note.id} note={note} index={i} />
+            <NoteCard key={note.id} note={note} index={i} userId={userId} onDelete={deleteNote} />
           ))}
         </div>
       )}
@@ -310,7 +320,7 @@ export default function NotesPage() {
   );
 }
 
-function NoteCard({ note, index }: { note: Note; index: number }) {
+function NoteCard({ note, index, userId, onDelete }: { note: Note; index: number; userId: string | null; onDelete: (id: string) => void }) {
   const ext = (note.file_type || "pdf").replace("application/", "").replace("vnd.openxmlformats-officedocument.", "").split(".").pop() || "pdf";
   const Icon = FILE_ICONS[ext] || FileText;
   const category = (note as any).category as string | undefined;
@@ -322,10 +332,11 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.5) }}
+      className="relative group"
     >
       <Link
         href={`/notes/${note.id}`}
-        className="theme-card p-5 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-200 group"
+        className="theme-card p-5 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-200 block"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
@@ -372,6 +383,15 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
           </div>
         </div>
       </Link>
+      {note.uploader_id === userId && (
+        <button
+          onClick={() => onDelete(note.id)}
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-[rgb(var(--card))] border border-[rgb(var(--border))] hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
+          title="Delete note"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
     </motion.div>
   );
 }
