@@ -277,13 +277,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   // changes, instead of once per keystroke.
   const typingStateRef = useRef(false);
   const broadcastTyping = async (isTyping: boolean) => {
-    if (!userId || !myName) return;
-    if (typingStateRef.current === isTyping) return;
+    if (!userId || !myName || !presenceRef.current) return;
     typingStateRef.current = isTyping;
     try {
-      await presenceRef.current?.track({ name: myName, typing: isTyping, userId });
+      await presenceRef.current.track({ name: myName, typing: isTyping, userId });
     } catch {
-      // presence not ready yet; on next render the track will retry.
       typingStateRef.current = !isTyping;
     }
   };
@@ -293,14 +291,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     resizeTextarea();
 
     if (e.target.value.trim().length > 0) {
-      broadcastTyping(true);
+      if (!typingStateRef.current) broadcastTyping(true); // only broadcast on first keystroke
       if (typingTimer.current) clearTimeout(typingTimer.current);
       typingTimer.current = setTimeout(() => broadcastTyping(false), 3000);
     } else {
-      // Cleared the field — force broadcast false regardless of cached state.
       if (typingTimer.current) clearTimeout(typingTimer.current);
-      typingStateRef.current = true;
-      broadcastTyping(false);
+      broadcastTyping(false); // always fires — broadcastTyping no longer has an early-return guard
     }
   };
 
@@ -312,7 +308,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setInput("");
     setSending(true);
     if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingStateRef.current = true; // force broadcast even if cached state says false
     broadcastTyping(false);
 
     if (textareaRef.current) {
