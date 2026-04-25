@@ -297,8 +297,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       if (typingTimer.current) clearTimeout(typingTimer.current);
       typingTimer.current = setTimeout(() => broadcastTyping(false), 3000);
     } else {
-      // Cleared the field — stop typing immediately.
+      // Cleared the field — force broadcast false regardless of cached state.
       if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingStateRef.current = true;
       broadcastTyping(false);
     }
   };
