@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Briefcase, TrendingUp, Upload, ArrowRight,
   Star, Bot, X, Sparkles, Send,
-  Download, Clock, FileText, ChevronRight,
+  Download, Clock, FileText, ChevronRight, MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
+import { useCurrentUser } from "@/components/providers/UserProvider";
 
 interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; }
 interface Job     { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
@@ -21,8 +22,10 @@ const MOCK_EVENTS = [
   { id: 3, day: "THU",      time: "3:00 PM", title: "Career Fair — Tech Track",        location: "Student Center",        color: "#f97316" },
 ];
 
-const CHAT_TABS  = ["Global", "University", "Private"];
-const NOTE_CATS  = ["All", "Trending", "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
+const CHAT_TABS = ["Global", "University", "Private"];
+const NOTE_CATS = ["All", "Trending", "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
+// null = no subject filter; index 1 = Trending sorts by downloads
+const NOTE_SUBJECTS: (string | null)[] = [null, null, "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
 
 // ─── Widgets ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +37,6 @@ function HeroBanner() {
     >
       <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
       <div className="absolute right-20 bottom-0 w-36 h-36 rounded-full bg-white/5 translate-y-1/3 pointer-events-none" />
-
       <div className="relative z-10">
         <h1 className="text-2xl font-bold text-white mb-2 leading-snug">
           Your university life,<br />all in one place.
@@ -70,11 +72,61 @@ function StatCard({ label, value, sub, icon: Icon, color }: { label: string; val
   );
 }
 
+function MessageList({ messages, loading }: { messages: ChatMsg[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex gap-3 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-[rgb(var(--muted))] flex-shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 bg-[rgb(var(--muted))] rounded w-1/3" />
+              <div className="h-2.5 bg-[rgb(var(--muted))] rounded w-3/4" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (messages.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-2 text-[rgb(var(--muted-fg))]">
+        <MessageCircle className="w-7 h-7 opacity-30" />
+        <p className="text-xs">No messages yet</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {messages.map(msg => (
+        <div key={msg.id} className="flex gap-3">
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {msg.sender?.avatar_url
+              ? <img src={msg.sender.avatar_url} alt="" className="w-full h-full object-cover" />
+              : (msg.sender?.full_name?.charAt(0).toUpperCase() ?? "?")}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-sm font-medium">{msg.sender?.full_name ?? "Unknown"}</span>
+              <span className="text-xs text-[rgb(var(--muted-fg))] ml-auto">{formatRelativeTime(msg.created_at)}</span>
+            </div>
+            <p className="text-xs text-[rgb(var(--muted-fg))] break-words">{msg.content}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CommHub({
-  messages, chatLoading, activeTab, setActiveTab,
+  globalMsgs, uniMsgs, privateMsgs, loading,
+  activeTab, setActiveTab,
 }: {
-  messages: ChatMsg[]; chatLoading: boolean; activeTab: number; setActiveTab: (i: number) => void;
+  globalMsgs: ChatMsg[]; uniMsgs: ChatMsg[]; privateMsgs: ChatMsg[];
+  loading: boolean; activeTab: number; setActiveTab: (i: number) => void;
 }) {
+  const currentMsgs = [globalMsgs, uniMsgs, privateMsgs][activeTab] ?? [];
+
   return (
     <div className="theme-card p-0 flex flex-col overflow-hidden">
       <div className="flex items-start justify-between p-4 pb-3">
@@ -90,8 +142,10 @@ function CommHub({
       <div className="flex items-center gap-1 px-4 pb-3 border-b border-[rgb(var(--border))]">
         {CHAT_TABS.map((t, i) => (
           <button key={t} onClick={() => setActiveTab(i)}
-            className={cn("flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors",
-              activeTab === i ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
+            className={cn("px-3 py-1 rounded-lg text-xs font-medium transition-colors",
+              activeTab === i
+                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
             {t}
           </button>
         ))}
@@ -100,37 +154,8 @@ function CommHub({
         </span>
       </div>
 
-      <div className="flex-1 p-4 space-y-4 min-h-[200px]">
-        {chatLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex gap-3 animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-[rgb(var(--muted))] flex-shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3 bg-[rgb(var(--muted))] rounded w-1/3" />
-                <div className="h-2.5 bg-[rgb(var(--muted))] rounded w-3/4" />
-              </div>
-            </div>
-          ))
-        ) : messages.length === 0 ? (
-          <p className="text-xs text-center text-[rgb(var(--muted-fg))] py-6">No messages yet — be the first!</p>
-        ) : (
-          messages.map(msg => (
-            <div key={msg.id} className="flex gap-3">
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                {msg.sender?.avatar_url
-                  ? <img src={msg.sender.avatar_url} alt="" className="w-full h-full object-cover" />
-                  : (msg.sender?.full_name?.charAt(0).toUpperCase() ?? "?")}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-medium">{msg.sender?.full_name ?? "Unknown"}</span>
-                  <span className="text-xs text-[rgb(var(--muted-fg))] ml-auto">{formatRelativeTime(msg.created_at)}</span>
-                </div>
-                <p className="text-xs text-[rgb(var(--muted-fg))] break-words">{msg.content}</p>
-              </div>
-            </div>
-          ))
-        )}
+      <div className="flex-1 p-4 min-h-[200px]">
+        <MessageList messages={currentMsgs} loading={loading} />
       </div>
 
       <div className="p-3 border-t border-[rgb(var(--border))]">
@@ -152,7 +177,6 @@ function JobPortal({ jobs, loading }: { jobs: Job[]; loading: boolean }) {
           View all <ChevronRight className="w-3 h-3" />
         </Link>
       </div>
-
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
@@ -224,7 +248,9 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm">The Library</span>
-          <span className="text-xs text-[rgb(var(--muted-fg))]">Trending Notes</span>
+          <span className="text-xs text-[rgb(var(--muted-fg))]">
+            {activeTab === 1 ? "Trending Notes" : NOTE_CATS[activeTab]}
+          </span>
         </div>
         <Link href="/notes/upload"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[rgb(var(--muted))] text-xs font-medium hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))] transition-colors">
@@ -236,7 +262,9 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
         {NOTE_CATS.map((c, i) => (
           <button key={c} onClick={() => setActiveTab(i)}
             className={cn("px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0",
-              activeTab === i ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
+              activeTab === i
+                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
             {c}
           </button>
         ))}
@@ -249,7 +277,11 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
       ) : notes.length === 0 ? (
         <div className="text-center py-8">
           <BookOpen className="w-8 h-8 text-[rgb(var(--muted-fg))] mx-auto mb-2" />
-          <p className="text-xs text-[rgb(var(--muted-fg))]">No notes yet — be the first to upload!</p>
+          <p className="text-xs text-[rgb(var(--muted-fg))]">
+            {NOTE_SUBJECTS[activeTab]
+              ? `No ${NOTE_CATS[activeTab]} notes yet`
+              : "No notes yet — be the first to upload!"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -330,7 +362,6 @@ function UniAIWidget({ onClose }: { onClose: () => void }) {
           <X className="w-4 h-4 text-[rgb(var(--muted-fg))]" />
         </button>
       </div>
-
       <div className="p-4">
         <p className="text-xs text-[rgb(var(--fg))] leading-relaxed">
           Hi! I&apos;m here to help with your studies, career prep, and more. Ask me anything!
@@ -352,45 +383,118 @@ function UniAIWidget({ onClose }: { onClose: () => void }) {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
-  const [notes, setNotes]           = useState<Note[]>([]);
-  const [jobs, setJobs]             = useState<Job[]>([]);
-  const [chatMessages, setChatMsgs] = useState<ChatMsg[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [chatLoading, setChatLoad]  = useState(true);
-  const [chatTab, setChatTab]       = useState(1);
-  const [noteTab, setNoteTab]       = useState(1);
-  const [showAI, setShowAI]         = useState(true);
+  const { userId, universityId, loaded } = useCurrentUser();
 
+  const [notes, setNotes]             = useState<Note[]>([]);
+  const [jobs, setJobs]               = useState<Job[]>([]);
+  const [globalMsgs, setGlobalMsgs]   = useState<ChatMsg[]>([]);
+  const [uniMsgs, setUniMsgs]         = useState<ChatMsg[]>([]);
+  const [privateMsgs, setPrivateMsgs] = useState<ChatMsg[]>([]);
+  const [jobsLoading, setJobsLoading]   = useState(true);
+  const [chatLoading, setChatLoading]   = useState(true);
+  const [notesLoading, setNotesLoading] = useState(true);
+  const [chatTab, setChatTab] = useState(0);
+  const [noteTab, setNoteTab] = useState(1);
+  const [showAI, setShowAI]   = useState(true);
+
+  // Jobs — fetched once
   useEffect(() => {
     const supabase = createClient();
     (async () => {
-      const [{ data: nd }, { data: jd }] = await Promise.all([
-        supabase.from("notes").select("id, title, subject, downloads, upvotes").eq("status", "published").order("downloads", { ascending: false }).limit(4),
-        supabase.from("jobs").select("id, title, company_name, type, city, is_remote").eq("status", "active").order("is_featured", { ascending: false }).order("created_at", { ascending: false }).limit(3),
-      ]);
-      setNotes((nd as Note[]) ?? []);
-      setJobs((jd as Job[]) ?? []);
-      setLoading(false);
+      const { data } = await supabase
+        .from("jobs")
+        .select("id, title, company_name, type, city, is_remote")
+        .eq("status", "active")
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(3);
+      setJobs((data as Job[]) ?? []);
+      setJobsLoading(false);
     })();
   }, []);
 
+  // Chat — fetch all three channel types once user is loaded
   useEffect(() => {
+    if (!loaded || !userId) return;
     const supabase = createClient();
+
+    const fetchMsgs = async (channelId: string): Promise<ChatMsg[]> => {
+      const { data } = await supabase
+        .from("messages")
+        .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url)")
+        .eq("channel_id", channelId)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return (data as unknown as ChatMsg[] ?? []).reverse();
+    };
+
     (async () => {
-      const { data: chan } = await supabase.from("channels").select("id").eq("type", "global").single();
-      if (chan) {
-        const { data: msgs } = await supabase
+      // 1. Global channel
+      const { data: globalChan } = await supabase
+        .from("channels").select("id").eq("type", "global").single();
+      if (globalChan) {
+        fetchMsgs(globalChan.id).then(setGlobalMsgs);
+      }
+
+      // 2. University channel
+      if (universityId) {
+        const { data: uniChan } = await supabase
+          .from("channels").select("id")
+          .eq("type", "university")
+          .eq("university_id", universityId)
+          .single();
+        if (uniChan) {
+          fetchMsgs(uniChan.id).then(setUniMsgs);
+        }
+      }
+
+      // 3. Private / DM channels
+      const { data: dmChans } = await supabase
+        .from("channels").select("id")
+        .eq("type", "dm")
+        .or(`dm_user_a.eq.${userId},dm_user_b.eq.${userId}`)
+        .limit(10);
+      if (dmChans && dmChans.length > 0) {
+        const ids = dmChans.map(d => d.id);
+        const { data: dmMsgs } = await supabase
           .from("messages")
           .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url)")
-          .eq("channel_id", chan.id)
+          .in("channel_id", ids)
           .eq("is_deleted", false)
           .order("created_at", { ascending: false })
           .limit(5);
-        if (msgs) setChatMsgs((msgs as unknown as ChatMsg[]).reverse());
+        if (dmMsgs) setPrivateMsgs((dmMsgs as unknown as ChatMsg[]).reverse());
       }
-      setChatLoad(false);
+
+      setChatLoading(false);
     })();
-  }, []);
+  }, [loaded, userId, universityId]);
+
+  // Notes — re-fetch whenever the category tab changes
+  useEffect(() => {
+    const supabase = createClient();
+    setNotesLoading(true);
+    (async () => {
+      const subject = NOTE_SUBJECTS[noteTab];
+      let q = supabase
+        .from("notes")
+        .select("id, title, subject, downloads, upvotes")
+        .eq("status", "published");
+
+      if (subject) {
+        q = q.ilike("subject", `%${subject}%`);
+      }
+
+      q = noteTab === 0
+        ? q.order("created_at", { ascending: false })  // All  → newest first
+        : q.order("downloads", { ascending: false });   // Trending / subject → most downloaded
+
+      const { data } = await q.limit(4);
+      setNotes((data as Note[]) ?? []);
+      setNotesLoading(false);
+    })();
+  }, [noteTab]);
 
   return (
     <div className="relative">
@@ -407,16 +511,19 @@ export default function FeedPage() {
 
         {/* Row 2: Comm Hub + Jobs / CV */}
         <div className="lg:col-span-2">
-          <CommHub messages={chatMessages} chatLoading={chatLoading} activeTab={chatTab} setActiveTab={setChatTab} />
+          <CommHub
+            globalMsgs={globalMsgs} uniMsgs={uniMsgs} privateMsgs={privateMsgs}
+            loading={chatLoading} activeTab={chatTab} setActiveTab={setChatTab}
+          />
         </div>
         <div className="flex flex-col gap-4">
-          <JobPortal jobs={jobs} loading={loading} />
+          <JobPortal jobs={jobs} loading={jobsLoading} />
           <CVWidget />
         </div>
 
         {/* Row 3: Library + Calendar */}
         <div className="lg:col-span-2">
-          <LibraryWidget notes={notes} loading={loading} activeTab={noteTab} setActiveTab={setNoteTab} />
+          <LibraryWidget notes={notes} loading={notesLoading} activeTab={noteTab} setActiveTab={setNoteTab} />
         </div>
         <div><CalendarWidget /></div>
       </motion.div>

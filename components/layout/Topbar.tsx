@@ -115,9 +115,15 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         <span className="text-sm font-semibold leading-tight text-[rgb(var(--fg))]">
           {greeting()}{firstName ? `, ${firstName}` : ""}
         </span>
-        <span className="text-xs text-[rgb(var(--muted-fg))] leading-tight mt-0.5">
-          You have 3 things due this week
-        </span>
+        {unreadCount > 0 ? (
+          <span className="text-xs text-[rgb(var(--muted-fg))] leading-tight mt-0.5">
+            {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
+          </span>
+        ) : (
+          <span className="text-xs text-[rgb(var(--muted-fg))] leading-tight mt-0.5">
+            You&apos;re all caught up!
+          </span>
+        )}
       </div>
 
       {/* Search */}
