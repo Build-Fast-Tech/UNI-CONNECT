@@ -27,6 +27,7 @@ export type Database = {
           updated_at: string;
           total_hours_studied: number;
           gpa_scale: string;
+          semester_end_date: string | null;
         };
         Insert: {
           id: string;
@@ -73,6 +74,7 @@ export type Database = {
           last_active_at?: string | null;
           total_hours_studied?: number;
           gpa_scale?: string;
+          semester_end_date?: string | null;
         };
         Relationships: [
           { foreignKeyName: "profiles_university_id_fkey", columns: ["university_id"], isOneToOne: false, referencedRelation: "universities", referencedColumns: ["id"] },
@@ -555,6 +557,63 @@ export type Database = {
           grade: number; max_grade?: number; weight?: number; created_at?: string;
         };
         Update: { name?: string; grade?: number; max_grade?: number; weight?: number; };
+        Relationships: [];
+      };
+      societies: {
+        Row: {
+          id: string; name: string; description: string | null;
+          university_id: string | null; admin_id: string | null;
+          official_email: string | null; logo_url: string | null; cover_url: string | null;
+          category: string; status: "pending" | "approved" | "rejected" | "suspended";
+          member_count: number; rejection_note: string | null;
+          reviewed_by: string | null; reviewed_at: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; name: string; description?: string | null;
+          university_id?: string | null; admin_id?: string | null;
+          official_email?: string | null; logo_url?: string | null; cover_url?: string | null;
+          category?: string; status?: "pending" | "approved" | "rejected" | "suspended";
+          member_count?: number; rejection_note?: string | null; created_at?: string;
+        };
+        Update: {
+          name?: string; description?: string | null; official_email?: string | null;
+          logo_url?: string | null; cover_url?: string | null; category?: string;
+          status?: "pending" | "approved" | "rejected" | "suspended";
+          member_count?: number; rejection_note?: string | null;
+          reviewed_by?: string | null; reviewed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      society_members: {
+        Row: { id: string; society_id: string; user_id: string; role: string; joined_at: string; };
+        Insert: { id?: string; society_id: string; user_id: string; role?: string; joined_at?: string; };
+        Update: { role?: string; };
+        Relationships: [];
+      };
+      society_posts: {
+        Row: {
+          id: string; society_id: string; author_id: string; title: string | null;
+          content: string; type: string; event_date: string | null; image_url: string | null;
+          likes: number; is_pinned: boolean; created_at: string;
+        };
+        Insert: {
+          id?: string; society_id: string; author_id: string; title?: string | null;
+          content: string; type?: string; event_date?: string | null; image_url?: string | null;
+          likes?: number; is_pinned?: boolean; created_at?: string;
+        };
+        Update: { title?: string | null; content?: string; type?: string; event_date?: string | null; likes?: number; is_pinned?: boolean; };
+        Relationships: [];
+      };
+      personal_events: {
+        Row: {
+          id: string; user_id: string; title: string; description: string | null;
+          event_date: string; color: string; notify_before_minutes: number; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; title: string; description?: string | null;
+          event_date: string; color?: string; notify_before_minutes?: number; created_at?: string;
+        };
+        Update: { title?: string; description?: string | null; event_date?: string; color?: string; notify_before_minutes?: number; };
         Relationships: [];
       };
     };

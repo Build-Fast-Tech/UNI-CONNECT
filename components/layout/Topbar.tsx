@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useInboxNotifications } from "@/lib/hooks/useInboxNotifications";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useRouter } from "next/navigation";
 
 interface Result {
@@ -21,6 +22,91 @@ interface Result {
 
 interface TopbarProps {
   onMenuClick?: () => void;
+}
+
+interface Notification {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  is_read: boolean;
+  created_at: string;
+}
+
+function NotificationDropdown({ userId }: { userId: string | null }) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    const supabase = createClient();
+    supabase
+      .from("notifications")
+      .select("id, type, payload, is_read, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        setNotifications((data as Notification[]) ?? []);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  function notifIcon(type: string) {
+    const icons: Record<string, string> = {
+      message: "💬", job_application: "💼", note_upvote: "⭐",
+      follow: "👋", system: "🔔",
+    };
+    return icons[type] ?? "🔔";
+  }
+
+  function notifText(n: Notification): string {
+    const p = n.payload as Record<string, string>;
+    if (n.type === "message") return p.message ?? "You have a new message";
+    if (n.type === "note_upvote") return `Someone upvoted your note: ${p.title ?? ""}`;
+    if (n.type === "job_application") return `Application update: ${p.job_title ?? ""}`;
+    return p.message ?? n.type.replace(/_/g, " ");
+  }
+
+  return (
+    <div className="p-0">
+      <div className="px-4 py-3 border-b border-[rgb(var(--border))]">
+        <p className="font-semibold text-sm">Notifications</p>
+      </div>
+      {loading ? (
+        <div className="p-4 space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-10 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />)}
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <p className="text-2xl mb-2">🔔</p>
+          <p className="text-sm text-[rgb(var(--muted-fg))]">No notifications yet</p>
+        </div>
+      ) : (
+        <div>
+          {notifications.map(n => (
+            <div key={n.id} className={cn(
+              "flex items-start gap-3 px-4 py-3 hover:bg-[rgb(var(--muted))] transition-colors cursor-default",
+              !n.is_read && "bg-[rgb(var(--primary)/0.05)]"
+            )}>
+              <span className="text-xl flex-shrink-0">{notifIcon(n.type)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm leading-snug">{notifText(n)}</p>
+                <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-0.5">
+                  {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
+                  {" · "}
+                  {new Date(n.created_at).toLocaleDateString("en-PK", { month: "short", day: "numeric" })}
+                </p>
+              </div>
+              {!n.is_read && <span className="w-2 h-2 rounded-full bg-[rgb(var(--primary))] flex-shrink-0 mt-1.5" />}
+            </div>
+          ))}
+          <div className="px-4 py-3 border-t border-[rgb(var(--border))]">
+            <Link href="/inbox" className="text-xs text-[rgb(var(--primary))] hover:underline">View all notifications →</Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function greeting() {
@@ -198,23 +284,35 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       {/* Right actions */}
       <div className="ml-auto flex items-center gap-2 flex-shrink-0">
         <ThemeSwitcher />
-        <Link
-          href="/inbox"
-          onClick={() => markAllRead()}
-          className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors"
-          aria-label={unreadCount > 0 ? `Inbox (${unreadCount} unread)` : "Inbox"}
-        >
-          <Bell className="w-5 h-5 text-[rgb(var(--muted-fg))]" />
-          {unreadCount > 0 && (
-            <span className={cn(
-              "absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full",
-              "bg-[rgb(var(--destructive))] text-white text-[10px] font-bold",
-              "flex items-center justify-center leading-none shadow"
-            )}>
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </Link>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              className="relative p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors"
+              aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
+              onClick={() => markAllRead()}
+            >
+              <Bell className="w-5 h-5 text-[rgb(var(--muted-fg))]" />
+              {unreadCount > 0 && (
+                <span className={cn(
+                  "absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full",
+                  "bg-[rgb(var(--destructive))] text-white text-[10px] font-bold",
+                  "flex items-center justify-center leading-none shadow"
+                )}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={8}
+              className="z-50 w-80 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-2xl overflow-hidden"
+            >
+              <NotificationDropdown userId={userId} />
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
 
         {/* New Post button — desktop */}
         <Link

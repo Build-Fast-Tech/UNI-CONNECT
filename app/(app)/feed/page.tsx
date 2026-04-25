@@ -11,6 +11,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
+import { useAcademic } from "@/lib/hooks/useAcademic";
 
 interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; }
 interface Job     { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
@@ -85,29 +86,55 @@ function LiveNowTicker() {
 
 // ─── Widgets ──────────────────────────────────────────────────────────────────
 
-function HeroBanner() {
+function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, setDateInput, onSetDate }: {
+  daysLeft: number | null;
+  showDatePicker: boolean;
+  setShowDatePicker: (v: boolean) => void;
+  dateInput: string;
+  setDateInput: (v: string) => void;
+  onSetDate: (d: string) => void;
+}) {
   return (
     <div
       className="relative overflow-hidden rounded-2xl p-6 flex flex-col justify-between min-h-[186px]"
       style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 35%, #4f46e5 65%, #818cf8 100%)" }}
     >
+      {/* existing decorative circles */}
       <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
       <div className="absolute right-20 bottom-0 w-36 h-36 rounded-full bg-white/5 translate-y-1/3 pointer-events-none" />
       <div className="relative z-10">
         <h1 className="text-2xl font-bold text-white mb-2 leading-snug">
           Your university life,<br />all in one place.
         </h1>
-        <p className="text-white/70 text-sm mb-4 max-w-sm">
-          Connect, learn, and discover opportunities — built for Pakistani university students.
-        </p>
-        <div className="flex items-center gap-3">
+        {daysLeft !== null ? (
+          <p className="text-white/80 text-sm mb-3 flex items-center gap-2">
+            <span className="bg-white/20 px-2 py-0.5 rounded-lg font-bold text-white text-base">{daysLeft > 0 ? daysLeft : 0}</span>
+            {daysLeft > 0 ? "days until semester ends" : daysLeft === 0 ? "Semester ends today!" : "Semester has ended"}
+          </p>
+        ) : (
+          <p className="text-white/60 text-xs mb-3">Set your semester end date to see countdown</p>
+        )}
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href="/ai" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-700 font-semibold text-sm hover:bg-white/90 transition-colors shadow-md">
             Start Learning <ArrowRight className="w-4 h-4" />
           </Link>
           <Link href="/notes" className="px-4 py-2 rounded-xl border border-white/30 text-white text-sm font-medium hover:bg-white/10 transition-colors">
             Browse Notes
           </Link>
+          <button onClick={() => setShowDatePicker(!showDatePicker)} className="px-3 py-2 rounded-xl border border-white/20 text-white/70 text-xs hover:bg-white/10 transition-colors">
+            {daysLeft !== null ? "Change Date" : "Set Semester End"}
+          </button>
         </div>
+        {showDatePicker && (
+          <div className="mt-3 flex items-center gap-2">
+            <input type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
+              className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-white outline-none focus:border-white/40" />
+            <button onClick={() => { if (dateInput) { onSetDate(dateInput); setShowDatePicker(false); } }}
+              className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors">
+              Save
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -452,6 +479,9 @@ export default function FeedPage() {
   const [chatTab, setChatTab] = useState(0);
   const [noteTab, setNoteTab] = useState(1);
   const [showAI, setShowAI]   = useState(true);
+  const { daysLeft, setSemesterEnd } = useAcademic(userId);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateInput, setDateInput] = useState("");
   const [gpa, setGpa]                   = useState<number | null>(null);
   const [hoursThisWeek, setHoursThisWeek] = useState(0);
   const [applications, setApplications] = useState(0);
@@ -472,6 +502,15 @@ export default function FeedPage() {
       setHoursThisWeek(Math.round((mins / 60) * 10) / 10);
       setApplications(appsRes.count ?? 0);
     });
+
+    const studyLogSub = supabase
+      .channel(`feed-study-${userId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "study_logs", filter: `user_id=eq.${userId}` }, (payload) => {
+        const mins = (payload.new as { duration_minutes: number }).duration_minutes;
+        setHoursThisWeek(prev => Math.round((prev + mins / 60) * 10) / 10);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(studyLogSub); };
   }, [loaded, userId]);
 
   // Jobs — fetched once
@@ -580,7 +619,7 @@ export default function FeedPage() {
         className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Row 1: Hero + Stats */}
-        <div className="lg:col-span-2"><HeroBanner /></div>
+        <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} /></div>
         <div className="flex flex-col gap-4">
           <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="#6366f1" />
           <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="#10b981" />

@@ -8,7 +8,7 @@ import {
   Home, MessageSquare, Briefcase, BookOpen, Bot, Users,
   CalendarDays, GraduationCap, FileUser, ChevronDown, ChevronRight,
   Settings, X, ShieldCheck, User, MessageSquarePlus, Info,
-  Timer, BarChart3, TrendingUp,
+  Timer, BarChart3, TrendingUp, Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: "/ai",           icon: Bot,           label: "UniAI Tutor", isNew: true },
+  { href: "/societies",    icon: Building,      label: "Societies" },
   { href: "/universities", icon: GraduationCap, label: "Universities" },
   { href: "/feed",         icon: Users,         label: "Clubs & Events" },
   { href: "/feed",         icon: CalendarDays,  label: "Calendar" },
@@ -210,19 +211,34 @@ function SidebarContent({
       {/* Bottom items */}
       <div className="px-2 pt-2 border-t border-[rgb(var(--border))] mt-1 space-y-0.5">
         {isAdmin && (
-          <Link
-            href="/admin/employers"
-            onClick={onLinkClick}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
-              isActive("/admin", "Admin")
-                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
-                : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
-            )}
-          >
-            <ShieldCheck className="w-5 h-5 flex-shrink-0" />
-            Admin
-          </Link>
+          <>
+            <Link
+              href="/admin/employers"
+              onClick={onLinkClick}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                isActive("/admin/employers", "Admin Employers")
+                  ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                  : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
+              )}
+            >
+              <ShieldCheck className="w-5 h-5 flex-shrink-0" />
+              Employers
+            </Link>
+            <Link
+              href="/admin/societies"
+              onClick={onLinkClick}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                isActive("/admin/societies", "Admin Societies")
+                  ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                  : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
+              )}
+            >
+              <Building className="w-5 h-5 flex-shrink-0" />
+              Societies
+            </Link>
+          </>
         )}
         {BOTTOM_ITEMS.map(item => {
           const active = isActive(item.href, item.label);
