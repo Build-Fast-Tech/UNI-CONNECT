@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Palette, Lock, Bell, Trash2, Eye, EyeOff, CheckCircle,
-  AlertTriangle, User, LogOut,
+  AlertTriangle, User, LogOut, AtSign, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -20,16 +20,29 @@ const THEMES = [
 type ThemeId = typeof THEMES[number]["id"];
 
 const SECTIONS = [
+  { id: "username",   label: "Username",    icon: AtSign },
   { id: "appearance", label: "Appearance",  icon: Palette },
   { id: "security",   label: "Security",    icon: Lock },
   { id: "account",    label: "Account",     icon: User },
 ];
 
+const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
+
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [activeSection, setActiveSection] = useState("appearance");
+  const [activeSection, setActiveSection] = useState("username");
   const [currentTheme, setCurrentTheme] = useState<ThemeId>("midnight");
+
+  // Username
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSuccess, setUsernameSuccess] = useState(false);
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
 
   // Security
   const [currentPass, setCurrentPass] = useState("");
@@ -49,6 +62,68 @@ export default function SettingsPage() {
     const saved = (document.documentElement.dataset.theme as ThemeId) || "midnight";
     setCurrentTheme(saved);
   }, []);
+
+  // Load current username
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setMyUserId(user.id);
+      const { data } = await supabase.from("profiles").select("username").eq("id", user.id).single();
+      if (data?.username) {
+        setCurrentUsername(data.username);
+        setUsernameInput(data.username);
+      }
+    })();
+  }, []);
+
+  const handleUsernameInput = async (value: string) => {
+    const lower = value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsernameInput(lower);
+    setUsernameError("");
+    setUsernameAvailable(null);
+    setUsernameSuccess(false);
+
+    if (!lower || lower === currentUsername) return;
+
+    if (!USERNAME_REGEX.test(lower)) {
+      setUsernameError("3–20 chars, only lowercase letters, numbers, and underscores.");
+      return;
+    }
+
+    setUsernameChecking(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", lower)
+      .single();
+    setUsernameChecking(false);
+    setUsernameAvailable(!data);
+    if (data) setUsernameError("That username is already taken.");
+  };
+
+  const handleSaveUsername = async () => {
+    if (!myUserId || !usernameInput) return;
+    if (!USERNAME_REGEX.test(usernameInput)) return;
+    if (usernameInput === currentUsername) return;
+    if (!usernameAvailable) return;
+
+    setUsernameSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username: usernameInput })
+      .eq("id", myUserId);
+    setUsernameSaving(false);
+
+    if (error) {
+      setUsernameError(error.message.includes("unique") ? "That username is already taken." : error.message);
+    } else {
+      setCurrentUsername(usernameInput);
+      setUsernameAvailable(null);
+      setUsernameSuccess(true);
+      setTimeout(() => setUsernameSuccess(false), 3000);
+    }
+  };
 
   const applyTheme = async (theme: ThemeId) => {
     document.documentElement.dataset.theme = theme;
@@ -147,6 +222,97 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
+            {/* ── Username ── */}
+            {activeSection === "username" && (
+              <motion.div
+                key="username"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.2 }}
+                className="theme-card p-6 space-y-5"
+              >
+                <div>
+                  <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                    <AtSign className="w-4 h-4 text-[rgb(var(--primary))]" />
+                    Your Username
+                  </h2>
+                  <p className="text-sm text-[rgb(var(--muted-fg))]">
+                    Pick a unique @handle. Others can search for you by this name.
+                    Only lowercase letters, numbers, and underscores. 3–20 characters.
+                  </p>
+                </div>
+
+                {currentUsername && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">
+                    <span className="text-[rgb(var(--muted-fg))]">Current:</span>
+                    <span className="font-mono font-semibold text-[rgb(var(--primary))]">@{currentUsername}</span>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">New Username</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted-fg))] font-mono text-sm select-none">@</span>
+                    <input
+                      type="text"
+                      value={usernameInput}
+                      onChange={e => handleUsernameInput(e.target.value)}
+                      maxLength={20}
+                      placeholder="your_username"
+                      className="w-full h-10 pl-7 pr-10 rounded-xl text-sm font-mono bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {usernameChecking && <Loader2 className="w-4 h-4 animate-spin text-[rgb(var(--muted-fg))]" />}
+                      {!usernameChecking && usernameAvailable === true && usernameInput && (
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      )}
+                      {!usernameChecking && usernameAvailable === false && (
+                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                      )}
+                    </span>
+                  </div>
+                  {usernameError && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {usernameError}
+                    </p>
+                  )}
+                  {usernameAvailable && !usernameError && (
+                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 flex-shrink-0" /> @{usernameInput} is available!
+                    </p>
+                  )}
+                  {usernameSuccess && (
+                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 flex-shrink-0" /> Username saved!
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="md"
+                  loading={usernameSaving}
+                  disabled={
+                    !usernameInput ||
+                    usernameInput === currentUsername ||
+                    !usernameAvailable ||
+                    usernameSaving
+                  }
+                  onClick={handleSaveUsername}
+                >
+                  Save Username
+                </Button>
+
+                <div className="pt-2 border-t border-[rgb(var(--border))]">
+                  <p className="text-xs text-[rgb(var(--muted-fg))] leading-relaxed">
+                    Your username is how people find you in search. It appears as <span className="font-mono text-[rgb(var(--fg))]">@{usernameInput || "you"}</span> on your profile and in messages.
+                    You can change it at any time as long as the new name is available.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (
               <motion.div

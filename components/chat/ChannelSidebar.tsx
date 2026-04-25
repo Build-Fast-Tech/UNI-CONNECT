@@ -39,12 +39,25 @@ function writePins(uid: string, pins: Set<string>) {
   try { localStorage.setItem(PINS_KEY(uid), JSON.stringify([...pins])); } catch {}
 }
 
+function StatusDot({ online, isDm }: { online: boolean; isDm: boolean }) {
+  if (!isDm) return null;
+  return (
+    <span
+      className={cn(
+        "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[rgb(var(--card))]",
+        online ? "bg-blue-500 shadow-[0_0_6px_1px_rgba(59,130,246,0.8)]" : "bg-black"
+      )}
+    />
+  );
+}
+
 function ChannelRow({
   channel, icon, active, pinned, onPinToggle, onLinkClick, isOnline,
 }: {
   channel: Channel; icon: React.ReactNode; active: boolean; pinned: boolean;
   onPinToggle: (id: string) => void; onLinkClick?: () => void; isOnline?: boolean;
 }) {
+  const isDm = channel.kind === "dm";
   return (
     <div className={cn("group relative", pinned && "bg-[rgb(var(--primary)/0.04)] rounded-xl")}>
       <Link
@@ -57,12 +70,10 @@ function ChannelRow({
             : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]",
         )}
       >
-        {/* Icon with optional online dot */}
+        {/* Icon with online/offline dot for DMs */}
         <span className="flex-shrink-0 relative">
           {icon}
-          {isOnline && (
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[rgb(var(--card))]" />
-          )}
+          <StatusDot online={!!isOnline} isDm={isDm} />
         </span>
 
         <div className="flex-1 min-w-0">
