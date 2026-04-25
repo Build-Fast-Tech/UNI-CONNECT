@@ -25,6 +25,8 @@ export type Database = {
           last_active_at: string | null;
           created_at: string;
           updated_at: string;
+          total_hours_studied: number;
+          gpa_scale: string;
         };
         Insert: {
           id: string;
@@ -47,6 +49,8 @@ export type Database = {
           theme?: string;
           is_verified?: boolean;
           last_active_at?: string | null;
+          total_hours_studied?: number;
+          gpa_scale?: string;
         };
         Update: {
           full_name?: string;
@@ -67,6 +71,8 @@ export type Database = {
           theme?: string;
           is_verified?: boolean;
           last_active_at?: string | null;
+          total_hours_studied?: number;
+          gpa_scale?: string;
         };
         Relationships: [
           { foreignKeyName: "profiles_university_id_fkey", columns: ["university_id"], isOneToOne: false, referencedRelation: "universities", referencedColumns: ["id"] },
@@ -480,6 +486,75 @@ export type Database = {
           is_read?: boolean;
           payload?: Record<string, unknown>;
         };
+        Relationships: [];
+      };
+      user_subjects: {
+        Row: {
+          id: string; user_id: string; name: string; color: string;
+          target_grade: number | null; current_grade: number | null;
+          credits: number; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; name: string; color?: string;
+          target_grade?: number | null; current_grade?: number | null;
+          credits?: number; created_at?: string;
+        };
+        Update: {
+          name?: string; color?: string; target_grade?: number | null;
+          current_grade?: number | null; credits?: number;
+        };
+        Relationships: [];
+      };
+      study_logs: {
+        Row: {
+          id: string; user_id: string; subject_id: string | null;
+          duration_minutes: number; timestamp: string;
+          is_group_session: boolean; session_code: string | null;
+          notes: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; subject_id?: string | null;
+          duration_minutes: number; timestamp?: string;
+          is_group_session?: boolean; session_code?: string | null;
+          notes?: string | null; created_at?: string;
+        };
+        Update: {
+          duration_minutes?: number; timestamp?: string;
+          is_group_session?: boolean; session_code?: string | null;
+          notes?: string | null;
+        };
+        Relationships: [];
+      };
+      tasks: {
+        Row: {
+          id: string; user_id: string; title: string;
+          description: string | null; due_date: string | null;
+          subject_id: string | null; completed: boolean;
+          priority: "low" | "medium" | "high"; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; title: string;
+          description?: string | null; due_date?: string | null;
+          subject_id?: string | null; completed?: boolean;
+          priority?: "low" | "medium" | "high"; created_at?: string;
+        };
+        Update: {
+          title?: string; description?: string | null; due_date?: string | null;
+          subject_id?: string | null; completed?: boolean;
+          priority?: "low" | "medium" | "high";
+        };
+        Relationships: [];
+      };
+      gpa_assignments: {
+        Row: {
+          id: string; user_id: string; subject_id: string; name: string;
+          grade: number; max_grade: number; weight: number; created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; subject_id: string; name: string;
+          grade: number; max_grade?: number; weight?: number; created_at?: string;
+        };
+        Update: { name?: string; grade?: number; max_grade?: number; weight?: number; };
         Relationships: [];
       };
     };

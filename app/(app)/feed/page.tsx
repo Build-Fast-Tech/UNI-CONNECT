@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Briefcase, TrendingUp, Upload, ArrowRight,
   Star, Bot, X, Sparkles, Send,
-  Download, Clock, FileText, ChevronRight, MessageCircle,
+  Download, Clock, FileText, ChevronRight, MessageCircle, Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +26,62 @@ const CHAT_TABS = ["Global", "University", "Private"];
 const NOTE_CATS = ["All", "Trending", "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
 // null = no subject filter; index 1 = Trending sorts by downloads
 const NOTE_SUBJECTS: (string | null)[] = [null, null, "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
+
+// ─── Live Now Ticker ──────────────────────────────────────────────────────────
+
+interface PresenceSession {
+  userId: string;
+  fullName: string;
+  subjectName: string;
+  secondsLeft: number;
+  phase: string;
+  sessionCode: string | null;
+}
+
+function LiveNowTicker() {
+  const [sessions, setSessions] = useState<PresenceSession[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const ch = supabase.channel("study-presence-feed");
+    ch.on("presence", { event: "sync" }, () => {
+      const raw = ch.presenceState<PresenceSession>();
+      setSessions(Object.values(raw).flat().filter(s => s.phase === "work"));
+    });
+    ch.subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  if (sessions.length === 0) return null;
+
+  return (
+    <div className="theme-card p-3 flex items-center gap-3 overflow-hidden">
+      <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold uppercase tracking-wider flex-shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        LIVE
+      </div>
+      <div className="flex-1 overflow-x-auto flex gap-6" style={{ scrollbarWidth: "none" }}>
+        {sessions.map((s, i) => (
+          <div key={i} className="flex items-center gap-2 flex-shrink-0 text-xs">
+            <span className="text-[rgb(var(--fg))]">
+              <span className="font-semibold">{s.fullName}</span>
+              {" is studying "}
+              <span className="text-[rgb(var(--primary))]">{s.subjectName}</span>
+              {" — "}
+              {Math.floor(s.secondsLeft / 60)}:{String(s.secondsLeft % 60).padStart(2, "0")} remaining
+            </span>
+            <Link
+              href={`/study${s.sessionCode ? `?join=${s.sessionCode}` : ""}`}
+              className="px-2 py-0.5 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors flex-shrink-0"
+            >
+              Join
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ─── Widgets ──────────────────────────────────────────────────────────────────
 
@@ -396,6 +452,27 @@ export default function FeedPage() {
   const [chatTab, setChatTab] = useState(0);
   const [noteTab, setNoteTab] = useState(1);
   const [showAI, setShowAI]   = useState(true);
+  const [gpa, setGpa]                   = useState<number | null>(null);
+  const [hoursThisWeek, setHoursThisWeek] = useState(0);
+  const [applications, setApplications] = useState(0);
+
+  // Real-time stats
+  useEffect(() => {
+    if (!loaded || !userId) return;
+    const supabase = createClient();
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    Promise.all([
+      supabase.from("profiles").select("cgpa").eq("id", userId).single(),
+      supabase.from("study_logs").select("duration_minutes").eq("user_id", userId).gte("timestamp", weekAgo.toISOString()),
+      supabase.from("job_applications").select("id", { count: "exact", head: true }).eq("applicant_id", userId),
+    ]).then(([profileRes, logsRes, appsRes]) => {
+      if (profileRes.data?.cgpa) setGpa(Number(profileRes.data.cgpa));
+      const rows = (logsRes.data as { duration_minutes: number }[] | null) ?? [];
+      const mins = rows.reduce((s, r) => s + r.duration_minutes, 0);
+      setHoursThisWeek(Math.round((mins / 60) * 10) / 10);
+      setApplications(appsRes.count ?? 0);
+    });
+  }, [loaded, userId]);
 
   // Jobs — fetched once
   useEffect(() => {
@@ -497,16 +574,17 @@ export default function FeedPage() {
   }, [noteTab]);
 
   return (
-    <div className="relative">
+    <div className="relative space-y-4">
+      <LiveNowTicker />
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Row 1: Hero + Stats */}
         <div className="lg:col-span-2"><HeroBanner /></div>
         <div className="flex flex-col gap-4">
-          <StatCard label="GPA This Term"  value="0.00" sub="not set yet"        icon={TrendingUp} color="#6366f1" />
-          <StatCard label="Hours Studied"  value="0h"   sub="this week"          icon={Clock}      color="#10b981" />
-          <StatCard label="Applications"   value="0"    sub="none submitted yet" icon={Briefcase}  color="#f97316" />
+          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="#6366f1" />
+          <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="#10b981" />
+          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
         </div>
 
         {/* Row 2: Comm Hub + Jobs / CV */}

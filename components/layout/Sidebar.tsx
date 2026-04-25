@@ -8,6 +8,7 @@ import {
   Home, MessageSquare, Briefcase, BookOpen, Bot, Users,
   CalendarDays, GraduationCap, FileUser, ChevronDown, ChevronRight,
   Settings, X, ShieldCheck, User, MessageSquarePlus, Info,
+  Timer, BarChart3, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -34,6 +35,14 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: "/notes",        icon: BookOpen,      label: "Library" },
+  { href: "/study",        icon: Timer,         label: "Study Center" },
+  {
+    href: "#",             icon: BarChart3,     label: "GPA & Analytics",
+    children: [
+      { href: "/gpa",              icon: TrendingUp, label: "GPA Manager" },
+      { href: "/study/analytics",  icon: BarChart3,  label: "Subject Mastery" },
+    ],
+  },
   { href: "/ai",           icon: Bot,           label: "UniAI Tutor", isNew: true },
   { href: "/universities", icon: GraduationCap, label: "Universities" },
   { href: "/feed",         icon: Users,         label: "Clubs & Events" },

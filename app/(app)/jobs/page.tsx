@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
@@ -48,10 +49,12 @@ function daysLeft(deadline: string | null) {
 
 export default function JobsPage() {
   const supabase = createClient();
+  const { userId } = useCurrentUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Job["type"] | "all">("all");
+  const [cvSkills, setCvSkills] = useState<string[]>([]);
 
   useEffect(() => {
     supabase
@@ -65,6 +68,26 @@ export default function JobsPage() {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("cvs")
+      .select("skills")
+      .eq("user_id", userId)
+      .single()
+      .then(({ data }) => { if (data?.skills) setCvSkills(data.skills as string[]); });
+  }, [userId]);
+
+  const recommendedJobs = useMemo(() => {
+    if (!cvSkills.length) return [];
+    return jobs.filter(job => {
+      const jobSkills = ((job.required_skills as string[]) ?? []).map(s => s.toLowerCase());
+      return cvSkills.some(skill =>
+        jobSkills.some(js => js.includes(skill.toLowerCase()) || skill.toLowerCase().includes(js))
+      );
+    });
+  }, [jobs, cvSkills]);
 
   const filtered = useMemo(() => {
     return jobs.filter(j => {
@@ -173,6 +196,24 @@ export default function JobsPage() {
         </div>
       ) : (
         <>
+          {/* Recommended for You — shown when user has CV skills and no active filters */}
+          {!search && filter === "all" && recommendedJobs.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+                  Recommended for You
+                </h2>
+                <span className="text-xs text-[rgb(var(--muted-fg))]">Based on your CV skills</span>
+              </div>
+              <div className="space-y-3">
+                {recommendedJobs.slice(0, 3).map((job, i) => (
+                  <JobCard key={job.id + "-rec"} job={job} index={i} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {featured.length > 0 && (
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))] mb-3">
