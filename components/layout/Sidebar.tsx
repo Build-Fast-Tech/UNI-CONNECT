@@ -238,6 +238,19 @@ function SidebarContent({
               <Building className="w-5 h-5 flex-shrink-0" />
               Societies
             </Link>
+            <Link
+              href="/admin/feedback"
+              onClick={onLinkClick}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                isActive("/admin/feedback", "Admin Feedback")
+                  ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
+                  : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
+              )}
+            >
+              <MessageSquarePlus className="w-5 h-5 flex-shrink-0" />
+              Feedback
+            </Link>
           </>
         )}
         {BOTTOM_ITEMS.map(item => {

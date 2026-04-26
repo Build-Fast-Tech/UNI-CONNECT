@@ -75,6 +75,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [loading, setLoading] = useState(true);
   const [sendError, setSendError] = useState("");
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  // @mention
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionResults, setMentionResults] = useState<Array<{ id: string; full_name: string; username: string | null; avatar_url: string | null }>>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifSearch, setGifSearch] = useState("");
   const [gifResults, setGifResults] = useState<Array<{ id: string; url: string; preview: string }>>([]);
@@ -95,6 +99,38 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const subRef      = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const profileCache = useRef<Map<string, Profile>>(new Map());
+
+  // Mention notification sound
+  const playMentionSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = ctx.currentTime;
+      [660, 880].forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, now + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.35, now + i * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.12 + 0.35);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.4);
+      });
+    } catch {}
+  };
+
+  // Search profiles for @mention dropdown
+  const searchMentions = useCallback(async (query: string) => {
+    if (query.length < 1) { setMentionResults([]); return; }
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, username, avatar_url")
+      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+      .limit(6);
+    setMentionResults((data as any[]) ?? []);
+    setMentionIndex(0);
+  }, [supabase]);
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -239,6 +275,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             sender,
           };
 
+          // Play mention sound if the current user is @mentioned and didn't send it
+          if (
+            myName &&
+            row.sender_id !== userId &&
+            row.content &&
+            row.content.toLowerCase().includes(`@${myName.split(" ")[0].toLowerCase()}`)
+          ) {
+            playMentionSound();
+          }
+
           setMessages(prev => {
             // Dedupe: ignore if we already appended optimistically.
             if (prev.some(m => m.id === row.id)) return prev;
@@ -332,11 +378,39 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     });
   };
 
+  const insertMention = (name: string) => {
+    // Replace the @query at the cursor with @FullName
+    const at = input.lastIndexOf("@");
+    if (at === -1) return;
+    const before = input.slice(0, at);
+    const after  = input.slice(at).replace(/^@\S*/, "");
+    const newVal = `${before}@${name} ${after}`;
+    setInput(newVal);
+    setMentionQuery(null);
+    setMentionResults([]);
+    textareaRef.current?.focus();
+    resizeTextarea();
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
     resizeTextarea();
 
-    if (e.target.value.trim().length > 0) {
+    // Detect @mention
+    const cursorPos = e.target.selectionStart ?? val.length;
+    const textBefore = val.slice(0, cursorPos);
+    const match = textBefore.match(/@(\w*)$/);
+    if (match) {
+      const q = match[1];
+      setMentionQuery(q);
+      searchMentions(q);
+    } else {
+      setMentionQuery(null);
+      setMentionResults([]);
+    }
+
+    if (val.trim().length > 0) {
       if (!typingStateRef.current) broadcastTyping(true); // only broadcast on first keystroke
       if (typingTimer.current) clearTimeout(typingTimer.current);
       typingTimer.current = setTimeout(() => broadcastTyping(false), 3000);
@@ -446,6 +520,18 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Navigate / select mention dropdown
+    if (mentionResults.length > 0 && mentionQuery !== null) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setMentionIndex(i => Math.min(i + 1, mentionResults.length - 1)); return; }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setMentionIndex(i => Math.max(i - 1, 0)); return; }
+      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+        e.preventDefault();
+        const m = mentionResults[mentionIndex];
+        if (m) insertMention(m.full_name);
+        return;
+      }
+      if (e.key === "Escape") { setMentionQuery(null); setMentionResults([]); return; }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -585,7 +671,19 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                 <span className="text-5xl">{msg.sticker_id}</span>
               ) : (
                 <p className="text-sm text-[rgb(var(--fg))] leading-relaxed whitespace-pre-wrap break-words">
-                  {msg.content}
+                  {msg.content.split(/(@\S+)/g).map((part, pi) =>
+                    part.startsWith("@") ? (
+                      <span key={pi}
+                        className={cn(
+                          "font-semibold px-1 rounded",
+                          myName && part.slice(1).toLowerCase() === myName.split(" ")[0].toLowerCase()
+                            ? "bg-[rgb(var(--primary)/0.2)] text-[rgb(var(--primary))]"
+                            : "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]"
+                        )}>
+                        {part}
+                      </span>
+                    ) : part
+                  )}
                 </p>
               )}
             </div>
@@ -691,6 +789,30 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             </div>
           </div>
         )}
+        {/* @Mention dropdown */}
+        {mentionQuery !== null && mentionResults.length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-[rgb(var(--bg))] border border-[rgb(var(--border))] rounded-2xl overflow-hidden shadow-xl z-40">
+            {mentionResults.map((u, i) => (
+              <button key={u.id} onMouseDown={e => { e.preventDefault(); insertMention(u.full_name); }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                  i === mentionIndex ? "bg-[rgb(var(--primary)/0.1)]" : "hover:bg-[rgb(var(--muted))]"
+                )}>
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                  {u.avatar_url
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    : u.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{u.full_name}</p>
+                  {u.username && <p className="text-xs text-[rgb(var(--muted-fg))]">@{u.username}</p>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Reply preview */}
         {replyToMessage && (
           <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-[rgb(var(--muted))] rounded-xl text-xs">
