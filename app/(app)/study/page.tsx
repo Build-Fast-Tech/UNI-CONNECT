@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, RotateCcw, Users, Copy, Plus, X, LogIn,
   Brain, Coffee, Zap, Timer, BarChart3, Settings, AlertCircle, CheckCircle2,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +16,11 @@ import { cn } from "@/lib/utils";
 interface UserSubject {
   id: string; name: string; color: string;
   target_grade: number | null; current_grade: number | null; credits: number;
+}
+interface StudyGroup {
+  id: string; name: string; description: string | null;
+  type: "permanent" | "temporary"; subject: string;
+  creator_id: string; created_at: string; expires_at: string | null;
 }
 interface LiveSession {
   userId: string; fullName: string; subjectName: string;
@@ -82,11 +88,21 @@ export default function StudyPage() {
   const { userId, fullName, loaded } = useCurrentUser();
   const supabase = createClient();
 
+  const [mainTab, setMainTab] = useState<"timer" | "private" | "groups">("timer");
   const [subjects, setSubjects] = useState<UserSubject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<UserSubject | null>(null);
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [groupMode, setGroupMode] = useState(false);
   const [joinCode, setJoinCode] = useState("");
+  // Study Groups
+  const [studyGroups, setStudyGroups] = useState<StudyGroup[]>([]);
+  const [groupSearch, setGroupSearch] = useState("");
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupType, setNewGroupType] = useState<"permanent" | "temporary">("permanent");
+  const [newGroupSubject, setNewGroupSubject] = useState("");
+  const [joinedGroupId, setJoinedGroupId] = useState<string | null>(null);
+  const [groupActiveCounts, setGroupActiveCounts] = useState<Record<string, number>>({});
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
@@ -229,6 +245,54 @@ export default function StudyPage() {
   const leaveGroup = () => { setSessionCode(null); setGroupMode(false); reset(); };
   const copyCode = () => { if (sessionCode) { navigator.clipboard.writeText(sessionCode); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
 
+  // ── Study Groups ──
+  useEffect(() => {
+    (supabase as any).from("study_groups").select("*").eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .then(({ data }: { data: StudyGroup[] | null }) => setStudyGroups(data ?? []));
+  }, []);
+
+  useEffect(() => {
+    if (!joinedGroupId || !userId || !fullName) return;
+    const ch = supabase.channel(`study-group-${joinedGroupId}`);
+    ch.on("presence", { event: "sync" }, () => {
+      const state = ch.presenceState<{ userId: string }>();
+      const count = Object.values(state).flat().length;
+      setGroupActiveCounts(p => ({ ...p, [joinedGroupId]: count }));
+    }).subscribe(async (status) => {
+      if (status === "SUBSCRIBED") await ch.track({ userId, fullName });
+    });
+    return () => { supabase.removeChannel(ch); };
+  }, [joinedGroupId, userId, fullName]);
+
+  const createStudyGroup = async () => {
+    if (!newGroupName.trim() || !userId) return;
+    const { data } = await (supabase as any).from("study_groups").insert({
+      name: newGroupName.trim(),
+      type: newGroupType,
+      subject: newGroupSubject.trim() || "General",
+      creator_id: userId,
+      is_active: true,
+      expires_at: newGroupType === "temporary"
+        ? new Date(Date.now() + 24 * 3600 * 1000).toISOString()
+        : null,
+    }).select().single();
+    if (data) {
+      setStudyGroups(p => [data as unknown as StudyGroup, ...p]);
+      setJoinedGroupId((data as unknown as StudyGroup).id);
+      setNewGroupName(""); setNewGroupSubject("");
+      setShowCreateGroup(false);
+    }
+  };
+
+  const toggleJoinGroup = (groupId: string) =>
+    setJoinedGroupId(joinedGroupId === groupId ? null : groupId);
+
+  const filteredGroups = studyGroups.filter(g =>
+    g.name.toLowerCase().includes(groupSearch.toLowerCase()) ||
+    g.subject.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
   const todayH = Math.floor(todayMinutes / 60);
   const todayM = todayMinutes % 60;
 
@@ -262,6 +326,25 @@ export default function StudyPage() {
               <BarChart3 className="w-4 h-4" /> Analytics
             </Link>
           </div>
+        </div>
+
+        {/* Main Tabs */}
+        <div className="flex gap-1 p-1 rounded-2xl bg-[rgb(var(--muted))]">
+          {([
+            { key: "timer",   label: "Pomodoro Timer" },
+            { key: "private", label: "Private Study Session" },
+            { key: "groups",  label: "Study Groups" },
+          ] as const).map(tab => (
+            <button key={tab.key} onClick={() => setMainTab(tab.key)}
+              className={cn(
+                "flex-1 py-2 rounded-xl text-sm font-medium transition-all",
+                mainTab === tab.key
+                  ? "bg-[rgb(var(--bg))] text-[rgb(var(--fg))] shadow-sm"
+                  : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+              )}>
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Timer Settings Panel */}
@@ -446,12 +529,13 @@ export default function StudyPage() {
             </div>
           </div>
 
-          {/* Right: group + live */}
+          {/* Right: private session + live */}
           <div className="lg:col-span-2 space-y-3">
-            {/* Group session */}
+            {/* Private Study Session — only on "private" tab */}
+            {mainTab === "private" && (
             <div className="theme-card p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="font-semibold text-sm flex items-center gap-1.5"><Users className="w-4 h-4 text-[rgb(var(--primary))]" /> Group Study</p>
+                <p className="font-semibold text-sm flex items-center gap-1.5"><Users className="w-4 h-4 text-[rgb(var(--primary))]" /> Private Study Session</p>
                 {groupMode && <button onClick={leaveGroup} className="text-xs text-red-400"><X className="w-3.5 h-3.5" /></button>}
               </div>
               {groupMode ? (
@@ -462,12 +546,12 @@ export default function StudyPage() {
                       {copied ? "✓" : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[11px] text-[rgb(var(--muted-fg))] text-center">Timers sync automatically</p>
+                  <p className="text-[11px] text-[rgb(var(--muted-fg))] text-center">Share this code — each member keeps their own timer</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <button onClick={startGroup} className="w-full py-2 rounded-xl bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] text-sm font-semibold hover:bg-[rgb(var(--primary)/0.2)] transition-colors">
-                    Start Group Session
+                    Start Private Session
                   </button>
                   <div className="flex gap-2">
                     <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && joinGroup()}
@@ -480,6 +564,7 @@ export default function StudyPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Live Now */}
             <div className="theme-card p-4">
@@ -518,6 +603,112 @@ export default function StudyPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Study Groups Tab ── */}
+        {mainTab === "groups" && (
+          <div className="space-y-4">
+            {/* Search + Create */}
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
+                <input value={groupSearch} onChange={e => setGroupSearch(e.target.value)}
+                  placeholder="Search study groups…"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[rgb(var(--muted))] border border-[rgb(var(--border))] text-sm outline-none focus:border-[rgb(var(--primary))]" />
+              </div>
+              <button onClick={() => setShowCreateGroup(p => !p)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold">
+                <Plus className="w-4 h-4" /> New Group
+              </button>
+            </div>
+
+            {/* Create Group Form */}
+            <AnimatePresence>
+              {showCreateGroup && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <div className="theme-card p-4 space-y-3">
+                    <p className="font-semibold text-sm">Create Study Group</p>
+                    <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
+                      placeholder="Group name (e.g. CS401 Study Crew)"
+                      className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+                    <input value={newGroupSubject} onChange={e => setNewGroupSubject(e.target.value)}
+                      placeholder="Subject (e.g. Algorithms)"
+                      className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+                    <div className="flex gap-2">
+                      {(["permanent", "temporary"] as const).map(t => (
+                        <button key={t} onClick={() => setNewGroupType(t)}
+                          className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors capitalize",
+                            newGroupType === t ? "bg-[rgb(var(--primary))] text-white" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]")}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                    {newGroupType === "temporary" && (
+                      <p className="text-xs text-[rgb(var(--muted-fg))]">Temporary groups expire after 24 hours.</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={createStudyGroup} disabled={!newGroupName.trim()}
+                        className="flex-1 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40">Create</button>
+                      <button onClick={() => setShowCreateGroup(false)}
+                        className="px-4 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Group List */}
+            <div className="space-y-3">
+              {filteredGroups.length === 0 ? (
+                <div className="theme-card p-8 text-center text-[rgb(var(--muted-fg))]">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No study groups yet — create one above!</p>
+                </div>
+              ) : (
+                filteredGroups.map(group => (
+                  <div key={group.id} className={cn(
+                    "theme-card p-4 transition-all",
+                    joinedGroupId === group.id && "ring-2 ring-[rgb(var(--primary)/0.4)]"
+                  )}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-sm">{group.name}</p>
+                          <span className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide",
+                            group.type === "permanent"
+                              ? "bg-blue-500/10 text-blue-400"
+                              : "bg-amber-500/10 text-amber-400"
+                          )}>{group.type}</span>
+                        </div>
+                        <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">{group.subject}</p>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          {groupActiveCounts[group.id] ?? 0} active
+                        </div>
+                        <button onClick={() => toggleJoinGroup(group.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors",
+                            joinedGroupId === group.id
+                              ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                              : "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)]"
+                          )}>
+                          {joinedGroupId === group.id ? "Leave" : "Join"}
+                        </button>
+                      </div>
+                    </div>
+                    {group.expires_at && (
+                      <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-2">
+                        Expires: {new Date(group.expires_at).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );

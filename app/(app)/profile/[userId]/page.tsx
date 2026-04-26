@@ -5,7 +5,7 @@ import { use } from "react";
 import { motion } from "framer-motion";
 import {
   BookOpen, GitBranch, Link2, Globe, GraduationCap,
-  MapPin, Calendar, ExternalLink, UserCheck,
+  MapPin, Calendar, ExternalLink, UserCheck, MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -99,7 +99,7 @@ export default function PublicProfilePage({
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center flex-shrink-0">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+              <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" loading="lazy" />
             ) : (
               <span className="text-2xl font-bold text-white">{initials}</span>
             )}
@@ -113,10 +113,16 @@ export default function PublicProfilePage({
                   <p className="text-sm text-[rgb(var(--muted-fg))]">@{profile.username}</p>
                 )}
               </div>
-              {isOwnProfile && (
+              {isOwnProfile ? (
                 <Link href="/profile">
                   <button className="text-xs text-[rgb(var(--primary))] border border-[rgb(var(--primary)/0.3)] px-3 py-1.5 rounded-lg hover:bg-[rgb(var(--primary)/0.08)] transition-colors">
                     Edit profile
+                  </button>
+                </Link>
+              ) : (
+                <Link href={`/inbox?dm=${userId}`}>
+                  <button className="flex items-center gap-1.5 text-xs bg-[rgb(var(--primary))] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
+                    <MessageCircle className="w-3.5 h-3.5" /> Message
                   </button>
                 </Link>
               )}

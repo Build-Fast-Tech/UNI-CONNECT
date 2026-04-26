@@ -86,13 +86,14 @@ function LiveNowTicker() {
 
 // ─── Widgets ──────────────────────────────────────────────────────────────────
 
-function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, setDateInput, onSetDate }: {
+function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, setDateInput, onSetDate, subjectsToReview }: {
   daysLeft: number | null;
   showDatePicker: boolean;
   setShowDatePicker: (v: boolean) => void;
   dateInput: string;
   setDateInput: (v: string) => void;
   onSetDate: (d: string) => void;
+  subjectsToReview: number;
 }) {
   return (
     <div
@@ -133,6 +134,13 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
               className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors">
               Save
             </button>
+          </div>
+        )}
+        {subjectsToReview > 0 && (
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-white/90 text-xs font-medium">
+            <span className="text-amber-300">⚠</span>
+            <span><strong>{subjectsToReview}</strong> subject{subjectsToReview > 1 ? "s" : ""} need review (under 80%)</span>
+            <a href="/study/analytics" className="underline text-amber-200 hover:text-white ml-1">View →</a>
           </div>
         )}
       </div>
@@ -485,6 +493,7 @@ export default function FeedPage() {
   const [gpa, setGpa]                   = useState<number | null>(null);
   const [hoursThisWeek, setHoursThisWeek] = useState(0);
   const [applications, setApplications] = useState(0);
+  const [subjectsToReview, setSubjectsToReview] = useState(0);
 
   // Real-time stats
   useEffect(() => {
@@ -587,6 +596,19 @@ export default function FeedPage() {
     })();
   }, [loaded, userId, universityId]);
 
+  // Subjects needing review (mastery < 80%)
+  useEffect(() => {
+    if (!loaded || !userId) return;
+    const supabase = createClient();
+    supabase.from("user_subjects").select("id, current_grade").eq("user_id", userId)
+      .then(({ data }) => {
+        const count = (data ?? []).filter(
+          (s: { current_grade: number | null }) => s.current_grade === null || s.current_grade < 80
+        ).length;
+        setSubjectsToReview(count);
+      });
+  }, [loaded, userId]);
+
   // Notes — re-fetch whenever the category tab changes
   useEffect(() => {
     const supabase = createClient();
@@ -619,7 +641,7 @@ export default function FeedPage() {
         className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Row 1: Hero + Stats */}
-        <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} /></div>
+        <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} subjectsToReview={subjectsToReview} /></div>
         <div className="flex flex-col gap-4">
           <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="#6366f1" />
           <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="#10b981" />

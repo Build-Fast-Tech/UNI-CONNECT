@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu, Trash2 } from "lucide-react";
+import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu, Trash2, Reply, X as XIcon } from "lucide-react";
+import { filterProfanity } from "@/lib/utils/profanity";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
@@ -26,7 +27,18 @@ interface Message {
   created_at: string;
   sender_id: string;
   sender: Profile | null;
+  reply_to_id?: string | null;
+  gif_url?: string | null;
+  sticker_id?: string | null;
 }
+
+const STICKER_PACKS = [
+  { name: "Happy",       stickers: ["😊","😄","🥳","😎","🤩","😍","🥰","😂"] },
+  { name: "Study",       stickers: ["📚","✏️","🎓","💡","🔬","📝","🧠","⏰"] },
+  { name: "Celebration", stickers: ["🎉","🎊","🏆","🌟","✨","🎆","🎇","🥂"] },
+  { name: "Reactions",   stickers: ["👍","👎","❤️","💔","🔥","💯","👏","🤔"] },
+  { name: "Animals",     stickers: ["🐼","🦊","🐸","🦁","🐯","🦄","🐨","🦋"] },
+];
 
 interface Channel {
   id: string;
@@ -62,6 +74,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [onlineCount, setOnlineCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sendError, setSendError] = useState("");
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch] = useState("");
+  const [gifResults, setGifResults] = useState<Array<{ id: string; url: string; preview: string }>>([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [activeStickerPack, setActiveStickerPack] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // The @emoji-mart/data JSON shape is not exported as a type; `any` is the
   // type the Picker itself expects for its `data` prop.
@@ -327,6 +346,40 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     }
   };
 
+  const searchGifs = async (query: string) => {
+    if (!query.trim()) return;
+    setGifLoading(true);
+    try {
+      const key = process.env.NEXT_PUBLIC_GIPHY_API_KEY || "dc6zaTOxFJmzC";
+      const res  = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=9&rating=pg-13`);
+      const data = await res.json();
+      setGifResults((data.data ?? []).map((g: any) => ({
+        id: g.id, url: g.images.original.url, preview: g.images.fixed_height_small.url,
+      })));
+    } catch { setGifResults([]); }
+    setGifLoading(false);
+  };
+
+  const sendGif = async (url: string) => {
+    if (!userId || sending) return;
+    setSending(true); setShowGifPicker(false);
+    await (supabase as any).from("messages").insert({
+      channel_id: channelId, sender_id: userId, content: "📷 GIF",
+      gif_url: url, reply_to_id: replyToMessage?.id ?? null,
+    });
+    setReplyToMessage(null); setSending(false);
+  };
+
+  const sendSticker = async (stickerId: string) => {
+    if (!userId || sending) return;
+    setSending(true); setShowStickerPicker(false);
+    await (supabase as any).from("messages").insert({
+      channel_id: channelId, sender_id: userId, content: stickerId,
+      sticker_id: stickerId, reply_to_id: replyToMessage?.id ?? null,
+    });
+    setReplyToMessage(null); setSending(false);
+  };
+
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const content = input.trim();
@@ -341,15 +394,22 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       textareaRef.current.style.height = "auto";
     }
 
-    const { data: inserted, error } = await supabase
+    const filteredContent = (channel?.type === "global" || channel?.type === "university")
+      ? filterProfanity(content)
+      : content;
+
+    const { data: inserted, error } = await (supabase as any)
       .from("messages")
       .insert({
         channel_id: channelId,
         sender_id: userId,
-        content,
+        content: filteredContent,
+        reply_to_id: replyToMessage?.id ?? null,
       })
       .select("id, content, created_at, sender_id")
       .single();
+
+    setReplyToMessage(null);
 
     if (error) {
       setSendError(error.message);
@@ -511,19 +571,42 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                   </span>
                 </div>
               )}
-              <p className="text-sm text-[rgb(var(--fg))] leading-relaxed whitespace-pre-wrap break-words">
-                {msg.content}
-              </p>
+              {/* Reply-to context */}
+              {msg.reply_to_id && (
+                <div className="mb-1 pl-3 border-l-2 border-[rgb(var(--primary)/0.4)] text-xs text-[rgb(var(--muted-fg))] truncate">
+                  ↩ Replied to a message
+                </div>
+              )}
+              {/* Message body */}
+              {msg.gif_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={msg.gif_url} alt="GIF" loading="lazy" className="max-w-[240px] max-h-[180px] rounded-xl object-cover" />
+              ) : msg.sticker_id ? (
+                <span className="text-5xl">{msg.sticker_id}</span>
+              ) : (
+                <p className="text-sm text-[rgb(var(--fg))] leading-relaxed whitespace-pre-wrap break-words">
+                  {msg.content}
+                </p>
+              )}
             </div>
-            {msg.sender_id === userId && (
+            <div className="flex items-start gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all self-start mt-0.5">
               <button
-                onClick={() => handleDelete(msg.id)}
-                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))] transition-all self-start mt-0.5 flex-shrink-0"
-                title="Delete message"
+                onClick={() => setReplyToMessage(msg)}
+                className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+                title="Reply"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Reply className="w-3.5 h-3.5" />
               </button>
-            )}
+              {msg.sender_id === userId && (
+                <button
+                  onClick={() => handleDelete(msg.id)}
+                  className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))]"
+                  title="Delete message"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         ))}
 
@@ -548,6 +631,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
       {/* Input */}
       <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))] relative">
+        {/* Emoji picker */}
         {showEmojiPicker && emojiData && (
           <div ref={emojiPickerRef} className="absolute bottom-full right-3 mb-2 z-50">
             <EmojiPicker
@@ -557,6 +641,66 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               previewPosition="none"
               skinTonePosition="none"
             />
+          </div>
+        )}
+        {/* GIF picker */}
+        {showGifPicker && (
+          <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-[rgb(var(--bg))] border border-[rgb(var(--border))] rounded-2xl p-3 shadow-xl z-40">
+            <div className="flex gap-2 mb-3">
+              <input value={gifSearch} onChange={e => setGifSearch(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && searchGifs(gifSearch)}
+                placeholder="Search GIFs…"
+                className="flex-1 bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+              <button onClick={() => searchGifs(gifSearch)} className="px-3 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm">Search</button>
+            </div>
+            {gifLoading ? (
+              <p className="text-center text-xs text-[rgb(var(--muted-fg))] py-4">Loading…</p>
+            ) : gifResults.length === 0 ? (
+              <p className="text-center text-xs text-[rgb(var(--muted-fg))] py-4">Search for GIFs above</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-1.5">
+                {gifResults.map(gif => (
+                  <button key={gif.id} onClick={() => sendGif(gif.url)} className="rounded-xl overflow-hidden aspect-video hover:opacity-80 transition-opacity">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={gif.preview} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Sticker picker */}
+        {showStickerPicker && (
+          <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-[rgb(var(--bg))] border border-[rgb(var(--border))] rounded-2xl p-3 shadow-xl z-40">
+            <div className="flex gap-1 mb-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {STICKER_PACKS.map((pack, i) => (
+                <button key={pack.name} onClick={() => setActiveStickerPack(i)}
+                  className={cn("px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0",
+                    activeStickerPack === i ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]")}>
+                  {pack.name}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-8 gap-1">
+              {STICKER_PACKS[activeStickerPack].stickers.map(sticker => (
+                <button key={sticker} onClick={() => sendSticker(sticker)}
+                  className="text-2xl p-1.5 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors text-center">
+                  {sticker}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Reply preview */}
+        {replyToMessage && (
+          <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-[rgb(var(--muted))] rounded-xl text-xs">
+            <Reply className="w-3.5 h-3.5 text-[rgb(var(--primary))] flex-shrink-0" />
+            <span className="text-[rgb(var(--muted-fg))] truncate flex-1">
+              Replying to <strong>{replyToMessage.sender?.full_name ?? "Unknown"}</strong>: {replyToMessage.content.slice(0, 60)}
+            </span>
+            <button onClick={() => setReplyToMessage(null)} className="flex-shrink-0 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
         {sendError && (
@@ -585,6 +729,18 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               className="flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] resize-none focus:outline-none leading-relaxed"
               style={{ minHeight: "1.5rem", maxHeight: "8rem" }}
             />
+
+            {/* GIF button */}
+            <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowStickerPicker(false); }}
+              className={cn("flex-shrink-0 mb-0.5 px-1.5 rounded-lg text-xs font-bold transition-colors",
+                showGifPicker ? "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.1)]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}>
+              GIF
+            </button>
+            {/* Sticker button */}
+            <button type="button" onClick={() => { setShowStickerPicker(p => !p); setShowGifPicker(false); }}
+              className="flex-shrink-0 mb-0.5 text-base leading-none transition-opacity hover:opacity-70">
+              🎭
+            </button>
 
             <button
               type="button"

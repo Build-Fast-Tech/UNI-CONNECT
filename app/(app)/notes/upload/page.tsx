@@ -133,7 +133,7 @@ export default function UploadNotePage() {
 
     // Upload file to Supabase Storage
     const ext      = file.name.split(".").pop();
-    const filePath = `${user.id}/${Date.now()}.${ext}`;
+    const filePath = `${user.id}/${category}/${Date.now()}.${ext}`;
 
     setProgress(30);
 
