@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquarePlus, CheckCircle, Lightbulb, Bug,
   Megaphone, HelpCircle, Clock, XCircle, Inbox,
-  RefreshCw, AlertCircle,
+  RefreshCw, AlertCircle, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -238,6 +238,9 @@ export default function FeedbackPage() {
                 <p className="text-xs text-[rgb(var(--muted-fg))]">
                   {submissions.length} submission{submissions.length !== 1 ? "s" : ""} — status updates in real time
                 </p>
+                <Link href="/status" className="text-xs font-bold text-[rgb(var(--primary))] hover:underline flex items-center gap-1">
+                   Detailed Tracking <ChevronRight className="w-3 h-3" />
+                </Link>
                 <button onClick={loadSubmissions} disabled={subLoading}
                   className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors">
                   <RefreshCw className={cn("w-3.5 h-3.5 text-[rgb(var(--muted-fg))]", subLoading && "animate-spin")} />

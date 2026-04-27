@@ -81,6 +81,63 @@ export default function ClubsEventsPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventSearch, setEventSearch] = useState("");
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
+  const [eventsPage, setEventsPage] = useState(0);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
+
+  // Load events when tab=events
+  const fetchEvents = async (page: number, append = false) => {
+    if (tab !== "events") return;
+    if (joinedIds.size === 0) {
+      setEvents([]);
+      setEventsLoading(false);
+      setHasMoreEvents(false);
+      return;
+    }
+    
+    setEventsLoading(true);
+    const PAGE_SIZE = 10;
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = supabase
+      .from("society_posts")
+      .select("id, title, content, type, event_date, image_url, likes, created_at, society:societies!society_id(id, name, logo_url), author:profiles!author_id(full_name, avatar_url)")
+      .in("society_id", Array.from(joinedIds))
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    const { data, error } = await q;
+    
+    if (error) {
+      console.error("Error fetching events:", error);
+      setEventsLoading(false);
+      return;
+    }
+
+    const newEvents = (data as unknown as Event[]) ?? [];
+    if (append) {
+      setEvents(p => [...p, ...newEvents]);
+    } else {
+      setEvents(newEvents);
+    }
+    
+    setHasMoreEvents(newEvents.length === PAGE_SIZE);
+    setEventsLoading(false);
+  };
+
+  useEffect(() => {
+    if (tab === "events") {
+      setEventsPage(0);
+      fetchEvents(0, false);
+    }
+  }, [tab, joinedIds]);
+
+  const loadMoreEvents = () => {
+    if (eventsLoading || !hasMoreEvents) return;
+    const nextPage = eventsPage + 1;
+    setEventsPage(nextPage);
+    fetchEvents(nextPage, true);
+  };
 
   // Load universities once
   useEffect(() => {
@@ -108,18 +165,19 @@ export default function ClubsEventsPage() {
       .then(({ data }) => setJoinedIds(new Set((data ?? []).map(m => m.society_id))));
   }, [userId]);
 
-  // Load events when tab=events
+  // Intersection Observer for infinite scroll
   useEffect(() => {
-    if (tab !== "events") return;
-    setEventsLoading(true);
-    supabase
-      .from("society_posts")
-      .select("id, title, content, type, event_date, image_url, likes, created_at, society:societies!society_id(id, name, logo_url), author:profiles!author_id(full_name, avatar_url)")
-      .in("type", ["event", "announcement"])
-      .order("event_date", { ascending: true, nullsFirst: false })
-      .limit(50)
-      .then(({ data }) => { setEvents((data as unknown as Event[]) ?? []); setEventsLoading(false); });
-  }, [tab]);
+    if (tab !== "events" || !hasMoreEvents) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !eventsLoading) {
+        loadMoreEvents();
+      }
+    }, { threshold: 0.1 });
+
+    const el = document.getElementById("events-end-trigger");
+    if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [tab, hasMoreEvents, eventsLoading, eventsPage]);
 
   const join = async (societyId: string) => {
     if (!userId) return;
@@ -191,51 +249,57 @@ export default function ClubsEventsPage() {
               : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
           )}
         >
-          <Calendar className="w-4 h-4" /> Events
+          <Calendar className="w-4 h-4" /> Events Feed
         </button>
       </div>
 
       {/* ── Societies Tab ───────────────────────────────────────────────────────── */}
       {tab === "societies" && (
         <>
-          {/* University selector */}
-          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            <button onClick={() => setSelectedUni("all")}
-              className={cn("px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-colors border",
-                selectedUni === "all"
-                  ? "bg-[rgb(var(--primary))] text-white border-transparent"
-                  : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]")}>
-              All Universities
-            </button>
-            {universities.map(u => (
-              <button key={u.id} onClick={() => setSelectedUni(u.id)}
-                className={cn("px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-colors border",
-                  selectedUni === u.id
-                    ? "bg-[rgb(var(--primary))] text-white border-transparent"
-                    : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]")}>
-                {u.short_name}
-              </button>
-            ))}
-          </div>
-
           {/* Category filter + search */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex gap-1.5 flex-wrap">
-              {CATEGORIES.map(c => (
-                <button key={c} onClick={() => setCategory(c)}
-                  className={cn("px-3 py-1.5 rounded-xl text-xs font-medium capitalize flex-shrink-0 transition-colors",
-                    category === c
-                      ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
-                      : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}>
-                  {c}
-                </button>
-              ))}
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-1">Category</span>
+              <div className="flex gap-1.5 flex-wrap">
+                {CATEGORIES.map(c => (
+                  <button key={c} onClick={() => setCategory(c)}
+                    className={cn("px-3 py-1.5 rounded-xl text-xs font-medium capitalize flex-shrink-0 transition-colors",
+                      category === c
+                        ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
+                        : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}>
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="relative sm:ml-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
+            <div className="relative w-full sm:w-64 sm:ml-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))] pointer-events-none" />
               <input value={societySearch} onChange={e => setSocietySearch(e.target.value)}
                 placeholder="Search societies…"
-                className="w-full sm:w-56 h-9 pl-9 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]" />
+                className="w-full h-10 pl-10 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]" />
+            </div>
+          </div>
+
+          {/* University slider */}
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-1">Filter by University</span>
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar" style={{ scrollbarWidth: "none" }}>
+              <button onClick={() => setSelectedUni("all")}
+                className={cn("px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
+                  selectedUni === "all"
+                    ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
+                    : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]")}>
+                All Universities
+              </button>
+              {universities.map(u => (
+                <button key={u.id} onClick={() => setSelectedUni(u.id)}
+                  className={cn("px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
+                    selectedUni === u.id
+                      ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
+                      : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]")}>
+                  {u.name}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -287,13 +351,13 @@ export default function ClubsEventsPage() {
                       <Users className="w-3.5 h-3.5" /> {s.member_count}
                     </span>
                     {joinedIds.has(s.id) ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
-                        <Star className="w-3.5 h-3.5 fill-current" /> Joined
+                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1 rounded-lg">
+                        <Star className="w-3.5 h-3.5 fill-current" /> Following
                       </span>
                     ) : (
                       <button onClick={() => join(s.id)} disabled={joining === s.id}
-                        className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40">
-                        {joining === s.id ? "Joining…" : "Join"}
+                        className="text-xs px-4 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white font-medium hover:opacity-90 transition-all disabled:opacity-40">
+                        {joining === s.id ? "Following…" : "Follow"}
                       </button>
                     )}
                   </div>
@@ -306,111 +370,137 @@ export default function ClubsEventsPage() {
 
       {/* ── Events Tab ──────────────────────────────────────────────────────────── */}
       {tab === "events" && (
-        <>
+        <div className="space-y-4">
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))] pointer-events-none" />
               <input value={eventSearch} onChange={e => setEventSearch(e.target.value)}
-                placeholder="Search events…"
-                className="w-full h-9 pl-9 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]" />
+                placeholder="Search posts…"
+                className="w-full h-10 pl-10 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]" />
             </div>
             <button
               onClick={() => setShowUpcomingOnly(p => !p)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors border",
+                "flex items-center gap-2 px-4 py-2 h-10 rounded-xl text-sm font-medium transition-all border flex-shrink-0",
                 showUpcomingOnly
                   ? "bg-[rgb(var(--primary))] text-white border-transparent"
-                  : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
+                  : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]"
               )}
             >
               <Clock className="w-4 h-4" /> Upcoming only
             </button>
+            <div className="sm:ml-auto text-xs text-[rgb(var(--muted-fg))] px-1">
+              Showing posts from <span className="text-[rgb(var(--fg))] font-bold">{joinedIds.size}</span> societies you follow
+            </div>
           </div>
 
-          {eventsLoading ? (
-            <div className="space-y-3">
-              {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-[rgb(var(--muted))] animate-pulse" />)}
-            </div>
-          ) : filteredEvents.length === 0 ? (
+          {events.length === 0 && !eventsLoading ? (
             <div className="theme-card p-12 text-center">
               <Calendar className="w-10 h-10 text-[rgb(var(--muted-fg))] mx-auto mb-3 opacity-30" />
-              <p className="font-semibold">No events found</p>
+              <p className="font-semibold">No posts found</p>
               <p className="text-sm text-[rgb(var(--muted-fg))] mt-1">
-                Societies haven&apos;t posted any events yet. Join a society to stay updated!
+                {joinedIds.size === 0 
+                  ? "Follow some societies to see their updates here!" 
+                  : "The societies you follow haven't posted anything yet."}
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredEvents.map((ev, i) => {
                 const upcoming = isUpcoming(ev.event_date);
                 return (
                   <motion.div key={ev.id}
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(i * 0.04, 0.3) }}
                     className={cn(
-                      "theme-card p-5 flex gap-4",
+                      "theme-card p-0 overflow-hidden flex flex-col sm:flex-row hover:border-[rgb(var(--primary)/0.3)] transition-all group",
                       upcoming && "border-[rgb(var(--primary)/0.2)]"
                     )}
                   >
-                    {/* Society logo */}
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden">
-                      {ev.society?.logo_url
-                        ? <img src={ev.society.logo_url} alt="" className="w-full h-full object-cover rounded-2xl" />
-                        : (ev.society?.name.charAt(0) ?? "?")}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-1">
-                        <div>
-                          {ev.title && <h3 className="font-semibold text-sm">{ev.title}</h3>}
-                          <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">
-                            {ev.society && (
-                              <Link href={`/societies/${ev.society.id}`}
-                                className="text-[rgb(var(--primary))] hover:underline font-medium">
-                                {ev.society.name}
-                              </Link>
-                            )}
-                            {ev.author && <span> · by {ev.author.full_name}</span>}
-                          </p>
+                    {ev.image_url && (
+                      <div className="w-full sm:w-48 h-48 sm:h-auto flex-shrink-0 overflow-hidden bg-[rgb(var(--muted))]">
+                        <img src={ev.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    )}
+                    
+                    <div className="flex-1 p-5 flex flex-col">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold text-base flex-shrink-0 overflow-hidden">
+                            {ev.society?.logo_url
+                              ? <img src={ev.society.logo_url} alt="" className="w-full h-full object-cover rounded-xl" />
+                              : (ev.society?.name.charAt(0) ?? "?")}
+                          </div>
+                          <div>
+                            <Link href={`/societies/${ev.society?.id}`} className="font-bold text-sm hover:text-[rgb(var(--primary))] transition-colors">
+                              {ev.society?.name}
+                            </Link>
+                            <p className="text-[10px] text-[rgb(var(--muted-fg))] flex items-center gap-1">
+                              {ev.author?.full_name} · {new Date(ev.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2">
                           {upcoming && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                               Upcoming
                             </span>
                           )}
                           <span className={cn(
-                            "text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize",
-                            ev.type === "announcement"
-                              ? "bg-amber-500/10 text-amber-400"
-                              : "bg-emerald-500/10 text-emerald-400"
+                            "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize",
+                            ev.type === "announcement" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                            ev.type === "event" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" :
+                            "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
                           )}>
                             {ev.type}
                           </span>
                         </div>
                       </div>
 
-                      <p className="text-sm text-[rgb(var(--muted-fg))] line-clamp-2">{ev.content}</p>
+                      <div className="flex-1">
+                        {ev.title && <h3 className="font-bold text-lg mb-1 leading-tight">{ev.title}</h3>}
+                        <p className="text-sm text-[rgb(var(--muted-fg))] leading-relaxed line-clamp-3">{ev.content}</p>
+                      </div>
 
-                      {ev.event_date && (
-                        <p className="text-xs text-[rgb(var(--primary))] mt-2 flex items-center gap-1 font-medium">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {formatEventDate(ev.event_date)}
-                          {upcoming && (
-                            <span className="text-[rgb(var(--muted-fg))] font-normal ml-1">
-                              · in {Math.ceil((new Date(ev.event_date).getTime() - Date.now()) / 86400000)}d
-                            </span>
-                          )}
-                        </p>
-                      )}
+                      <div className="mt-4 pt-4 border-t border-[rgb(var(--border))] flex items-center justify-between">
+                        {ev.event_date ? (
+                          <div className="flex items-center gap-2 text-xs font-semibold text-[rgb(var(--primary))]">
+                            <Calendar className="w-4 h-4" />
+                            {formatEventDate(ev.event_date)}
+                          </div>
+                        ) : (
+                          <div />
+                        )}
+                        <div className="flex items-center gap-3">
+                           <button className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors">
+                             <Star className="w-4 h-4" /> {ev.likes}
+                           </button>
+                           <Link href={`/societies/${ev.society?.id}`} className="text-xs font-bold text-[rgb(var(--primary))] hover:opacity-80 flex items-center gap-1">
+                             View Details <ExternalLink className="w-3 h-3" />
+                           </Link>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 );
               })}
+              
+              {/* End of list trigger */}
+              <div id="events-end-trigger" className="h-10 flex items-center justify-center">
+                {eventsLoading && hasMoreEvents && (
+                  <div className="flex items-center gap-2 text-sm text-[rgb(var(--muted-fg))]">
+                    <div className="w-4 h-4 border-2 border-[rgb(var(--primary))] border-t-transparent rounded-full animate-spin" />
+                    Loading more updates…
+                  </div>
+                )}
+                {!hasMoreEvents && events.length > 0 && (
+                  <p className="text-xs text-[rgb(var(--muted-fg))]">You&apos;ve reached the end of the feed.</p>
+                )}
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </motion.div>
   );

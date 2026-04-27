@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Plus, X,
   Clock, Calendar, Trash2, CalendarPlus,
+  Sparkles, Loader2, Save,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -53,6 +54,14 @@ export default function CalendarPage() {
   const [qEnd,   setQEnd]   = useState("");
   const [adding, setAdding] = useState(false);
 
+  // AI Generator state
+  const [showAI, setShowAI] = useState(false);
+  const [aiHours, setAiHours] = useState(4);
+  const [aiSubjects, setAiSubjects] = useState("");
+  const [aiBreak, setAiBreak] = useState(10);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<any[]>([]);
+
   // Manual schedule builder
   const [showBuilder,   setShowBuilder]   = useState(false);
   const [buildDate,     setBuildDate]     = useState(today.toISOString().split("T")[0]);
@@ -100,6 +109,54 @@ export default function CalendarPage() {
     setEvents(p => p.filter(e => e.id !== id));
   };
 
+  const generateAISchedule = async () => {
+    if (!aiSubjects.trim()) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hours: aiHours, subjects: aiSubjects, breakMins: aiBreak }),
+      });
+      const data = await res.json();
+      if (data.schedule) setAiResult(data.schedule);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const saveAISchedule = async () => {
+    if (!userId || !aiResult.length) return;
+    setAiLoading(true);
+    const rows = aiResult.map(item => {
+      // Parse "9:00 AM" to "09:00"
+      const parts = item.time.split(" ");
+      const time = parts[0];
+      const period = parts[1];
+      let hParts = time.split(":");
+      let h = hParts[0];
+      let m = hParts[1];
+      if (period === "PM" && h !== "12") h = String(Number(h) + 12);
+      if (period === "AM" && h === "12") h = "00";
+      const startTime = `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+      
+      return {
+        user_id: userId,
+        title: item.subject,
+        date: qDate,
+        start_time: startTime,
+        color: item.type === "break" ? "#10b981" : COLORS[0],
+      };
+    });
+    const { data } = await (supabase as any).from("calendar_events").insert(rows).select();
+    if (data) setEvents(p => [...p, ...(data as unknown as CalEvent[])]);
+    setAiResult([]);
+    setShowAI(false);
+    setAiLoading(false);
+  };
+
   // Schedule builder helpers
   const updateBlock = (i: number, field: keyof ScheduleBlock, val: string) =>
     setBuildBlocks(prev => prev.map((b, idx) => idx === i ? { ...b, [field]: val } : b));
@@ -135,13 +192,86 @@ export default function CalendarPage() {
           </h1>
           <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Plan your schedule and track your week</p>
         </div>
-        <button
-          onClick={() => setShowBuilder(p => !p)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          <CalendarPlus className="w-4 h-4" /> Plan Day
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAI(p => !p)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 text-sm font-semibold hover:bg-indigo-500/20 transition-all border border-indigo-500/20"
+          >
+            <Sparkles className="w-4 h-4" /> AI Schedule
+          </button>
+          <button
+            onClick={() => setShowBuilder(p => !p)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            <CalendarPlus className="w-4 h-4" /> Plan Day
+          </button>
+        </div>
       </header>
+
+      {/* AI Generator Panel */}
+      <AnimatePresence>
+        {showAI && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="theme-card p-5 space-y-4 border-indigo-500/30 bg-gradient-to-br from-[rgb(var(--bg))] to-indigo-500/[0.03]">
+               <div className="flex items-center justify-between">
+                <p className="font-semibold text-sm flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-400" /> AI Daily Planner
+                </p>
+                <button onClick={() => setShowAI(false)} className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block font-medium">Subjects (comma separated)</label>
+                  <input value={aiSubjects} onChange={e => setAiSubjects(e.target.value)}
+                    placeholder="e.g. Algorithms, Calculus, Database"
+                    className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block font-medium">Study hours</label>
+                  <input type="number" value={aiHours} onChange={e => setAiHours(Number(e.target.value))}
+                    className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+              </div>
+
+              {aiResult.length > 0 ? (
+                <div className="space-y-2 mt-4">
+                  <p className="text-xs font-bold text-[rgb(var(--muted-fg))] uppercase tracking-wider">Generated Schedule</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+                    {aiResult.map((item, idx) => (
+                      <div key={idx} className={cn(
+                        "p-3 rounded-xl border flex items-center justify-between gap-3",
+                        item.type === "break" ? "bg-emerald-500/5 border-emerald-500/10" : "bg-[rgb(var(--muted))] border-[rgb(var(--border))]"
+                      )}>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold">{item.time}</p>
+                          <p className="text-sm truncate">{item.subject}</p>
+                        </div>
+                        <span className="text-[10px] font-mono text-[rgb(var(--muted-fg))]">{item.duration}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-[rgb(var(--border))]">
+                    <button onClick={saveAISchedule} disabled={aiLoading}
+                      className="flex-1 py-2 rounded-xl bg-indigo-500 text-white text-sm font-bold flex items-center justify-center gap-2">
+                      {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Add to Calendar
+                    </button>
+                    <button onClick={() => setAiResult([])} className="px-4 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">Clear</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={generateAISchedule} disabled={aiLoading || !aiSubjects.trim()}
+                  className="w-full py-3 rounded-xl bg-indigo-500 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40 hover:opacity-90 transition-all shadow-lg shadow-indigo-500/20">
+                  {aiLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</> : <><Sparkles className="w-4 h-4" /> Generate Smart Schedule</>}
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Manual Schedule Builder */}
       <AnimatePresence>

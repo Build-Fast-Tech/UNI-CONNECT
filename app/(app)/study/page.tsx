@@ -25,6 +25,7 @@ interface StudyGroup {
 interface LiveSession {
   userId: string; fullName: string; subjectName: string;
   secondsLeft: number; mode: string; sessionCode: string | null;
+  groupId: string | null;
 }
 
 const MODE_CONFIG: Record<TimerMode, { label: string; color: string; bg: string; seconds: number }> = {
@@ -116,7 +117,7 @@ export default function StudyPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [timerConfig, setTimerConfig] = useState<SavedConfig>(loadConfig);
   const [draftConfig, setDraftConfig] = useState<SavedConfig>(loadConfig);
-  const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const presenceRef = useRef<{ globalCh: any; groupCh: any; sessionCh: any } | null>(null);
 
   const { state, setMode, start, pause, reset, onComplete, progress } = useTimer(sessionCode, {
     pomodoro:    timerConfig.pomodoro    * 60,
@@ -146,26 +147,69 @@ export default function StudyPage() {
       });
   }, [userId]);
 
-  // Presence
+  // Presence Logic
   useEffect(() => {
-    if (!userId || !fullName) return;
-    const ch = supabase.channel("study-presence");
-    ch.on("presence", { event: "sync" }, () => {
-      const raw = ch.presenceState<any>();
-      setLiveSessions(Object.values(raw).flat().filter((s: any) => s.userId !== userId && s.mode === "pomodoro") as LiveSession[]);
-    });
-    ch.subscribe();
-    presenceRef.current = ch;
-    return () => { supabase.removeChannel(ch); };
-  }, [userId, fullName]);
+    if (!userId || !fullName || !loaded) return;
 
-  // Update presence when timer state changes
+    // 1. Global Channel for Discovery & Live Ticker
+    const globalCh = supabase.channel("study-global");
+    globalCh.on("presence", { event: "sync" }, () => {
+      const raw = globalCh.presenceState<any>();
+      const all = Object.values(raw).flat() as LiveSession[];
+      // For "Live Now" sidebar, show people studying publicly (no group, no private session)
+      setLiveSessions(all.filter(s => s.userId !== userId && s.mode === "pomodoro" && !s.sessionCode && !s.groupId));
+    }).subscribe();
+
+    // 2. Group Channel (if in a group)
+    let groupCh: any = null;
+    if (joinedGroupId) {
+      groupCh = supabase.channel(`study-group-${joinedGroupId}`);
+      groupCh.on("presence", { event: "sync" }, () => {
+        const raw = groupCh.presenceState<any>();
+        const count = Object.values(raw).flat().length;
+        setGroupActiveCounts(p => ({ ...p, [joinedGroupId]: count }));
+      }).subscribe();
+    }
+
+    // 3. Private Session Channel (if in a private session)
+    let sessionCh: any = null;
+    if (sessionCode) {
+      sessionCh = supabase.channel(`study-session-${sessionCode}`);
+      sessionCh.subscribe();
+    }
+
+    presenceRef.current = { globalCh, groupCh, sessionCh };
+
+    return () => {
+      supabase.removeChannel(globalCh);
+      if (groupCh) supabase.removeChannel(groupCh);
+      if (sessionCh) supabase.removeChannel(sessionCh);
+    };
+  }, [userId, fullName, loaded, joinedGroupId, sessionCode]);
+
+  // Track state
   useEffect(() => {
-    if (!presenceRef.current || !userId) return;
+    const refs = presenceRef.current;
+    if (!refs || !userId) return;
+
     if (state.isRunning && selectedSubject) {
-      presenceRef.current.track({ userId, fullName, subjectName: selectedSubject.name, secondsLeft: state.secondsLeft, mode: state.mode, sessionCode });
+      const payload = {
+        userId,
+        fullName,
+        subjectName: selectedSubject.name,
+        secondsLeft: state.secondsLeft,
+        mode: state.mode,
+        sessionCode,
+        groupId: joinedGroupId
+      };
+
+      refs.globalCh.track(payload);
+      if (refs.groupCh) refs.groupCh.track(payload);
+      if (refs.sessionCh) refs.sessionCh.track(payload);
     } else {
-      presenceRef.current.untrack();
+      refs.globalCh.untrack();
+      if (refs.groupCh) refs.groupCh.untrack();
+      if (refs.sessionCh) refs.sessionCh.untrack();
     }
   }, [state.isRunning, state.secondsLeft, state.mode, selectedSubject]);
 

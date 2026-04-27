@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Building2, Plus, Star } from "lucide-react";
+import { Users, Search, Building2, Plus, Star, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -100,53 +100,59 @@ export default function SocietiesPage() {
         </Link>
       </div>
 
-      {/* University selector */}
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        <button
-          onClick={() => setSelectedUni("all")}
-          className={cn(
-            "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-colors border",
-            selectedUni === "all"
-              ? "bg-[rgb(var(--primary))] text-white border-transparent"
-              : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
-          )}>
-          All Universities
-        </button>
-        {universities.map(u => (
-          <button key={u.id} onClick={() => setSelectedUni(u.id)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-colors border",
-              selectedUni === u.id
-                ? "bg-[rgb(var(--primary))] text-white border-transparent"
-                : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
-            )}>
-            {u.short_name}
-          </button>
-        ))}
-      </div>
-
       {/* Category + search */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-wrap">
-          {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCategory(c)}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-medium flex-shrink-0 transition-colors capitalize",
-                category === c
-                  ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
-                  : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
-              )}>
-              {c}
-            </button>
-          ))}
+      <div className="flex flex-col sm:flex-row gap-3 items-end">
+        <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-1">Category</span>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 flex-wrap">
+            {CATEGORIES.map(c => (
+              <button key={c} onClick={() => setCategory(c)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-medium flex-shrink-0 transition-colors capitalize",
+                  category === c
+                    ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
+                    : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+                )}>
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="relative sm:ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
+        <div className="relative w-full sm:w-64 sm:ml-auto">
+          <Search className="absolute left-3 top-[50%] -translate-y-[50%] w-4 h-4 text-[rgb(var(--muted-fg))] pointer-events-none" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search societies…"
-            className="w-full sm:w-56 h-9 pl-9 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+            className="w-full h-10 pl-10 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))] transition-all"
           />
+        </div>
+      </div>
+
+      {/* University selector (Slider) */}
+      <div className="space-y-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-1">Filter by University</span>
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar" style={{ scrollbarWidth: "none" }}>
+          <button
+            onClick={() => setSelectedUni("all")}
+            className={cn(
+              "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
+              selectedUni === "all"
+                ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
+                : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--fg))]"
+            )}>
+            All Institutions
+          </button>
+          {universities.map(u => (
+            <button key={u.id} onClick={() => setSelectedUni(u.id)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
+                selectedUni === u.id
+                  ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
+                  : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--fg))]"
+              )}>
+              {u.name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -202,16 +208,16 @@ export default function SocietiesPage() {
                   <Users className="w-3.5 h-3.5" /> {s.member_count} members
                 </span>
                 {joinedIds.has(s.id) ? (
-                  <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
-                    <Star className="w-3.5 h-3.5 fill-current" /> Joined
+                  <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1 rounded-lg">
+                    <CheckCircle className="w-3.5 h-3.5" /> Following
                   </span>
                 ) : (
                   <button
                     onClick={() => join(s.id)}
                     disabled={joining === s.id}
-                    className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40"
+                    className="text-xs px-4 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white font-medium hover:opacity-90 transition-all disabled:opacity-40"
                   >
-                    {joining === s.id ? "Joining…" : "Join"}
+                    {joining === s.id ? "Following…" : "Follow"}
                   </button>
                 )}
               </div>

@@ -39,10 +39,12 @@ function LiveNowTicker() {
 
   useEffect(() => {
     const supabase = createClient();
-    const ch = supabase.channel("study-presence-feed");
+    const ch = supabase.channel("study-global");
     ch.on("presence", { event: "sync" }, () => {
-      const raw = ch.presenceState<PresenceSession>();
-      setSessions(Object.values(raw).flat().filter(s => s.phase === "work"));
+      const raw = ch.presenceState<any>();
+      const all = Object.values(raw).flat() as any[];
+      // Only show public sessions in the feed ticker
+      setSessions(all.filter(s => s.mode === "pomodoro" && !s.sessionCode && !s.groupId));
     });
     ch.subscribe();
     return () => { supabase.removeChannel(ch); };

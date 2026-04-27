@@ -3,7 +3,8 @@ const BANNED_WORDS = [
   "dick", "pussy", "motherfucker", "fucker", "bullshit", "jackass", "dumbass",
   "fag", "retard", "whore", "slut", "nigger", "nigga",
   "chutiya", "madarchod", "bhenchod", "gaandu", "harami", "kamina",
-  "bhosdike", "maderchod", "lund", "randi",
+  "bhosdike", "maderchod", "lund", "randi", "kutti", "saala", "kanjar", "bhva",
+  "gandu", "bc", "mc", "bsdk", "moti", "kala", "choora",
 ];
 
 export function filterProfanity(text: string): string {
