@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Plus, X,
-  Clock, Calendar, Trash2, CalendarPlus, Wand2,
+  Clock, Calendar, Trash2, CalendarPlus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -100,39 +100,6 @@ export default function CalendarPage() {
     setEvents(p => p.filter(e => e.id !== id));
   };
 
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
-
-  const generateAiSchedule = async () => {
-    if (!userId) return;
-    setAiLoading(true);
-    setAiError("");
-    try {
-      const { data: userSubjects } = await (supabase as any)
-        .from("user_subjects")
-        .select("name")
-        .eq("user_id", userId);
-      const subjects = (userSubjects ?? []).map((s: { name: string }) => s.name);
-
-      const res = await fetch("/api/ai/ai-schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: buildDate, subjects, studyHours: 6, startHour: 9 }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const { blocks } = await res.json();
-      if (Array.isArray(blocks) && blocks.length > 0) {
-        setBuildBlocks(blocks);
-      } else {
-        setAiError("AI returned no blocks. Try again.");
-      }
-    } catch {
-      setAiError("Failed to generate schedule. Check your API key.");
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   // Schedule builder helpers
   const updateBlock = (i: number, field: keyof ScheduleBlock, val: string) =>
     setBuildBlocks(prev => prev.map((b, idx) => idx === i ? { ...b, [field]: val } : b));
@@ -191,24 +158,10 @@ export default function CalendarPage() {
               </div>
 
               {/* Date for the schedule */}
-              <div className="flex items-end gap-3 flex-wrap">
-                <div>
-                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Schedule date</label>
-                  <input type="date" value={buildDate} onChange={e => setBuildDate(e.target.value)}
-                    className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-40" />
-                </div>
-                <button
-                  type="button"
-                  onClick={generateAiSchedule}
-                  disabled={aiLoading}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 text-sm font-medium hover:bg-violet-500/20 transition-colors disabled:opacity-50"
-                >
-                  <Wand2 className={`w-4 h-4 ${aiLoading ? "animate-spin" : ""}`} />
-                  {aiLoading ? "Generating…" : "AI Generate"}
-                </button>
-                {aiError && (
-                  <p className="text-xs text-red-400">{aiError}</p>
-                )}
+              <div>
+                <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Schedule date</label>
+                <input type="date" value={buildDate} onChange={e => setBuildDate(e.target.value)}
+                  className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-40" />
               </div>
 
               {/* Time blocks */}

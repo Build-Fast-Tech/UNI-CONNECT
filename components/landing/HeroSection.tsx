@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Play, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const AVATAR_COLORS = ["#6366F1", "#10B981", "#F97316", "#DC2626", "#8B5CF6", "#EC4899"];
@@ -125,12 +125,11 @@ export function HeroSection() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="group gap-2">
-              <div className="w-8 h-8 rounded-full bg-[rgb(var(--primary)/0.15)] flex items-center justify-center group-hover:bg-[rgb(var(--primary)/0.25)] transition-colors">
-                <Play className="w-3 h-3 fill-current text-[rgb(var(--primary))] ml-0.5" />
-              </div>
-              Watch 30s demo
-            </Button>
+            <Link href="/login">
+              <Button variant="outline" size="lg">
+                Sign in
+              </Button>
+            </Link>
           </motion.div>
 
           {/* Avatar stack */}

@@ -27,6 +27,9 @@ interface LiveSession {
   secondsLeft: number; mode: string; sessionCode: string | null;
   groupId: string | null;
 }
+interface LeaderboardEntry {
+  user_id: string; full_name: string; avatar_url: string | null; total_minutes: number;
+}
 
 const MODE_CONFIG: Record<TimerMode, { label: string; color: string; bg: string; seconds: number }> = {
   pomodoro:    { label: "Pomodoro",    color: "#6366f1", bg: "rgba(99,102,241,0.15)",  seconds: 25*60 },
@@ -117,6 +120,8 @@ export default function StudyPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [timerConfig, setTimerConfig] = useState<SavedConfig>(loadConfig);
   const [draftConfig, setDraftConfig] = useState<SavedConfig>(loadConfig);
+  const [groupLeaderboards, setGroupLeaderboards] = useState<Record<string, LeaderboardEntry[]>>({});
+  const [expandedLeaderboard, setExpandedLeaderboard] = useState<string | null>(null);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const groupPresenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const sessionCodeRef = useRef<string | null>(null);
@@ -202,10 +207,12 @@ export default function StudyPage() {
       setTodayPomodoros(p => p + 1);
       setTodayMinutes(p => p + 25);
       if (userId && selectedSubject) {
-        supabase.from("study_logs").insert({
+        (supabase as any).from("study_logs").insert({
           user_id: userId, subject_id: selectedSubject.id,
           duration_minutes: 25, is_group_session: groupMode, session_code: sessionCode,
+          study_group_id: joinedGroupId ?? null,
         });
+        if (joinedGroupId) fetchLeaderboard(joinedGroupId);
       }
     }
   }, [userId, selectedSubject, groupMode, sessionCode]));
@@ -327,6 +334,27 @@ export default function StudyPage() {
 
   const toggleJoinGroup = (groupId: string) =>
     setJoinedGroupId(joinedGroupId === groupId ? null : groupId);
+
+  const fetchLeaderboard = async (groupId: string) => {
+    const { data } = await (supabase as any)
+      .from("study_logs")
+      .select("user_id, duration_minutes, profile:profiles!user_id(full_name, avatar_url)")
+      .eq("study_group_id", groupId);
+    if (!data) return;
+    const map: Record<string, LeaderboardEntry> = {};
+    for (const row of data as any[]) {
+      const uid: string = row.user_id;
+      if (!map[uid]) map[uid] = { user_id: uid, full_name: row.profile?.full_name ?? "Unknown", avatar_url: row.profile?.avatar_url ?? null, total_minutes: 0 };
+      map[uid].total_minutes += row.duration_minutes;
+    }
+    setGroupLeaderboards(p => ({ ...p, [groupId]: Object.values(map).sort((a, b) => b.total_minutes - a.total_minutes) }));
+  };
+
+  const toggleLeaderboard = (groupId: string) => {
+    if (expandedLeaderboard === groupId) { setExpandedLeaderboard(null); return; }
+    setExpandedLeaderboard(groupId);
+    if (!groupLeaderboards[groupId]) fetchLeaderboard(groupId);
+  };
 
   const filteredGroups = studyGroups.filter(g =>
     g.name.toLowerCase().includes(groupSearch.toLowerCase()) ||
@@ -743,6 +771,58 @@ export default function StudyPage() {
                         Expires: {new Date(group.expires_at).toLocaleDateString()}
                       </p>
                     )}
+
+                    {/* Leaderboard toggle */}
+                    <div className="mt-3 border-t border-[rgb(var(--border))] pt-2">
+                      <button
+                        onClick={() => toggleLeaderboard(group.id)}
+                        className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))] transition-colors font-medium"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        {expandedLeaderboard === group.id ? "Hide leaderboard" : "Show leaderboard"}
+                      </button>
+
+                      <AnimatePresence>
+                        {expandedLeaderboard === group.id && (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                            <div className="mt-2 space-y-1.5">
+                              {!groupLeaderboards[group.id] ? (
+                                <p className="text-xs text-[rgb(var(--muted-fg))] py-1">Loading…</p>
+                              ) : groupLeaderboards[group.id].length === 0 ? (
+                                <p className="text-xs text-[rgb(var(--muted-fg))] py-1">No study sessions recorded yet. Be the first!</p>
+                              ) : (
+                                groupLeaderboards[group.id].slice(0, 10).map((entry, rank) => {
+                                  const h = Math.floor(entry.total_minutes / 60);
+                                  const m = entry.total_minutes % 60;
+                                  return (
+                                    <div key={entry.user_id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl bg-[rgb(var(--muted)/0.5)]">
+                                      <span className={cn(
+                                        "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
+                                        rank === 0 ? "bg-amber-400/20 text-amber-400" :
+                                        rank === 1 ? "bg-slate-400/20 text-slate-400" :
+                                        rank === 2 ? "bg-orange-700/20 text-orange-600" :
+                                        "bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]"
+                                      )}>
+                                        {rank + 1}
+                                      </span>
+                                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden">
+                                        {entry.avatar_url
+                                          ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                                          : entry.full_name.charAt(0)}
+                                      </div>
+                                      <p className="flex-1 text-xs font-medium truncate">{entry.full_name}</p>
+                                      <p className="text-xs font-semibold text-[rgb(var(--primary))] flex-shrink-0">
+                                        {h > 0 ? `${h}h ` : ""}{m}m
+                                      </p>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 ))
               )}

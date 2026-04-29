@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Users, Search, Building2, Plus, Star, Heart, Zap } from "lucide-react";
 import Link from "next/link";
@@ -36,6 +36,9 @@ export default function SocietiesPage() {
   const [universities, setUniversities] = useState<University[]>([]);
   const [societies, setSocieties] = useState<Society[]>([]);
   const [selectedUni, setSelectedUni] = useState<string>("all");
+  const [uniSearch, setUniSearch] = useState("");
+  const [uniDropdownOpen, setUniDropdownOpen] = useState(false);
+  const uniRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,20 @@ export default function SocietiesPage() {
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [following, setFollowing] = useState<string | null>(null);
+
+  // Close uni dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (uniRef.current && !uniRef.current.contains(e.target as Node)) setUniDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filteredUnis = universities.filter(u =>
+    !uniSearch || u.name.toLowerCase().includes(uniSearch.toLowerCase()) || u.short_name.toLowerCase().includes(uniSearch.toLowerCase())
+  );
+  const selectedUniLabel = selectedUni === "all" ? "All Universities" : (universities.find(u => u.id === selectedUni)?.short_name ?? "All Universities");
 
   useEffect(() => {
     supabase.from("universities").select("id, name, short_name").order("name")
@@ -137,39 +154,80 @@ export default function SocietiesPage() {
         </div>
       </div>
 
-      {/* Search bar — full width at top */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search societies…"
-          className="w-full h-10 pl-10 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-        />
-      </div>
+      {/* Search + University filter row */}
+      <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+        {/* Society name search */}
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search societies…"
+            className="w-full h-10 pl-10 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+          />
+        </div>
 
-      {/* University Slider — beneath search bar */}
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        <button
-          onClick={() => setSelectedUni("all")}
-          className={cn(
-            "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-colors border",
-            selectedUni === "all"
-              ? "bg-[rgb(var(--primary))] text-white border-transparent"
-              : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
-          )}>
-          All Universities
-        </button>
-        {universities.map(u => (
-          <button key={u.id} onClick={() => setSelectedUni(u.id)}
+        {/* Searchable university dropdown */}
+        <div ref={uniRef} className="relative w-full sm:w-56 flex-shrink-0">
+          <button
+            onClick={() => setUniDropdownOpen(p => !p)}
             className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-colors border",
-              selectedUni === u.id
-                ? "bg-[rgb(var(--primary))] text-white border-transparent"
-                : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
-            )}>
-            {u.short_name}
+              "w-full h-10 pl-3 pr-8 rounded-xl text-sm text-left border transition-colors flex items-center gap-2",
+              uniDropdownOpen
+                ? "border-[rgb(var(--primary))] bg-[rgb(var(--muted))]"
+                : "border-[rgb(var(--border))] bg-[rgb(var(--muted))] hover:border-[rgb(var(--primary)/0.4)]"
+            )}
+          >
+            <Building2 className="w-3.5 h-3.5 text-[rgb(var(--muted-fg))] flex-shrink-0" />
+            <span className={cn("truncate", selectedUni !== "all" ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))]")}>
+              {selectedUniLabel}
+            </span>
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" />
           </button>
-        ))}
+
+          {uniDropdownOpen && (
+            <div className="absolute top-12 left-0 right-0 z-30 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl overflow-hidden">
+              <div className="p-2 border-b border-[rgb(var(--border))]">
+                <input
+                  autoFocus
+                  value={uniSearch}
+                  onChange={e => setUniSearch(e.target.value)}
+                  placeholder="Type to search…"
+                  className="w-full h-8 px-3 rounded-lg text-sm bg-[rgb(var(--muted))] outline-none"
+                />
+              </div>
+              <div className="max-h-52 overflow-y-auto p-1">
+                <button
+                  onClick={() => { setSelectedUni("all"); setUniSearch(""); setUniDropdownOpen(false); }}
+                  className={cn(
+                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                    selectedUni === "all"
+                      ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] font-medium"
+                      : "hover:bg-[rgb(var(--muted))] text-[rgb(var(--fg))]"
+                  )}
+                >
+                  All Universities
+                </button>
+                {filteredUnis.length === 0 && (
+                  <p className="text-xs text-[rgb(var(--muted-fg))] text-center py-3">No results</p>
+                )}
+                {filteredUnis.map(u => (
+                  <button key={u.id}
+                    onClick={() => { setSelectedUni(u.id); setUniSearch(""); setUniDropdownOpen(false); }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                      selectedUni === u.id
+                        ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] font-medium"
+                        : "hover:bg-[rgb(var(--muted))] text-[rgb(var(--fg))]"
+                    )}
+                  >
+                    <span className="font-medium">{u.short_name}</span>
+                    <span className="text-[rgb(var(--muted-fg))] ml-1.5 text-xs">{u.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Category chips */}
