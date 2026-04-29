@@ -332,8 +332,11 @@ export default function StudyPage() {
     }
   };
 
-  const toggleJoinGroup = (groupId: string) =>
-    setJoinedGroupId(joinedGroupId === groupId ? null : groupId);
+  const toggleJoinGroup = (groupId: string) => {
+    if (joinedGroupId === groupId) { setJoinedGroupId(null); return; }
+    setJoinedGroupId(groupId);
+    if (!groupLeaderboards[groupId]) fetchLeaderboard(groupId);
+  };
 
   const fetchLeaderboard = async (groupId: string) => {
     const { data } = await (supabase as any)
@@ -724,31 +727,23 @@ export default function StudyPage() {
               )}
             </AnimatePresence>
 
-            {/* Group List */}
-            <div className="space-y-3">
-              {filteredGroups.length === 0 ? (
-                <div className="theme-card p-8 text-center text-[rgb(var(--muted-fg))]">
-                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No study groups yet — create one above!</p>
-                </div>
-              ) : (
-                filteredGroups.map(group => (
-                  <div key={group.id} className={cn(
-                    "theme-card p-4 transition-all",
-                    joinedGroupId === group.id && "ring-2 ring-[rgb(var(--primary)/0.4)]"
-                  )}>
-                    <div className="flex items-start justify-between gap-3">
+            {/* Joined group — full detail panel */}
+            <AnimatePresence>
+              {joinedGroupId && (() => {
+                const group = studyGroups.find(g => g.id === joinedGroupId);
+                if (!group) return null;
+                const lb = groupLeaderboards[joinedGroupId];
+                return (
+                  <motion.div key="group-panel" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                    className="theme-card overflow-hidden ring-2 ring-[rgb(var(--primary)/0.35)]">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgb(var(--border))] bg-[rgb(var(--primary)/0.05)]">
+                      <div className="w-9 h-9 rounded-xl bg-[rgb(var(--primary)/0.15)] flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-[rgb(var(--primary))]" />
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-sm">{group.name}</p>
-                          <span className={cn(
-                            "text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide",
-                            group.type === "permanent"
-                              ? "bg-blue-500/10 text-blue-400"
-                              : "bg-amber-500/10 text-amber-400"
-                          )}>{group.type}</span>
-                        </div>
-                        <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">{group.subject}</p>
+                        <p className="font-bold text-sm truncate">{group.name}</p>
+                        <p className="text-xs text-[rgb(var(--muted-fg))]">{group.subject}</p>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
@@ -756,77 +751,113 @@ export default function StudyPage() {
                           {groupActiveCounts[group.id] ?? 0} active
                         </div>
                         <button onClick={() => toggleJoinGroup(group.id)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors",
-                            joinedGroupId === group.id
-                              ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                              : "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)]"
-                          )}>
-                          {joinedGroupId === group.id ? "Leave" : "Join"}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                          Leave
                         </button>
                       </div>
                     </div>
-                    {group.expires_at && (
-                      <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-2">
-                        Expires: {new Date(group.expires_at).toLocaleDateString()}
+
+                    {/* Leaderboard */}
+                    <div className="p-5">
+                      <p className="flex items-center gap-2 text-sm font-semibold mb-4">
+                        <BarChart3 className="w-4 h-4 text-[rgb(var(--primary))]" /> Leaderboard
+                        <span className="text-xs font-normal text-[rgb(var(--muted-fg))]">— total study time, all time</span>
                       </p>
-                    )}
-
-                    {/* Leaderboard toggle */}
-                    <div className="mt-3 border-t border-[rgb(var(--border))] pt-2">
-                      <button
-                        onClick={() => toggleLeaderboard(group.id)}
-                        className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))] transition-colors font-medium"
-                      >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        {expandedLeaderboard === group.id ? "Hide leaderboard" : "Show leaderboard"}
-                      </button>
-
-                      <AnimatePresence>
-                        {expandedLeaderboard === group.id && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                            <div className="mt-2 space-y-1.5">
-                              {!groupLeaderboards[group.id] ? (
-                                <p className="text-xs text-[rgb(var(--muted-fg))] py-1">Loading…</p>
-                              ) : groupLeaderboards[group.id].length === 0 ? (
-                                <p className="text-xs text-[rgb(var(--muted-fg))] py-1">No study sessions recorded yet. Be the first!</p>
-                              ) : (
-                                groupLeaderboards[group.id].slice(0, 10).map((entry, rank) => {
-                                  const h = Math.floor(entry.total_minutes / 60);
-                                  const m = entry.total_minutes % 60;
-                                  return (
-                                    <div key={entry.user_id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl bg-[rgb(var(--muted)/0.5)]">
-                                      <span className={cn(
-                                        "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
-                                        rank === 0 ? "bg-amber-400/20 text-amber-400" :
-                                        rank === 1 ? "bg-slate-400/20 text-slate-400" :
-                                        rank === 2 ? "bg-orange-700/20 text-orange-600" :
-                                        "bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]"
-                                      )}>
-                                        {rank + 1}
-                                      </span>
-                                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden">
-                                        {entry.avatar_url
-                                          ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
-                                          : entry.full_name.charAt(0)}
-                                      </div>
-                                      <p className="flex-1 text-xs font-medium truncate">{entry.full_name}</p>
-                                      <p className="text-xs font-semibold text-[rgb(var(--primary))] flex-shrink-0">
-                                        {h > 0 ? `${h}h ` : ""}{m}m
-                                      </p>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {!lb ? (
+                        <div className="space-y-2">
+                          {[1,2,3].map(i => <div key={i} className="h-10 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />)}
+                        </div>
+                      ) : lb.length === 0 ? (
+                        <div className="text-center py-8 text-[rgb(var(--muted-fg))]">
+                          <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                          <p className="text-sm">No study sessions yet — start the timer to appear here!</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {lb.slice(0, 10).map((entry, rank) => {
+                            const h = Math.floor(entry.total_minutes / 60);
+                            const m = entry.total_minutes % 60;
+                            const isTop = rank === 0;
+                            return (
+                              <div key={entry.user_id}
+                                className={cn(
+                                  "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors",
+                                  isTop
+                                    ? "bg-amber-400/10 border border-amber-400/20"
+                                    : "bg-[rgb(var(--muted)/0.5)]"
+                                )}>
+                                <span className={cn(
+                                  "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0",
+                                  rank === 0 ? "bg-amber-400/25 text-amber-400" :
+                                  rank === 1 ? "bg-slate-300/20 text-slate-400" :
+                                  rank === 2 ? "bg-orange-700/20 text-orange-500" :
+                                  "bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]"
+                                )}>
+                                  {rank + 1}
+                                </span>
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 overflow-hidden">
+                                  {entry.avatar_url
+                                    ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                                    : entry.full_name.charAt(0)}
+                                </div>
+                                <p className="flex-1 text-sm font-medium truncate">{entry.full_name}</p>
+                                <p className={cn("text-sm font-bold flex-shrink-0", isTop ? "text-amber-400" : "text-[rgb(var(--primary))]")}>
+                                  {h > 0 ? `${h}h ` : ""}{m}m
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+
+            {/* Group list — hidden when inside a group */}
+            {!joinedGroupId && (
+              <div className="space-y-3">
+                {filteredGroups.length === 0 ? (
+                  <div className="theme-card p-8 text-center text-[rgb(var(--muted-fg))]">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No study groups yet — create one above!</p>
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  filteredGroups.map(group => (
+                    <div key={group.id} className="theme-card p-4 transition-all hover:border-[rgb(var(--primary)/0.2)]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm">{group.name}</p>
+                            <span className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide",
+                              group.type === "permanent" ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
+                            )}>{group.type}</span>
+                          </div>
+                          <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">{group.subject}</p>
+                          {group.expires_at && (
+                            <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-1">
+                              Expires: {new Date(group.expires_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {groupActiveCounts[group.id] ?? 0} active
+                          </div>
+                          <button onClick={() => toggleJoinGroup(group.id)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] transition-colors">
+                            Join
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
       </motion.div>

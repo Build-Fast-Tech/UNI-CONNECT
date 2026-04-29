@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Users, Calendar, Building2, Search, Plus, Star,
@@ -70,6 +70,9 @@ export default function ClubsEventsPage() {
   const [universities, setUniversities] = useState<University[]>([]);
   const [societies, setSocieties] = useState<Society[]>([]);
   const [selectedUni, setSelectedUni] = useState("all");
+  const [uniSearch, setUniSearch] = useState("");
+  const [uniDropdownOpen, setUniDropdownOpen] = useState(false);
+  const uniRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState("All");
   const [societySearch, setSocietySearch] = useState("");
   const [societiesLoading, setSocietiesLoading] = useState(true);
@@ -139,11 +142,25 @@ export default function ClubsEventsPage() {
     fetchEvents(nextPage, true);
   };
 
+  // Close uni dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (uniRef.current && !uniRef.current.contains(e.target as Node)) setUniDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   // Load universities once
   useEffect(() => {
     supabase.from("universities").select("id, name, short_name").order("name")
       .then(({ data }) => setUniversities(data ?? []));
   }, []);
+
+  const filteredUnis = universities.filter(u =>
+    !uniSearch || u.name.toLowerCase().includes(uniSearch.toLowerCase()) || u.short_name.toLowerCase().includes(uniSearch.toLowerCase())
+  );
+  const selectedUniLabel = selectedUni === "all" ? "All Universities" : (universities.find(u => u.id === selectedUni)?.short_name ?? "All Universities");
 
   // Load societies when tab=societies or university changes
   useEffect(() => {
@@ -280,27 +297,48 @@ export default function ClubsEventsPage() {
             </div>
           </div>
 
-          {/* University slider */}
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-1">Filter by University</span>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar" style={{ scrollbarWidth: "none" }}>
-              <button onClick={() => setSelectedUni("all")}
-                className={cn("px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
-                  selectedUni === "all"
-                    ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
-                    : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]")}>
-                All Universities
-              </button>
-              {universities.map(u => (
-                <button key={u.id} onClick={() => setSelectedUni(u.id)}
-                  className={cn("px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
-                    selectedUni === u.id
-                      ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
-                      : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]")}>
-                  {u.name}
-                </button>
-              ))}
-            </div>
+          {/* University searchable dropdown */}
+          <div ref={uniRef} className="relative w-full sm:w-64">
+            <button
+              onClick={() => setUniDropdownOpen(p => !p)}
+              className={cn(
+                "w-full h-10 pl-3 pr-8 rounded-xl text-sm text-left border transition-colors flex items-center gap-2",
+                uniDropdownOpen
+                  ? "border-[rgb(var(--primary))] bg-[rgb(var(--muted))]"
+                  : "border-[rgb(var(--border))] bg-[rgb(var(--muted))] hover:border-[rgb(var(--primary)/0.4)]"
+              )}
+            >
+              <Building2 className="w-3.5 h-3.5 text-[rgb(var(--muted-fg))] flex-shrink-0" />
+              <span className={cn("truncate flex-1", selectedUni !== "all" ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))]")}>
+                {selectedUniLabel}
+              </span>
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" />
+            </button>
+            {uniDropdownOpen && (
+              <div className="absolute top-12 left-0 right-0 z-30 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl overflow-hidden">
+                <div className="p-2 border-b border-[rgb(var(--border))]">
+                  <input autoFocus value={uniSearch} onChange={e => setUniSearch(e.target.value)}
+                    placeholder="Type to search…"
+                    className="w-full h-8 px-3 rounded-lg text-sm bg-[rgb(var(--muted))] outline-none" />
+                </div>
+                <div className="max-h-52 overflow-y-auto p-1">
+                  <button onClick={() => { setSelectedUni("all"); setUniSearch(""); setUniDropdownOpen(false); }}
+                    className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                      selectedUni === "all" ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] font-medium" : "hover:bg-[rgb(var(--muted))] text-[rgb(var(--fg))]")}>
+                    All Universities
+                  </button>
+                  {filteredUnis.length === 0 && <p className="text-xs text-[rgb(var(--muted-fg))] text-center py-3">No results</p>}
+                  {filteredUnis.map(u => (
+                    <button key={u.id} onClick={() => { setSelectedUni(u.id); setUniSearch(""); setUniDropdownOpen(false); }}
+                      className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                        selectedUni === u.id ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] font-medium" : "hover:bg-[rgb(var(--muted))] text-[rgb(var(--fg))]")}>
+                      <span className="font-medium">{u.short_name}</span>
+                      <span className="text-[rgb(var(--muted-fg))] ml-1.5 text-xs">{u.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Grid */}
