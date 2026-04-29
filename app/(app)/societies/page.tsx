@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Building2, Plus, Star, Heart, Zap } from "lucide-react";
+import { Users, Search, Building2, Plus, Star, Heart, Zap, Trash2, Pencil, MoreHorizontal, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -32,9 +32,11 @@ const CAT_COLORS: Record<string, string> = {
 
 export default function SocietiesPage() {
   const supabase = createClient();
-  const { userId } = useCurrentUser();
+  const { userId, role } = useCurrentUser();
+  const isPlatformAdmin = role === "admin";
   const [universities, setUniversities] = useState<University[]>([]);
   const [societies, setSocieties] = useState<Society[]>([]);
+  const [adminIds, setAdminIds] = useState<Set<string>>(new Set()); // societies where user is admin_id
   const [selectedUni, setSelectedUni] = useState<string>("all");
   const [uniSearch, setUniSearch] = useState("");
   const [uniDropdownOpen, setUniDropdownOpen] = useState(false);
@@ -46,6 +48,16 @@ export default function SocietiesPage() {
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [following, setFollowing] = useState<string | null>(null);
+  // Delete / edit state
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  // Edit modal state
+  const [editingSociety, setEditingSociety] = useState<Society | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // Close uni dropdown on outside click
   useEffect(() => {
@@ -90,6 +102,53 @@ export default function SocietiesPage() {
       .then(({ data }: { data: { society_id: string }[] | null }) =>
         setFollowedIds(new Set((data ?? []).map(m => m.society_id))));
   }, [userId]);
+
+  // Load societies where user is the admin_id
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from("societies").select("id").eq("admin_id", userId)
+      .then(({ data }) => setAdminIds(new Set((data ?? []).map((s: any) => s.id))));
+  }, [userId]);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    const h = () => setMenuOpen(null);
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const deleteSociety = async (societyId: string) => {
+    setDeleting(societyId);
+    await supabase.from("societies").delete().eq("id", societyId);
+    setSocieties(p => p.filter(s => s.id !== societyId));
+    setConfirmDelete(null);
+    setDeleting(null);
+    setMenuOpen(null);
+  };
+
+  const openEdit = (s: Society) => {
+    setEditingSociety(s);
+    setEditName(s.name);
+    setEditDesc(s.description ?? "");
+    setEditCategory(s.category);
+    setMenuOpen(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingSociety) return;
+    setSaving(true);
+    await supabase.from("societies").update({
+      name: editName.trim(),
+      description: editDesc.trim() || null,
+      category: editCategory,
+    }).eq("id", editingSociety.id);
+    setSocieties(p => p.map(s => s.id === editingSociety.id
+      ? { ...s, name: editName.trim(), description: editDesc.trim() || null, category: editCategory }
+      : s
+    ));
+    setSaving(false);
+    setEditingSociety(null);
+  };
 
   const join = async (societyId: string) => {
     if (!userId) return;
@@ -286,75 +345,134 @@ export default function SocietiesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((s, i) => (
-            <motion.div key={s.id}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.04, 0.3) }}
-              className="theme-card p-5 flex flex-col gap-3 hover:border-[rgb(var(--primary)/0.3)] transition-colors group"
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xl font-bold overflow-hidden">
-                  {s.logo_url
-                    ? <img src={s.logo_url} alt="" className="w-full h-full object-cover rounded-2xl" />
-                    : s.name.charAt(0)}
-                </div>
-                <span className={cn(
-                  "text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize",
-                  CAT_COLORS[s.category] ?? CAT_COLORS.general
-                )}>
-                  {s.category}
-                </span>
-              </div>
-
-              <div className="flex-1">
-                <Link href={`/societies/${s.id}`}>
-                  <h3 className="font-semibold group-hover:text-[rgb(var(--primary))] transition-colors">{s.name}</h3>
-                </Link>
-                {s.university && (
-                  <p className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1 mt-0.5">
-                    <Building2 className="w-3 h-3" />{s.university.short_name}
-                  </p>
-                )}
-                {s.description && (
-                  <p className="text-xs text-[rgb(var(--muted-fg))] mt-1.5 line-clamp-2">{s.description}</p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
-                <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
-                  <Users className="w-3.5 h-3.5" /> {s.member_count} members
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleFollow(s.id)}
-                    disabled={following === s.id}
-                    className={cn(
-                      "flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-40",
-                      followedIds.has(s.id)
-                        ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
-                        : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))]"
-                    )}
-                  >
-                    <Heart className={cn("w-3 h-3", followedIds.has(s.id) && "fill-current")} />
-                    {followedIds.has(s.id) ? "Following" : "Follow"}
-                  </button>
-                  {joinedIds.has(s.id) ? (
-                    <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
-                      <Star className="w-3.5 h-3.5 fill-current" /> Joined
+          {filtered.map((s, i) => {
+            const canManage = isPlatformAdmin || adminIds.has(s.id);
+            return (
+              <motion.div key={s.id}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.04, 0.3) }}
+                className="theme-card p-5 flex flex-col gap-3 hover:border-[rgb(var(--primary)/0.3)] transition-colors group relative"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xl font-bold overflow-hidden">
+                    {s.logo_url ? <img src={s.logo_url} alt="" className="w-full h-full object-cover rounded-2xl" /> : s.name.charAt(0)}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize", CAT_COLORS[s.category] ?? CAT_COLORS.general)}>
+                      {s.category}
                     </span>
-                  ) : (
-                    <button
-                      onClick={() => join(s.id)}
-                      disabled={joining === s.id}
-                      className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40"
-                    >
-                      {joining === s.id ? "Joining…" : "Join"}
-                    </button>
-                  )}
+                    {canManage && (
+                      <div className="relative" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}
+                          className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] transition-colors"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                        {menuOpen === s.id && (
+                          <div className="absolute right-0 top-8 z-20 w-36 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl overflow-hidden">
+                            <button onClick={() => openEdit(s)} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[rgb(var(--muted))] transition-colors">
+                              <Pencil className="w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" /> Edit
+                            </button>
+                            <button onClick={() => { setConfirmDelete(s.id); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+
+                {/* Delete confirm */}
+                {confirmDelete === s.id && (
+                  <div className="absolute inset-0 z-10 rounded-2xl bg-[rgb(var(--card)/0.97)] flex flex-col items-center justify-center gap-3 p-4 border border-red-500/30">
+                    <Trash2 className="w-8 h-8 text-red-400" />
+                    <p className="text-sm font-semibold text-center">Delete <span className="text-red-400">{s.name}</span>?</p>
+                    <p className="text-xs text-[rgb(var(--muted-fg))] text-center">This removes all members and posts. Cannot be undone.</p>
+                    <div className="flex gap-2 w-full">
+                      <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
+                      <button onClick={() => deleteSociety(s.id)} disabled={deleting === s.id}
+                        className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-1">
+                        {deleting === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex-1">
+                  <Link href={`/societies/${s.id}`}>
+                    <h3 className="font-semibold group-hover:text-[rgb(var(--primary))] transition-colors">{s.name}</h3>
+                  </Link>
+                  {s.university && (
+                    <p className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1 mt-0.5">
+                      <Building2 className="w-3 h-3" />{s.university.short_name}
+                    </p>
+                  )}
+                  {s.description && <p className="text-xs text-[rgb(var(--muted-fg))] mt-1.5 line-clamp-2">{s.description}</p>}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
+                  <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]"><Users className="w-3.5 h-3.5" /> {s.member_count} members</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => toggleFollow(s.id)} disabled={following === s.id}
+                      className={cn("flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-40",
+                        followedIds.has(s.id) ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))]")}>
+                      <Heart className={cn("w-3 h-3", followedIds.has(s.id) && "fill-current")} />
+                      {followedIds.has(s.id) ? "Following" : "Follow"}
+                    </button>
+                    {joinedIds.has(s.id) ? (
+                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium"><Star className="w-3.5 h-3.5 fill-current" /> Joined</span>
+                    ) : (
+                      <button onClick={() => join(s.id)} disabled={joining === s.id}
+                        className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40">
+                        {joining === s.id ? "Joining…" : "Join"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Edit Society Modal */}
+      {editingSociety && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md theme-card p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">Edit Society</h2>
+              <button onClick={() => setEditingSociety(null)} className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"><X className="w-4 h-4" /></button>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Name</label>
+              <input value={editName} onChange={e => setEditName(e.target.value)} maxLength={80}
+                className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Description</label>
+              <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} maxLength={500}
+                className="w-full px-3 py-2 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))] resize-none" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Category</label>
+              <select value={editCategory} onChange={e => setEditCategory(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]">
+                {["academic","cultural","sports","tech","arts","community","general"].map(c => (
+                  <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setEditingSociety(null)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
+              <button onClick={saveEdit} disabled={saving || !editName.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </motion.div>

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Calendar, Building2, Search, Plus, Star,
   Clock, ExternalLink, ImageIcon, X, Send, ChevronDown,
-  Megaphone, Zap,
+  Megaphone, Zap, Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -127,7 +127,8 @@ function ImageGrid({ urls }: { urls: string[] }) {
 
 export default function ClubsEventsPage() {
   const supabase = createClient();
-  const { userId } = useCurrentUser();
+  const { userId, role } = useCurrentUser();
+  const isPlatformAdmin = role === "admin";
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [tab, setTab] = useState<"societies" | "events">("societies");
@@ -235,6 +236,13 @@ export default function ClubsEventsPage() {
     if (el) observer.observe(el);
     return () => observer.disconnect();
   }, [tab, hasMoreEvents, eventsLoading, eventsPage]);
+
+  const adminSocietyIds = new Set(adminSocieties.map(s => s.id));
+
+  const deletePost = async (postId: string) => {
+    await (supabase as any).from("society_posts").delete().eq("id", postId);
+    setEvents(p => p.filter(e => e.id !== postId));
+  };
 
   const join = async (societyId: string) => {
     if (!userId) return;
@@ -636,10 +644,18 @@ export default function ClubsEventsPage() {
                       <button className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors">
                         <Star className="w-4 h-4" /> {ev.likes}
                       </button>
-                      <Link href={`/societies/${ev.society?.id}`}
-                        className="text-xs font-medium text-[rgb(var(--primary))] hover:opacity-80 flex items-center gap-1">
-                        View Society <ExternalLink className="w-3 h-3" />
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        {(isPlatformAdmin || adminSocietyIds.has(ev.society?.id ?? "")) && (
+                          <button onClick={() => deletePost(ev.id)}
+                            className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))] hover:text-red-400 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </button>
+                        )}
+                        <Link href={`/societies/${ev.society?.id}`}
+                          className="text-xs font-medium text-[rgb(var(--primary))] hover:opacity-80 flex items-center gap-1">
+                          View Society <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
                     </div>
                   </motion.article>
                 );

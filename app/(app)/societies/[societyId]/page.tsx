@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { motion } from "framer-motion";
-import { Users, Calendar, MessageSquare, Plus, Building2, Pin } from "lucide-react";
+import { Users, Calendar, MessageSquare, Plus, Building2, Pin, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -30,7 +30,8 @@ const TABS = ["Posts", "Events", "Members"];
 export default function SocietyPage({ params }: { params: Promise<{ societyId: string }> }) {
   const { societyId } = use(params);
   const supabase = createClient();
-  const { userId } = useCurrentUser();
+  const { userId, role } = useCurrentUser();
+  const isPlatformAdmin = role === "admin";
 
   const [society, setSociety] = useState<Society | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -42,13 +43,14 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const [newContent, setNewContent] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [posting, setPosting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // society admin_id
 
   useEffect(() => {
     (async () => {
       const [{ data: soc }, { data: postsData }, { data: membersData }] = await Promise.all([
         supabase
           .from("societies")
-          .select("id,name,description,category,member_count,logo_url,cover_url,university:universities!university_id(name,short_name),admin:profiles!admin_id(full_name)")
+          .select("id,name,description,category,member_count,logo_url,cover_url,admin_id,university:universities!university_id(name,short_name),admin:profiles!admin_id(full_name)")
           .eq("id", societyId)
           .single(),
         supabase
@@ -66,6 +68,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       ]);
 
       setSociety(soc as unknown as Society);
+      if (userId && soc) setIsAdmin((soc as any).admin_id === userId);
       setPosts((postsData as unknown as Post[]) ?? []);
       setMembers(((membersData ?? []) as unknown as { profile: Member | null }[]).map(m => m.profile).filter((p): p is Member => !!p));
 
@@ -81,6 +84,11 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       setLoading(false);
     })();
   }, [societyId, userId]);
+
+  const deletePost = async (postId: string) => {
+    await (supabase as any).from("society_posts").delete().eq("id", postId);
+    setPosts(p => p.filter(post => post.id !== postId));
+  };
 
   const createPost = async () => {
     if (!newContent.trim() || !userId) return;
@@ -233,9 +241,14 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-medium">{post.author?.full_name}</span>
                       {post.is_pinned && <Pin className="w-3 h-3 text-[rgb(var(--primary))] fill-current" />}
-                      <span className="text-xs text-[rgb(var(--muted-fg))] ml-auto">
-                        {formatRelativeTime(post.created_at)}
-                      </span>
+                      <span className="text-xs text-[rgb(var(--muted-fg))] ml-auto">{formatRelativeTime(post.created_at)}</span>
+                      {(isPlatformAdmin || isAdmin) && (
+                        <button onClick={() => deletePost(post.id)}
+                          className="p-1 rounded-lg text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                          title="Delete post">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     {post.title && <h3 className="font-semibold mb-1">{post.title}</h3>}
                     <p className="text-sm text-[rgb(var(--muted-fg))]">{post.content}</p>

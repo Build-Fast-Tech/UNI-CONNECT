@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle, XCircle, Clock, Building2, Mail,
-  AlertTriangle, Search, RefreshCw, Shield,
+  AlertTriangle, Search, RefreshCw, Shield, Trash2, Pencil, X, Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -59,6 +59,16 @@ export default function AdminSocietiesPage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
+  // Delete
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  // Edit
+  const [editingSociety, setEditingSociety] = useState<Society | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editStatus, setEditStatus] = useState<SocietyStatus>("pending");
+  const [saving, setSaving] = useState(false);
 
   const fetchSocieties = async () => {
     const { data } = await supabase
@@ -100,6 +110,41 @@ export default function AdminSocietiesPage() {
     }).eq("id", id);
     setSocieties(p => p.map(s => s.id === id ? { ...s, status: "approved" as SocietyStatus } : s));
     setProcessing(null);
+  };
+
+  const deleteSociety = async (id: string) => {
+    setDeleting(id);
+    await supabase.from("societies").delete().eq("id", id);
+    setSocieties(p => p.filter(s => s.id !== id));
+    setConfirmDelete(null);
+    setDeleting(null);
+  };
+
+  const openEdit = (s: Society) => {
+    setEditingSociety(s);
+    setEditName(s.name);
+    setEditDesc(s.description ?? "");
+    setEditCategory(s.category);
+    setEditStatus(s.status);
+  };
+
+  const saveEdit = async () => {
+    if (!editingSociety || !userId) return;
+    setSaving(true);
+    await supabase.from("societies").update({
+      name: editName.trim(),
+      description: editDesc.trim() || null,
+      category: editCategory,
+      status: editStatus,
+      reviewed_by: userId,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", editingSociety.id);
+    setSocieties(p => p.map(s => s.id === editingSociety.id
+      ? { ...s, name: editName.trim(), description: editDesc.trim() || null, category: editCategory, status: editStatus }
+      : s
+    ));
+    setSaving(false);
+    setEditingSociety(null);
   };
 
   const reject = async (id: string) => {
@@ -259,34 +304,33 @@ export default function AdminSocietiesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                   {society.status === "pending" && (
                     <>
-                      <button
-                        onClick={() => approve(society.id)}
-                        disabled={processing === society.id}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Approve
+                      <button onClick={() => approve(society.id)} disabled={processing === society.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors disabled:opacity-40">
+                        <CheckCircle className="w-3.5 h-3.5" /> Approve
                       </button>
-                      <button
-                        onClick={() => { setRejectingId(society.id); setRejectNote(""); }}
-                        disabled={processing === society.id}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/10 text-red-400 text-sm font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-40"
-                      >
-                        <XCircle className="w-4 h-4" /> Reject
+                      <button onClick={() => { setRejectingId(society.id); setRejectNote(""); }} disabled={processing === society.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-40">
+                        <XCircle className="w-3.5 h-3.5" /> Reject
                       </button>
                     </>
                   )}
                   {society.status === "rejected" && (
-                    <button
-                      onClick={() => approve(society.id)}
-                      disabled={processing === society.id}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
-                    >
+                    <button onClick={() => approve(society.id)} disabled={processing === society.id}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-40">
                       Re-approve
                     </button>
                   )}
+                  <button onClick={() => openEdit(society)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] text-xs font-semibold hover:bg-[rgb(var(--border))] transition-colors">
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button onClick={() => setConfirmDelete(society.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
                 </div>
               </div>
 
@@ -327,6 +371,78 @@ export default function AdminSocietiesPage() {
               </AnimatePresence>
             </motion.div>
           ))}
+        </div>
+      )}
+      {/* Delete confirm modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm theme-card p-6 space-y-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+              <Trash2 className="w-7 h-7 text-red-400" />
+            </div>
+            <h3 className="font-bold text-lg">Delete Society?</h3>
+            <p className="text-sm text-[rgb(var(--muted-fg))]">
+              This will permanently delete <strong>{societies.find(s => s.id === confirmDelete)?.name}</strong> along with all its members and posts.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm font-medium">Cancel</button>
+              <button onClick={() => deleteSociety(confirmDelete)} disabled={!!deleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Society Modal */}
+      {editingSociety && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md theme-card p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">Edit Society</h2>
+              <button onClick={() => setEditingSociety(null)} className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"><X className="w-4 h-4" /></button>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Name</label>
+              <input value={editName} onChange={e => setEditName(e.target.value)} maxLength={80}
+                className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Description</label>
+              <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} maxLength={500}
+                className="w-full px-3 py-2 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))] resize-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Category</label>
+                <select value={editCategory} onChange={e => setEditCategory(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]">
+                  {["academic","cultural","sports","tech","arts","community","general"].map(c => (
+                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Status</label>
+                <select value={editStatus} onChange={e => setEditStatus(e.target.value as SocietyStatus)}
+                  className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]">
+                  {(["pending","approved","rejected","suspended"] as SocietyStatus[]).map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setEditingSociety(null)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
+              <button onClick={saveEdit} disabled={saving || !editName.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </motion.div>
