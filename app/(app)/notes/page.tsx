@@ -77,7 +77,7 @@ export default function NotesPage() {
         .select("*, profiles!uploader_id(full_name, avatar_url, university_id), universities!university_id(short_name)")
         .eq("status", "published")
         .order("created_at", { ascending: false })
-        .limit(100),
+        .limit(1000),
       supabase.from("subjects").select("name").order("name"),
     ]).then(([{ data: notesData, error: notesErr }, { data: subjectsData }]) => {
       if (notesErr) console.error("notes fetch error:", notesErr);
