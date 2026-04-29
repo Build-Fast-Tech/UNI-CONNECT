@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Building2, Plus, Star } from "lucide-react";
+import { Users, Search, Building2, Plus, Star, Heart, Zap } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -41,6 +41,8 @@ export default function SocietiesPage() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
+  const [following, setFollowing] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("universities").select("id, name, short_name").order("name")
@@ -60,14 +62,22 @@ export default function SocietiesPage() {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from("society_members").select("society_id").eq("user_id", userId)
-      .then(({ data }) => setJoinedIds(new Set((data ?? []).map(m => m.society_id))));
+    (supabase as any).from("society_members").select("society_id").eq("user_id", userId)
+      .then(({ data }: { data: { society_id: string }[] | null }) =>
+        setJoinedIds(new Set((data ?? []).map(m => m.society_id))));
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    (supabase as any).from("society_followers").select("society_id").eq("user_id", userId)
+      .then(({ data }: { data: { society_id: string }[] | null }) =>
+        setFollowedIds(new Set((data ?? []).map(m => m.society_id))));
   }, [userId]);
 
   const join = async (societyId: string) => {
     if (!userId) return;
     setJoining(societyId);
-    await supabase.from("society_members").insert({ society_id: societyId, user_id: userId });
+    await (supabase as any).from("society_members").insert({ society_id: societyId, user_id: userId });
     const society = societies.find(s => s.id === societyId);
     if (society) {
       await supabase.from("societies").update({ member_count: society.member_count + 1 }).eq("id", societyId);
@@ -76,6 +86,25 @@ export default function SocietiesPage() {
     setJoinedIds(p => new Set([...p, societyId]));
     setJoining(null);
   };
+
+  const toggleFollow = useCallback(async (societyId: string) => {
+    if (!userId) return;
+    // Optimistic UI: update immediately, sync in background
+    const wasFollowed = followedIds.has(societyId);
+    setFollowedIds(p => {
+      const n = new Set(p);
+      wasFollowed ? n.delete(societyId) : n.add(societyId);
+      return n;
+    });
+    setFollowing(societyId);
+    if (wasFollowed) {
+      await (supabase as any).from("society_followers").delete()
+        .eq("society_id", societyId).eq("user_id", userId);
+    } else {
+      await (supabase as any).from("society_followers").insert({ society_id: societyId, user_id: userId });
+    }
+    setFollowing(null);
+  }, [userId, followedIds, supabase]);
 
   const filtered = societies.filter(s => {
     const matchCat = category === "All" || s.category === category;
@@ -92,15 +121,33 @@ export default function SocietiesPage() {
           </h1>
           <p className="text-sm text-[rgb(var(--muted-fg))] mt-0.5">Browse and join university societies</p>
         </div>
-        <Link
-          href="/societies/register"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" /> Register Society
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/societies/feed"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] text-sm font-medium hover:text-[rgb(var(--fg))] transition-colors border border-[rgb(var(--border))]"
+          >
+            <Zap className="w-4 h-4" /> Feed
+          </Link>
+          <Link
+            href="/societies/register"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" /> Register Society
+          </Link>
+        </div>
       </div>
 
-      {/* University selector */}
+      {/* Search bar — full width at top */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search societies…"
+          className="w-full h-10 pl-10 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+        />
+      </div>
+
+      {/* University Slider — beneath search bar */}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         <button
           onClick={() => setSelectedUni("all")}
@@ -125,29 +172,19 @@ export default function SocietiesPage() {
         ))}
       </div>
 
-      {/* Category + search */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-wrap">
-          {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCategory(c)}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-medium flex-shrink-0 transition-colors capitalize",
-                category === c
-                  ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
-                  : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
-              )}>
-              {c}
-            </button>
-          ))}
-        </div>
-        <div className="relative sm:ml-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search societies…"
-            className="w-full sm:w-56 h-9 pl-9 pr-4 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-          />
-        </div>
+      {/* Category chips */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 flex-wrap">
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={() => setCategory(c)}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-medium flex-shrink-0 transition-colors capitalize",
+              category === c
+                ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
+                : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+            )}>
+            {c}
+          </button>
+        ))}
       </div>
 
       {/* Grid */}
@@ -201,19 +238,34 @@ export default function SocietiesPage() {
                 <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
                   <Users className="w-3.5 h-3.5" /> {s.member_count} members
                 </span>
-                {joinedIds.has(s.id) ? (
-                  <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
-                    <Star className="w-3.5 h-3.5 fill-current" /> Joined
-                  </span>
-                ) : (
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => join(s.id)}
-                    disabled={joining === s.id}
-                    className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40"
+                    onClick={() => toggleFollow(s.id)}
+                    disabled={following === s.id}
+                    className={cn(
+                      "flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-40",
+                      followedIds.has(s.id)
+                        ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]"
+                        : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))]"
+                    )}
                   >
-                    {joining === s.id ? "Joining…" : "Join"}
+                    <Heart className={cn("w-3 h-3", followedIds.has(s.id) && "fill-current")} />
+                    {followedIds.has(s.id) ? "Following" : "Follow"}
                   </button>
-                )}
+                  {joinedIds.has(s.id) ? (
+                    <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                      <Star className="w-3.5 h-3.5 fill-current" /> Joined
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => join(s.id)}
+                      disabled={joining === s.id}
+                      className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40"
+                    >
+                      {joining === s.id ? "Joining…" : "Join"}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}

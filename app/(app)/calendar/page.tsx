@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, ChevronRight, Plus, X, Sparkles,
-  Clock, Calendar, Trash2, Bot, Loader2,
+  ChevronLeft, ChevronRight, Plus, X,
+  Clock, Calendar, Trash2, CalendarPlus, Wand2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -20,11 +20,11 @@ interface CalEvent {
   user_id: string;
 }
 
-interface AIBlock {
-  time: string;
-  subject: string;
-  duration: string;
-  type: "study" | "break";
+interface ScheduleBlock {
+  title: string;
+  start_time: string;
+  end_time: string;
+  color: string;
 }
 
 const COLORS = ["#6366f1","#10b981","#f97316","#ef4444","#8b5cf6","#3b82f6","#ec4899","#eab308"];
@@ -33,6 +33,8 @@ const MONTHS = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December",
 ];
+
+const EMPTY_BLOCK = (): ScheduleBlock => ({ title: "", start_time: "", end_time: "", color: COLORS[0] });
 
 export default function CalendarPage() {
   const { userId } = useCurrentUser();
@@ -48,20 +50,18 @@ export default function CalendarPage() {
   const [qTitle, setQTitle] = useState("");
   const [qDate,  setQDate]  = useState(today.toISOString().split("T")[0]);
   const [qTime,  setQTime]  = useState("");
+  const [qEnd,   setQEnd]   = useState("");
   const [adding, setAdding] = useState(false);
 
-  // AI Scheduler
-  const [showAI,    setShowAI]    = useState(false);
-  const [aiHours,   setAiHours]   = useState("6");
-  const [aiSubjs,   setAiSubjs]   = useState("");
-  const [aiBreaks,  setAiBreaks]  = useState("15");
-  const [aiLoad,    setAiLoad]    = useState(false);
-  const [aiSchedule,setAiSched]   = useState<AIBlock[]>([]);
-  const [aiErr,     setAiErr]     = useState("");
+  // Manual schedule builder
+  const [showBuilder,   setShowBuilder]   = useState(false);
+  const [buildDate,     setBuildDate]     = useState(today.toISOString().split("T")[0]);
+  const [buildBlocks,   setBuildBlocks]   = useState<ScheduleBlock[]>([EMPTY_BLOCK()]);
+  const [buildSaving,   setBuildSaving]   = useState(false);
 
   const year  = current.getFullYear();
   const month = current.getMonth();
-  const firstDay   = new Date(year, month, 1).getDay();
+  const firstDay    = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const cells: (number | null)[] = [
@@ -89,9 +89,9 @@ export default function CalendarPage() {
     setAdding(true);
     const { data } = await (supabase as any).from("calendar_events").insert({
       user_id: userId, title: qTitle.trim(), date: qDate,
-      start_time: qTime || null, color,
+      start_time: qTime || null, end_time: qEnd || null, color,
     }).select().single();
-    if (data) { setEvents(p => [...p, data as unknown as CalEvent]); setQTitle(""); setQTime(""); }
+    if (data) { setEvents(p => [...p, data as unknown as CalEvent]); setQTitle(""); setQTime(""); setQEnd(""); }
     setAdding(false);
   };
 
@@ -100,31 +100,60 @@ export default function CalendarPage() {
     setEvents(p => p.filter(e => e.id !== id));
   };
 
-  const generateSchedule = async () => {
-    if (!aiSubjs.trim()) { setAiErr("Enter at least one subject."); return; }
-    setAiErr(""); setAiLoad(true); setAiSched([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+
+  const generateAiSchedule = async () => {
+    if (!userId) return;
+    setAiLoading(true);
+    setAiError("");
     try {
-      const res  = await fetch("/api/ai-schedule", {
+      const { data: userSubjects } = await (supabase as any)
+        .from("user_subjects")
+        .select("name")
+        .eq("user_id", userId);
+      const subjects = (userSubjects ?? []).map((s: { name: string }) => s.name);
+
+      const res = await fetch("/api/ai/ai-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hours: aiHours, subjects: aiSubjs, breakMins: aiBreaks }),
+        body: JSON.stringify({ date: buildDate, subjects, studyHours: 6, startHour: 9 }),
       });
-      const json = await res.json();
-      if (json.schedule) setAiSched(json.schedule);
-      else setAiErr(json.error ?? "Failed to generate schedule.");
-    } catch { setAiErr("Network error. Please try again."); }
-    setAiLoad(false);
+      if (!res.ok) throw new Error(await res.text());
+      const { blocks } = await res.json();
+      if (Array.isArray(blocks) && blocks.length > 0) {
+        setBuildBlocks(blocks);
+      } else {
+        setAiError("AI returned no blocks. Try again.");
+      }
+    } catch {
+      setAiError("Failed to generate schedule. Check your API key.");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
-  const applySchedule = async () => {
-    if (!userId || aiSchedule.length === 0) return;
-    const rows = aiSchedule.filter(b => b.type === "study").map(b => ({
-      user_id: userId, title: b.subject, date: qDate, start_time: b.time,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+  // Schedule builder helpers
+  const updateBlock = (i: number, field: keyof ScheduleBlock, val: string) =>
+    setBuildBlocks(prev => prev.map((b, idx) => idx === i ? { ...b, [field]: val } : b));
+
+  const removeBlock = (i: number) =>
+    setBuildBlocks(prev => prev.filter((_, idx) => idx !== i));
+
+  const saveSchedule = async () => {
+    if (!userId) return;
+    const valid = buildBlocks.filter(b => b.title.trim());
+    if (!valid.length) return;
+    setBuildSaving(true);
+    const rows = valid.map(b => ({
+      user_id: userId, title: b.title.trim(), date: buildDate,
+      start_time: b.start_time || null, end_time: b.end_time || null, color: b.color,
     }));
     const { data } = await (supabase as any).from("calendar_events").insert(rows).select();
     if (data) setEvents(p => [...p, ...(data as unknown as CalEvent[])]);
-    setShowAI(false); setAiSched([]);
+    setBuildBlocks([EMPTY_BLOCK()]);
+    setShowBuilder(false);
+    setBuildSaving(false);
   };
 
   const todayStr = today.toISOString().split("T")[0];
@@ -137,82 +166,111 @@ export default function CalendarPage() {
           <h1 className="text-xl font-bold flex items-center gap-2">
             <Calendar className="w-5 h-5 text-[rgb(var(--primary))]" /> Calendar
           </h1>
-          <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Manage your schedule and study plan</p>
+          <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Plan your schedule and track your week</p>
         </div>
         <button
-          onClick={() => setShowAI(p => !p)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[rgb(var(--primary))] to-[rgb(var(--accent))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          onClick={() => setShowBuilder(p => !p)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
         >
-          <Sparkles className="w-4 h-4" /> Generate AI Schedule
+          <CalendarPlus className="w-4 h-4" /> Plan Day
         </button>
       </header>
 
-      {/* AI Scheduler Panel */}
+      {/* Manual Schedule Builder */}
       <AnimatePresence>
-        {showAI && (
+        {showBuilder && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="theme-card p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <p className="font-semibold flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-[rgb(var(--primary))]" /> AI Study Schedule Generator
+                <p className="font-semibold text-sm flex items-center gap-2">
+                  <CalendarPlus className="w-4 h-4 text-[rgb(var(--primary))]" /> Plan Your Day
                 </p>
-                <button onClick={() => setShowAI(false)}><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowBuilder(false)} className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              {/* Date for the schedule */}
+              <div className="flex items-end gap-3 flex-wrap">
                 <div>
-                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Study hours</label>
-                  <input type="number" min={1} max={16} value={aiHours} onChange={e => setAiHours(e.target.value)}
-                    className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Schedule date</label>
+                  <input type="date" value={buildDate} onChange={e => setBuildDate(e.target.value)}
+                    className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-40" />
                 </div>
-                <div>
-                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Break (mins)</label>
-                  <input type="number" min={5} max={60} value={aiBreaks} onChange={e => setAiBreaks(e.target.value)}
-                    className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
-                </div>
-                <div>
-                  <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Apply to date</label>
-                  <input type="date" value={qDate} onChange={e => setQDate(e.target.value)}
-                    className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
-                </div>
+                <button
+                  type="button"
+                  onClick={generateAiSchedule}
+                  disabled={aiLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 text-sm font-medium hover:bg-violet-500/20 transition-colors disabled:opacity-50"
+                >
+                  <Wand2 className={`w-4 h-4 ${aiLoading ? "animate-spin" : ""}`} />
+                  {aiLoading ? "Generating…" : "AI Generate"}
+                </button>
+                {aiError && (
+                  <p className="text-xs text-red-400">{aiError}</p>
+                )}
               </div>
 
-              <div>
-                <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Subjects (comma-separated)</label>
-                <input value={aiSubjs} onChange={e => setAiSubjs(e.target.value)}
-                  placeholder="e.g. Algorithms, Linear Algebra, Physics"
-                  className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
-              </div>
-
-              {aiErr && <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-xl">{aiErr}</p>}
-
-              <button onClick={generateSchedule} disabled={aiLoad}
-                className="w-full py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
-                {aiLoad ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</> : <><Sparkles className="w-4 h-4" /> Generate Schedule</>}
-              </button>
-
-              {aiSchedule.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Generated Schedule:</p>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {aiSchedule.map((blk, i) => (
-                      <div key={i} className={cn(
-                        "flex items-center gap-3 p-2.5 rounded-xl text-sm",
-                        blk.type === "break" ? "bg-emerald-500/10 text-emerald-400" : "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
-                      )}>
-                        <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="font-mono text-xs flex-shrink-0">{blk.time}</span>
-                        <span className="flex-1 font-medium">{blk.subject}</span>
-                        <span className="text-xs opacity-70">{blk.duration}</span>
+              {/* Time blocks */}
+              <div className="space-y-2">
+                <label className="text-xs text-[rgb(var(--muted-fg))] block">Time blocks</label>
+                {buildBlocks.map((block, i) => (
+                  <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Color dot */}
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={block.color}
+                        onChange={e => updateBlock(i, "color", e.target.value)}
+                        className="w-8 h-9 opacity-0 absolute inset-0 cursor-pointer"
+                      >
+                        {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <div className="w-8 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: block.color + "33" }}>
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: block.color }} />
                       </div>
-                    ))}
+                    </div>
+
+                    <input
+                      value={block.title}
+                      onChange={e => updateBlock(i, "title", e.target.value)}
+                      placeholder="Event title…"
+                      className="flex-1 min-w-[100px] bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]"
+                    />
+                    <input type="time" value={block.start_time}
+                      onChange={e => updateBlock(i, "start_time", e.target.value)}
+                      className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-2 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
+                    <span className="text-xs text-[rgb(var(--muted-fg))] flex-shrink-0">–</span>
+                    <input type="time" value={block.end_time}
+                      onChange={e => updateBlock(i, "end_time", e.target.value)}
+                      className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-2 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
+                    {buildBlocks.length > 1 && (
+                      <button onClick={() => removeBlock(i)}
+                        className="p-2 rounded-xl text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <button onClick={applySchedule}
-                    className="w-full py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:opacity-90">
-                    Add to Calendar
-                  </button>
-                </div>
-              )}
+                ))}
+
+                <button
+                  onClick={() => setBuildBlocks(p => [...p, EMPTY_BLOCK()])}
+                  className="flex items-center gap-1.5 text-xs text-[rgb(var(--primary))] hover:underline mt-1"
+                >
+                  <Plus className="w-3 h-3" /> Add another block
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={saveSchedule}
+                  disabled={buildSaving || !buildBlocks.some(b => b.title.trim())}
+                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
+                  {buildSaving ? "Saving…" : `Add ${buildBlocks.filter(b => b.title.trim()).length} event${buildBlocks.filter(b => b.title.trim()).length !== 1 ? "s" : ""} to Calendar`}
+                </button>
+                <button onClick={() => setShowBuilder(false)}
+                  className="px-4 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm hover:bg-[rgb(var(--border))] transition-colors">
+                  Cancel
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -220,7 +278,6 @@ export default function CalendarPage() {
 
       {/* Calendar Grid */}
       <div className="theme-card overflow-hidden">
-        {/* Navigation */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgb(var(--border))]">
           <button onClick={() => setCurrent(new Date(year, month - 1, 1))} className="p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
             <ChevronLeft className="w-4 h-4" />
@@ -235,14 +292,12 @@ export default function CalendarPage() {
           </button>
         </div>
 
-        {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-[rgb(var(--border))]">
           {DAYS.map(d => (
             <div key={d} className="py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">{d}</div>
           ))}
         </div>
 
-        {/* Cells */}
         <div className="grid grid-cols-7">
           {cells.map((day, i) => {
             const dateStr   = day ? fmt(day) : null;
@@ -290,24 +345,33 @@ export default function CalendarPage() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
             <div className="theme-card p-4">
               <p className="font-semibold text-sm mb-3">
-                Events on {new Date(selected + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                {new Date(selected + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
               </p>
               {events.filter(e => e.date === selected).length === 0 ? (
-                <p className="text-sm text-[rgb(var(--muted-fg))]">No events — use Quick Add below.</p>
+                <p className="text-sm text-[rgb(var(--muted-fg))]">No events — use Quick Add below or Plan Day above.</p>
               ) : (
                 <div className="space-y-2">
-                  {events.filter(e => e.date === selected).map(ev => (
-                    <div key={ev.id} className="flex items-center gap-3 p-3 rounded-xl bg-[rgb(var(--muted))]">
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: ev.color }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{ev.title}</p>
-                        {ev.start_time && <p className="text-xs text-[rgb(var(--muted-fg))]">{ev.start_time}{ev.end_time ? ` – ${ev.end_time}` : ""}</p>}
+                  {events
+                    .filter(e => e.date === selected)
+                    .sort((a, b) => (a.start_time ?? "").localeCompare(b.start_time ?? ""))
+                    .map(ev => (
+                      <div key={ev.id} className="flex items-center gap-3 p-3 rounded-xl bg-[rgb(var(--muted))]">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: ev.color }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{ev.title}</p>
+                          {ev.start_time && (
+                            <p className="text-xs text-[rgb(var(--muted-fg))]">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              {ev.start_time}{ev.end_time ? ` – ${ev.end_time}` : ""}
+                            </p>
+                          )}
+                        </div>
+                        <button onClick={() => deleteEvent(ev.id)}
+                          className="p-1.5 rounded-lg text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <button onClick={() => deleteEvent(ev.id)} className="p-1.5 rounded-lg text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
@@ -334,6 +398,10 @@ export default function CalendarPage() {
           <input type="date" value={qDate} onChange={e => setQDate(e.target.value)}
             className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-36 flex-shrink-0" />
           <input type="time" value={qTime} onChange={e => setQTime(e.target.value)}
+            placeholder="Start"
+            className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
+          <input type="time" value={qEnd} onChange={e => setQEnd(e.target.value)}
+            placeholder="End"
             className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
           <button onClick={addEvent} disabled={!qTitle.trim() || adding}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40 flex-shrink-0">

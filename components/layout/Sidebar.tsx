@@ -8,7 +8,7 @@ import {
   Home, MessageSquare, Briefcase, BookOpen, Bot, Users,
   CalendarDays, GraduationCap, FileUser, ChevronDown, ChevronRight,
   Settings, X, ShieldCheck, User, MessageSquarePlus, Info,
-  Timer, BarChart3, TrendingUp, Building,
+  Timer, BarChart3, TrendingUp, Building, Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -26,7 +26,13 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/feed",         icon: Home,          label: "Home" },
-  { href: "/chat",         icon: MessageSquare, label: "Communication", showBadge: true },
+  {
+    href: "#",             icon: MessageSquare, label: "Communication", showBadge: true,
+    children: [
+      { href: "/chat",   icon: MessageSquare, label: "Channels" },
+      { href: "/inbox",  icon: Inbox,         label: "Inbox (DMs)" },
+    ],
+  },
   {
     href: "#",             icon: Briefcase,     label: "Career Center",
     children: [
@@ -129,6 +135,11 @@ function SidebarContent({
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
                   <span className="flex-1 text-left">{item.label}</span>
+                  {item.showBadge && unreadCount > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                   {isOpen
                     ? <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-60" />
                     : <ChevronRight className="w-4 h-4 flex-shrink-0 opacity-60" />}

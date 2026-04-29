@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Inbox, Search, Plus, X, Pin, PinOff } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
@@ -44,9 +44,10 @@ interface SearchUser {
   universities?: { short_name: string } | null;
 }
 
-export default function InboxPage() {
+function InboxContent() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [myId, setMyId] = useState<string | null>(null);
@@ -200,6 +201,14 @@ export default function InboxPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery, myId]);
+
+  // Auto-open DM when ?dm= param is present (e.g. from profile Message button)
+  useEffect(() => {
+    const dmTarget = searchParams.get("dm");
+    if (!dmTarget || !myId || loading || starting) return;
+    startDm(dmTarget);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId, loading]);
 
   const startDm = async (userId: string) => {
     if (!myId || starting) return;
@@ -418,5 +427,13 @@ export default function InboxPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function InboxPage() {
+  return (
+    <Suspense>
+      <InboxContent />
+    </Suspense>
   );
 }

@@ -25,6 +25,7 @@ interface StudyGroup {
 interface LiveSession {
   userId: string; fullName: string; subjectName: string;
   secondsLeft: number; mode: string; sessionCode: string | null;
+  groupId: string | null;
 }
 
 const MODE_CONFIG: Record<TimerMode, { label: string; color: string; bg: string; seconds: number }> = {
@@ -117,6 +118,9 @@ export default function StudyPage() {
   const [timerConfig, setTimerConfig] = useState<SavedConfig>(loadConfig);
   const [draftConfig, setDraftConfig] = useState<SavedConfig>(loadConfig);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const groupPresenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const sessionCodeRef = useRef<string | null>(null);
+  const groupModeRef = useRef(false);
 
   const { state, setMode, start, pause, reset, onComplete, progress } = useTimer(sessionCode, {
     pomodoro:    timerConfig.pomodoro    * 60,
@@ -146,28 +150,50 @@ export default function StudyPage() {
       });
   }, [userId]);
 
-  // Presence
+  // Keep refs in sync so presence callbacks can read latest values without re-subscribing
+  useEffect(() => { sessionCodeRef.current = sessionCode; }, [sessionCode]);
+  useEffect(() => { groupModeRef.current = groupMode; }, [groupMode]);
+
+  // Presence channel — subscribe once
   useEffect(() => {
     if (!userId || !fullName) return;
     const ch = supabase.channel("study-presence");
     ch.on("presence", { event: "sync" }, () => {
       const raw = ch.presenceState<any>();
-      setLiveSessions(Object.values(raw).flat().filter((s: any) => s.userId !== userId && s.mode === "pomodoro") as LiveSession[]);
+      const myCode = sessionCodeRef.current;
+      const myPrivate = groupModeRef.current;
+      setLiveSessions(
+        Object.values(raw).flat().filter((s: any) => {
+          if (s.userId === userId) return false;
+          if (s.mode !== "pomodoro") return false;
+          // Hide other users' private sessions unless you share the same code
+          if (s.isPrivate && s.sessionCode !== myCode) return false;
+          return true;
+        }) as LiveSession[]
+      );
     });
     ch.subscribe();
     presenceRef.current = ch;
     return () => { supabase.removeChannel(ch); };
   }, [userId, fullName]);
 
-  // Update presence when timer state changes
+  // Re-track when run state, mode, or subject changes — NOT on every secondsLeft tick
   useEffect(() => {
     if (!presenceRef.current || !userId) return;
     if (state.isRunning && selectedSubject) {
-      presenceRef.current.track({ userId, fullName, subjectName: selectedSubject.name, secondsLeft: state.secondsLeft, mode: state.mode, sessionCode });
+      presenceRef.current.track({
+        userId, fullName,
+        subjectName: selectedSubject.name,
+        secondsLeft: state.secondsLeft,
+        mode: state.mode,
+        sessionCode,
+        isPrivate: groupMode,
+      });
     } else {
       presenceRef.current.untrack();
     }
-  }, [state.isRunning, state.secondsLeft, state.mode, selectedSubject]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isRunning, state.mode, selectedSubject?.id, groupMode]);
 
   // On phase complete
   onComplete(useCallback((completedMode: TimerMode) => {
@@ -252,17 +278,31 @@ export default function StudyPage() {
       .then(({ data }: { data: StudyGroup[] | null }) => setStudyGroups(data ?? []));
   }, []);
 
+  // Global groups presence — single shared channel, group-specific counts
   useEffect(() => {
-    if (!joinedGroupId || !userId || !fullName) return;
-    const ch = supabase.channel(`study-group-${joinedGroupId}`);
+    if (!userId || !fullName) return;
+    const ch = supabase.channel("study-groups-presence");
     ch.on("presence", { event: "sync" }, () => {
-      const state = ch.presenceState<{ userId: string }>();
-      const count = Object.values(state).flat().length;
-      setGroupActiveCounts(p => ({ ...p, [joinedGroupId]: count }));
-    }).subscribe(async (status) => {
-      if (status === "SUBSCRIBED") await ch.track({ userId, fullName });
+      const raw = ch.presenceState<{ userId: string; groupId: string }>();
+      const counts: Record<string, number> = {};
+      Object.values(raw).flat().forEach((s: any) => {
+        if (s.groupId) counts[s.groupId] = (counts[s.groupId] ?? 0) + 1;
+      });
+      setGroupActiveCounts(counts);
     });
+    ch.subscribe();
+    groupPresenceRef.current = ch;
     return () => { supabase.removeChannel(ch); };
+  }, [userId, fullName]);
+
+  // Broadcast presence into joined group (or untrack when leaving)
+  useEffect(() => {
+    if (!groupPresenceRef.current || !userId) return;
+    if (joinedGroupId) {
+      groupPresenceRef.current.track({ userId, fullName, groupId: joinedGroupId });
+    } else {
+      groupPresenceRef.current.untrack();
+    }
   }, [joinedGroupId, userId, fullName]);
 
   const createStudyGroup = async () => {

@@ -23,13 +23,17 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://uniconnect.pk"),
   title: {
     default: "UniConnect — Pakistan's University Student Platform",
     template: "%s | UniConnect",
   },
   description:
-    "The platform built for Pakistan's university students. Notes, chats, jobs, and an AI study partner — all in one place.",
-  keywords: ["university", "pakistan", "students", "NUST", "LUMS", "FAST", "notes", "jobs", "chat"],
+    "The all-in-one platform for Pakistani university students — notes, societies, study groups, jobs, and AI tutoring.",
+  keywords: [
+    "university", "Pakistan", "students", "NUST", "LUMS", "FAST", "IBA",
+    "notes", "jobs", "chat", "societies", "study groups", "AI tutor",
+  ],
   authors: [{ name: "UniConnect" }],
   openGraph: {
     type: "website",
@@ -37,14 +41,52 @@ export const metadata: Metadata = {
     url: "https://uniconnect.pk",
     siteName: "UniConnect",
     title: "UniConnect — Pakistan's University Student Platform",
-    description: "Notes, chats, jobs, and an AI study partner for Pakistani university students.",
+    description: "Notes, societies, study groups, jobs, and AI tutoring for Pakistani university students.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "UniConnect",
-    description: "Pakistan's University Student Super-Platform",
+    title: "UniConnect — Pakistan's University Student Platform",
+    description: "Notes, societies, study groups, jobs, and AI tutoring for Pakistani university students.",
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://uniconnect.pk/#website",
+      url: "https://uniconnect.pk",
+      name: "UniConnect",
+      description: "Pakistan's all-in-one university student platform",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: "https://uniconnect.pk/notes?q={search_term_string}" },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://uniconnect.pk/#organization",
+      name: "UniConnect",
+      url: "https://uniconnect.pk",
+      logo: { "@type": "ImageObject", url: "https://uniconnect.pk/og-image.png" },
+      sameAs: ["https://github.com/ruvnet/uniconnect"],
+      description: "The all-in-one platform for Pakistani university students — notes, societies, study groups, jobs, and AI tutoring.",
+    },
+    {
+      "@type": "EducationalOrganization",
+      "@id": "https://uniconnect.pk/#edu",
+      name: "UniConnect",
+      description: "Connecting Pakistani university students through shared notes, societies, and collaborative study tools.",
+      url: "https://uniconnect.pk",
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -59,6 +101,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
