@@ -7,6 +7,7 @@ import {
   Megaphone, HelpCircle, Clock, XCircle, Inbox,
   RefreshCw, AlertCircle, ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";

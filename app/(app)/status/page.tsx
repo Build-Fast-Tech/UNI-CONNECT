@@ -48,8 +48,8 @@ export default function StatusTrackingPage() {
     try {
       const [socRes, empRes, feedRes] = await Promise.all([
         supabase.from("societies").select("id, name, status, rejection_note, created_at").eq("admin_id", userId),
-        supabase.from("employer_applications").select("id, company_name, status, rejection_reason, created_at").eq("user_id", userId),
-        supabase.from("suggestions").select("id, message, status, rejection_reason, created_at").eq("user_id", userId),
+        (supabase as any).from("employer_applications").select("id, company_name, status, rejection_reason, created_at").eq("user_id", userId),
+        (supabase as any).from("suggestions").select("id, message, status, rejection_reason, created_at").eq("user_id", userId),
       ]);
 
       const all: Submission[] = [];
@@ -59,12 +59,12 @@ export default function StatusTrackingPage() {
         date: s.created_at, rejection_reason: s.rejection_note
       }));
 
-      empRes.data?.forEach(e => all.push({
+      (empRes.data as any[])?.forEach((e: any) => all.push({
         id: e.id, type: "employer", title: e.company_name, status: e.status as Status,
         date: e.created_at, rejection_reason: e.rejection_reason
       }));
 
-      feedRes.data?.forEach(f => all.push({
+      (feedRes.data as any[])?.forEach((f: any) => all.push({
         id: f.id, type: "feedback", title: f.message.slice(0, 40) + (f.message.length > 40 ? "..." : ""),
         status: f.status as Status, date: f.created_at, rejection_reason: f.rejection_reason
       }));
