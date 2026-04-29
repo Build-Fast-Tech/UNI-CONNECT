@@ -110,7 +110,16 @@ function CvUploadForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true); setError("");
+    setError("");
+
+    // Validate all fields are filled
+    if (!editId && !file) { setError("Please upload your CV file (PDF)."); return; }
+    if (!headline.trim()) { setError("Headline is required."); return; }
+    if (skills.length === 0) { setError("Add at least one skill."); return; }
+    if (roles.length === 0) { setError("Add at least one preferred role."); return; }
+    if (cities.length === 0) { setError("Add at least one preferred city."); return; }
+
+    setSubmitting(true);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError("Not logged in."); setSubmitting(false); return; }
@@ -168,7 +177,10 @@ function CvUploadForm() {
 
           {/* File drop zone */}
           <div>
-            <label className="block text-sm font-medium mb-2">CV File (PDF){editId && <span className="text-[rgb(var(--muted-fg))] font-normal"> — leave empty to keep current file</span>}</label>
+            <label className="block text-sm font-medium mb-2">
+              CV File (PDF) {!editId && <span className="text-red-400">*</span>}
+              {editId && <span className="text-[rgb(var(--muted-fg))] font-normal"> — leave empty to keep current file</span>}
+            </label>
             <div
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
@@ -202,26 +214,26 @@ function CvUploadForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Headline</label>
+            <label className="block text-sm font-medium mb-2">Headline <span className="text-red-400">*</span></label>
             <input type="text" value={headline} onChange={e => setHeadline(e.target.value)}
               placeholder="e.g. Final-year CS student at NUST, open to internships"
               className={inputClass} maxLength={120} />
             <p className="text-xs text-[rgb(var(--muted-fg))] mt-1 text-right">{headline.length}/120</p>
           </div>
 
-          <ChipInput label="Skills" placeholder="e.g. React, Python, SQL" values={skills} onChange={setSkills} />
-          <ChipInput label="Preferred Roles" placeholder="e.g. Software Engineer, Data Analyst" values={roles} onChange={setRoles} />
-          <ChipInput label="Preferred Cities" placeholder="e.g. Karachi, Islamabad" values={cities} onChange={setCities} />
+          <ChipInput label="Skills *" placeholder="e.g. React, Python, SQL — press Enter to add" values={skills} onChange={setSkills} />
+          <ChipInput label="Preferred Roles *" placeholder="e.g. Software Engineer, Data Analyst" values={roles} onChange={setRoles} />
+          <ChipInput label="Preferred Cities *" placeholder="e.g. Karachi, Islamabad" values={cities} onChange={setCities} />
 
           <div>
-            <label className="block text-sm font-medium mb-2">Availability</label>
+            <label className="block text-sm font-medium mb-2">Availability <span className="text-red-400">*</span></label>
             <select value={availability} onChange={e => setAvail(e.target.value)} className={inputClass}>
               {AVAILABILITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Visibility</label>
+            <label className="block text-sm font-medium mb-2">Visibility <span className="text-red-400">*</span></label>
             <div className="grid grid-cols-3 gap-2">
               {VISIBILITY_OPTIONS.map(o => (
                 <button key={o.value} type="button" onClick={() => setVis(o.value)}
