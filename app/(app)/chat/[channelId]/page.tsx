@@ -169,6 +169,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
   }, []);
 
+  const scrollToMessage = (msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("highlight-msg");
+      setTimeout(() => el.classList.remove("highlight-msg"), 2000);
+    }
+  };
+
   // Initial load
   useEffect(() => {
     const init = async () => {
@@ -601,7 +610,8 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         {messages.map((msg, i) => (
           <div
             key={msg.id}
-            className={cn("flex gap-3 group", showHeader(i) ? "mt-4 first:mt-0" : "mt-0.5")}
+            id={`msg-${msg.id}`}
+            className={cn("flex gap-3 group transition-colors", showHeader(i) ? "mt-4 first:mt-0" : "mt-0.5")}
           >
             {/* Avatar column */}
             {showHeader(i) ? (
@@ -659,9 +669,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               )}
               {/* Reply-to context */}
               {msg.reply_to_id && (
-                <div className="mb-1 pl-3 border-l-2 border-[rgb(var(--primary)/0.4)] text-xs text-[rgb(var(--muted-fg))] truncate">
-                  ↩ Replied to a message
-                </div>
+                <button
+                  onClick={() => scrollToMessage(msg.reply_to_id!)}
+                  className="mb-1 pl-3 border-l-2 border-[rgb(var(--primary)/0.4)] text-[10px] text-[rgb(var(--muted-fg))] truncate hover:text-[rgb(var(--primary))] transition-colors block text-left"
+                >
+                  ↩ Click to view original message
+                </button>
               )}
               {/* Message body */}
               {msg.gif_url ? (

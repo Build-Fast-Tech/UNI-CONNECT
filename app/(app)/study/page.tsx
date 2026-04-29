@@ -179,7 +179,9 @@ export default function StudyPage() {
 
   // Re-track when run state, mode, or subject changes — NOT on every secondsLeft tick
   useEffect(() => {
-    if (!presenceRef.current || !userId) return;
+    const refs = presenceRef.current;
+    if (!refs || !userId) return;
+
     if (state.isRunning && selectedSubject) {
       presenceRef.current.track({
         userId, fullName,
@@ -190,7 +192,9 @@ export default function StudyPage() {
         isPrivate: groupMode,
       });
     } else {
-      presenceRef.current.untrack();
+      refs.globalCh.untrack();
+      if (refs.groupCh) refs.groupCh.untrack();
+      if (refs.sessionCh) refs.sessionCh.untrack();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isRunning, state.mode, selectedSubject?.id, groupMode]);

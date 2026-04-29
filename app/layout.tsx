@@ -94,6 +94,20 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "UniConnect",
+    "url": "https://uniconnect.pk",
+    "description": "The super-platform for Pakistani university students. Notes, chats, and AI partner.",
+    "applicationCategory": "EducationApplication",
+    "operatingSystem": "Web",
+    "author": {
+      "@type": "Organization",
+      "name": "UniConnect"
+    }
+  };
+
   return (
     <html
       lang="en"

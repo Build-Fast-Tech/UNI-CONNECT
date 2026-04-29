@@ -16,12 +16,7 @@ import { useAcademic } from "@/lib/hooks/useAcademic";
 interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; }
 interface Job     { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
 interface ChatMsg { id: string; content: string; created_at: string; sender_id: string; sender: { full_name: string; avatar_url: string | null } | null; }
-
-const MOCK_EVENTS = [
-  { id: 1, day: "TODAY",    time: "2:00 PM", title: "CS 401 – Distributed Systems",   location: "Building 21, Rm 104",   color: "#6366f1" },
-  { id: 2, day: "TOMORROW", time: "11 AM",   title: "Study Group – Linear Algebra",   location: "Library 21, Level 4th", color: "#10b981" },
-  { id: 3, day: "THU",      time: "3:00 PM", title: "Career Fair — Tech Track",        location: "Student Center",        color: "#f97316" },
-];
+interface CalEvent { id: string; title: string; date: string; start_time: string | null; end_time: string | null; color: string; }
 
 const CHAT_TABS = ["Global", "University", "Private"];
 const NOTE_CATS = ["All", "Trending", "Computer Science", "Mathematics", "Business", "Chemistry", "Physics"];
@@ -44,10 +39,12 @@ function LiveNowTicker() {
 
   useEffect(() => {
     const supabase = createClient();
-    const ch = supabase.channel("study-presence-feed");
+    const ch = supabase.channel("study-global");
     ch.on("presence", { event: "sync" }, () => {
-      const raw = ch.presenceState<PresenceSession>();
-      setSessions(Object.values(raw).flat().filter(s => s.phase === "work"));
+      const raw = ch.presenceState<any>();
+      const all = Object.values(raw).flat() as any[];
+      // Only show public sessions in the feed ticker
+      setSessions(all.filter(s => s.mode === "pomodoro" && !s.sessionCode && !s.groupId));
     });
     ch.subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -400,30 +397,72 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
   );
 }
 
-function CalendarWidget() {
+function CalendarWidget({ userId }: { userId: string | null }) {
+  const supabase = createClient();
+  const [events, setEvents] = useState<CalEvent[]>([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const today = new Date().toISOString().split("T")[0];
+    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+    (supabase as any)
+      .from("calendar_events")
+      .select("id, title, date, start_time, end_time, color")
+      .eq("user_id", userId)
+      .gte("date", today)
+      .lte("date", nextWeek)
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .limit(5)
+      .then(({ data }: { data: CalEvent[] | null }) => setEvents(data ?? []));
+  }, [userId]);
+
+  const labelFor = (dateStr: string) => {
+    const today    = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const d = new Date(dateStr + "T00:00:00");
+    if (d.getTime() === today.getTime())    return "TODAY";
+    if (d.getTime() === tomorrow.getTime()) return "TOMORROW";
+    return d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+  };
+
   return (
     <div className="theme-card p-4">
       <div className="flex items-center justify-between mb-4">
         <p className="font-semibold text-sm">This Week</p>
-        <Link href="/universities" className="text-xs text-[rgb(var(--primary))] hover:underline flex items-center gap-0.5">
+        <Link href="/calendar" className="text-xs text-[rgb(var(--primary))] hover:underline flex items-center gap-0.5">
           Full calendar <ChevronRight className="w-3 h-3" />
         </Link>
       </div>
-      <div className="flex flex-col gap-4">
-        {MOCK_EVENTS.map(ev => (
-          <div key={ev.id} className="flex gap-3">
-            <div className="w-0.5 rounded-full self-stretch flex-shrink-0" style={{ backgroundColor: ev.color }} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))]">{ev.day}</span>
-                <span className="text-[10px] text-[rgb(var(--muted-fg))]">— {ev.time}</span>
+      {events.length === 0 ? (
+        <div className="flex flex-col items-center py-6 gap-2 text-[rgb(var(--muted-fg))]">
+          <Clock className="w-6 h-6 opacity-30" />
+          <p className="text-xs">No upcoming events</p>
+          <Link href="/calendar" className="text-xs text-[rgb(var(--primary))] hover:underline">Add events →</Link>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {events.map(ev => (
+            <div key={ev.id} className="flex gap-3">
+              <div className="w-0.5 rounded-full self-stretch flex-shrink-0" style={{ backgroundColor: ev.color }} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))]">
+                    {labelFor(ev.date)}
+                  </span>
+                  {ev.start_time && (
+                    <span className="text-[10px] text-[rgb(var(--muted-fg))]">— {ev.start_time}</span>
+                  )}
+                </div>
+                <p className="text-xs font-medium leading-tight truncate">{ev.title}</p>
+                {ev.end_time && (
+                  <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-0.5">Until {ev.end_time}</p>
+                )}
               </div>
-              <p className="text-xs font-medium leading-tight">{ev.title}</p>
-              <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-0.5">{ev.location}</p>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -664,7 +703,7 @@ export default function FeedPage() {
         <div className="lg:col-span-2">
           <LibraryWidget notes={notes} loading={notesLoading} activeTab={noteTab} setActiveTab={setNoteTab} />
         </div>
-        <div><CalendarWidget /></div>
+        <div><CalendarWidget userId={userId} /></div>
       </motion.div>
 
       <AnimatePresence>

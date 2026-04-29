@@ -14,6 +14,7 @@ interface Application {
   company_url: string | null;
   description: string | null;
   status: "pending" | "approved" | "rejected";
+  rejection_reason: string | null;
   created_at: string;
   reviewed_at: string | null;
   user_id: string | null;
@@ -38,6 +39,8 @@ export default function AdminEmployersPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
+  const [showRejectInput, setShowRejectInput] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -68,11 +71,14 @@ export default function AdminEmployersPage() {
   }, []);
 
   const handleAction = async (appId: string, action: "approve" | "reject") => {
+    const reason = rejectReasons[appId];
+    if (action === "reject" && !reason?.trim()) return;
+
     setActing(appId);
     const res = await fetch("/api/employer/approve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ applicationId: appId, action }),
+      body: JSON.stringify({ applicationId: appId, action, reason }),
     });
 
     if (res.ok) {
@@ -83,6 +89,7 @@ export default function AdminEmployersPage() {
             : a
         )
       );
+      setShowRejectInput(p => ({ ...p, [appId]: false }));
     }
     setActing(null);
   };
@@ -215,32 +222,58 @@ export default function AdminEmployersPage() {
               </p>
             )}
 
+            {app.status === "rejected" && app.rejection_reason && (
+              <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">
+                <strong>Rejection Reason:</strong> {app.rejection_reason}
+              </p>
+            )}
+
             {app.status === "pending" && (
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => handleAction(app.id, "approve")}
-                  disabled={acting === app.id}
-                  className={cn(
-                    "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                    "bg-green-500/10 text-green-600 border border-green-500/20 hover:bg-green-500/20",
-                    acting === app.id && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  {acting === app.id ? "Processing…" : "Approve"}
-                </button>
-                <button
-                  onClick={() => handleAction(app.id, "reject")}
-                  disabled={acting === app.id}
-                  className={cn(
-                    "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                    "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20",
-                    acting === app.id && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  <XCircle className="w-4 h-4" />
-                  Reject
-                </button>
+              <div className="space-y-3">
+                <div className="flex gap-2 pt-1 border-t border-[rgb(var(--border))] pt-3">
+                  <button
+                    onClick={() => handleAction(app.id, "approve")}
+                    disabled={acting === app.id}
+                    className={cn(
+                      "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                      "bg-green-500/10 text-green-600 border border-green-500/20 hover:bg-green-500/20",
+                      acting === app.id && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    {acting === app.id ? "…" : "Approve"}
+                  </button>
+                  <button
+                    onClick={() => setShowRejectInput(p => ({ ...p, [app.id]: !p[app.id] }))}
+                    disabled={acting === app.id}
+                    className={cn(
+                      "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                      "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20",
+                      acting === app.id && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reject
+                  </button>
+                </div>
+
+                {showRejectInput[app.id] && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="flex gap-2">
+                    <input
+                      value={rejectReasons[app.id] ?? ""}
+                      onChange={e => setRejectReasons(p => ({ ...p, [app.id]: e.target.value }))}
+                      placeholder="Reason for rejection…"
+                      className="flex-1 bg-[rgb(var(--muted))] border border-red-500/30 rounded-xl px-3 py-2 text-sm outline-none focus:border-red-400"
+                    />
+                    <button
+                      onClick={() => handleAction(app.id, "reject")}
+                      disabled={!rejectReasons[app.id]?.trim() || acting === app.id}
+                      className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
+                    >
+                      Confirm
+                    </button>
+                  </motion.div>
+                )}
               </div>
             )}
           </motion.div>

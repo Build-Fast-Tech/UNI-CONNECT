@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       .single();
     if (admin?.role !== "admin") return new Response("Forbidden", { status: 403 });
 
-    let body: { applicationId?: unknown; action?: unknown };
+    let body: { applicationId?: unknown; action?: unknown; reason?: unknown };
     try {
       body = await req.json();
     } catch {
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
     }
     const applicationId = typeof body.applicationId === "string" ? body.applicationId : "";
     const action = body.action === "approve" || body.action === "reject" ? body.action : null;
+    const reason = typeof body.reason === "string" ? body.reason : null;
     if (!UUID_RE.test(applicationId) || !action) {
       return new Response("Invalid request", { status: 400 });
     }
@@ -51,7 +52,11 @@ export async function POST(req: Request) {
     // Update application status
     await (supabase as any)
       .from("employer_applications")
-      .update({ status: action === "approve" ? "approved" : "rejected", reviewed_at: new Date().toISOString() })
+      .update({ 
+        status: action === "approve" ? "approved" : "rejected", 
+        reviewed_at: new Date().toISOString(),
+        rejection_reason: action === "reject" ? reason : null
+      })
       .eq("id", applicationId);
 
     // If approving and user exists, update their role
@@ -100,7 +105,9 @@ export async function POST(req: Request) {
           subject: "UniConnect Employer Application Update",
           html: `
             <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-              <p>Hi ${safeName}, unfortunately your employer application for <strong>${safeCompany}</strong> was not approved at this time.</p>
+              <p>Hi ${safeName},</p>
+              <p>Unfortunately your employer application for <strong>${safeCompany}</strong> was not approved at this time.</p>
+              ${reason ? `<p><strong>Reason:</strong> ${esc(reason)}</p>` : ""}
               <p>Feel free to reply to this email if you have questions.</p>
             </div>
           `,

@@ -276,6 +276,92 @@ export default function CalendarPage() {
         )}
       </AnimatePresence>
 
+      {/* Manual Schedule Builder */}
+      <AnimatePresence>
+        {showBuilder && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="theme-card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-sm flex items-center gap-2">
+                  <CalendarPlus className="w-4 h-4 text-[rgb(var(--primary))]" /> Plan Your Day
+                </p>
+                <button onClick={() => setShowBuilder(false)} className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Date for the schedule */}
+              <div>
+                <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Schedule date</label>
+                <input type="date" value={buildDate} onChange={e => setBuildDate(e.target.value)}
+                  className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-40" />
+              </div>
+
+              {/* Time blocks */}
+              <div className="space-y-2">
+                <label className="text-xs text-[rgb(var(--muted-fg))] block">Time blocks</label>
+                {buildBlocks.map((block, i) => (
+                  <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Color dot */}
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={block.color}
+                        onChange={e => updateBlock(i, "color", e.target.value)}
+                        className="w-8 h-9 opacity-0 absolute inset-0 cursor-pointer"
+                      >
+                        {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <div className="w-8 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: block.color + "33" }}>
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: block.color }} />
+                      </div>
+                    </div>
+
+                    <input
+                      value={block.title}
+                      onChange={e => updateBlock(i, "title", e.target.value)}
+                      placeholder="Event title…"
+                      className="flex-1 min-w-[100px] bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]"
+                    />
+                    <input type="time" value={block.start_time}
+                      onChange={e => updateBlock(i, "start_time", e.target.value)}
+                      className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-2 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
+                    <span className="text-xs text-[rgb(var(--muted-fg))] flex-shrink-0">–</span>
+                    <input type="time" value={block.end_time}
+                      onChange={e => updateBlock(i, "end_time", e.target.value)}
+                      className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-2 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
+                    {buildBlocks.length > 1 && (
+                      <button onClick={() => removeBlock(i)}
+                        className="p-2 rounded-xl text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                <button
+                  onClick={() => setBuildBlocks(p => [...p, EMPTY_BLOCK()])}
+                  className="flex items-center gap-1.5 text-xs text-[rgb(var(--primary))] hover:underline mt-1"
+                >
+                  <Plus className="w-3 h-3" /> Add another block
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={saveSchedule}
+                  disabled={buildSaving || !buildBlocks.some(b => b.title.trim())}
+                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
+                  {buildSaving ? "Saving…" : `Add ${buildBlocks.filter(b => b.title.trim()).length} event${buildBlocks.filter(b => b.title.trim()).length !== 1 ? "s" : ""} to Calendar`}
+                </button>
+                <button onClick={() => setShowBuilder(false)}
+                  className="px-4 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm hover:bg-[rgb(var(--border))] transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Calendar Grid */}
       <div className="theme-card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgb(var(--border))]">
