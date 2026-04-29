@@ -36,6 +36,7 @@ export default function RegisterSocietyPage() {
     official_email: "",
     category: "",
     university_id: "",
+    visibility: "public",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +62,7 @@ export default function RegisterSocietyPage() {
 
     setSubmitting(true);
 
-    const { error: dbErr } = await supabase.from("societies").insert({
+    const { error: dbErr } = await (supabase as any).from("societies").insert({
       name: form.name.trim(),
       description: form.description.trim() || null,
       official_email: form.official_email.trim(),
@@ -69,6 +70,7 @@ export default function RegisterSocietyPage() {
       university_id: form.university_id,
       admin_id: userId,
       status: "pending",
+      visibility: form.visibility,
     });
 
     setSubmitting(false);
@@ -262,6 +264,27 @@ export default function RegisterSocietyPage() {
             <p className="text-xs text-[rgb(var(--muted-fg))] mt-1 text-right">
               {form.description.length}/500
             </p>
+          </div>
+
+          {/* Visibility */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">Society Visibility</label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: "public",  label: "Public",  desc: "Anyone can find and join" },
+                { value: "private", label: "Private", desc: "Only invited members can see it" },
+              ].map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setForm(p => ({ ...p, visibility: opt.value }))}
+                  className={cn("p-3 rounded-xl border text-left transition-all",
+                    form.visibility === opt.value
+                      ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]"
+                      : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.4)] text-[rgb(var(--muted-fg))]")}>
+                  <p className={cn("text-sm font-semibold", form.visibility === opt.value && "text-[rgb(var(--primary))]")}>{opt.label}</p>
+                  <p className="text-[11px] mt-0.5">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* What happens next */}

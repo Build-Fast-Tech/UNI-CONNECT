@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Calendar, MessageSquare, Plus, Building2, Pin, Trash2, ImageIcon, X, Send } from "lucide-react";
+import { Users, Calendar, MessageSquare, Plus, Building2, Pin, Trash2, ImageIcon, X, Send, Heart, UserPlus, UserMinus, MessageCircle, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 interface Society {
   id: string; name: string; description: string | null;
-  category: string; member_count: number;
-  logo_url: string | null; cover_url: string | null;
+  category: string; member_count: number; admin_id: string | null;
+  logo_url: string | null; cover_url: string | null; visibility: string;
   university: { name: string; short_name: string } | null;
   admin: { full_name: string } | null;
 }
@@ -33,13 +34,18 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const supabase = createClient();
   const { userId, role } = useCurrentUser();
   const isPlatformAdmin = role === "admin";
+  const router = useRouter();
 
   const [society, setSociety] = useState<Society | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState("Posts");
   const [isMember, setIsMember] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [msgLoading, setMsgLoading] = useState(false);
   const [showPost, setShowPost] = useState(false);
   const [newContent, setNewContent] = useState("");
   const [newTitle, setNewTitle] = useState("");
@@ -54,7 +60,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       const [{ data: soc }, { data: postsData }, { data: membersData }] = await Promise.all([
         supabase
           .from("societies")
-          .select("id,name,description,category,member_count,logo_url,cover_url,admin_id,university:universities!university_id(name,short_name),admin:profiles!admin_id(full_name)")
+          .select("id,name,description,category,member_count,logo_url,cover_url,admin_id,visibility,university:universities!university_id(name,short_name),admin:profiles!admin_id(full_name)")
           .eq("id", societyId)
           .single(),
         supabase
@@ -72,7 +78,14 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       ]);
 
       setSociety(soc as unknown as Society);
-      if (userId && soc) setIsAdmin((soc as any).admin_id === userId);
+      if (userId && soc) {
+        setIsAdmin((soc as any).admin_id === userId);
+        // Check if following
+        const { data: followData } = await (supabase as any)
+          .from("society_followers").select("user_id")
+          .eq("society_id", societyId).eq("user_id", userId).maybeSingle();
+        setIsFollowing(!!followData);
+      }
       setPosts((postsData as unknown as Post[]) ?? []);
       setMembers(((membersData ?? []) as unknown as { profile: Member | null }[]).map(m => m.profile).filter((p): p is Member => !!p));
 
@@ -92,6 +105,54 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const deletePost = async (postId: string) => {
     await (supabase as any).from("society_posts").delete().eq("id", postId);
     setPosts(p => p.filter(post => post.id !== postId));
+  };
+
+  const toggleFollow = async () => {
+    if (!userId || !society) return;
+    setFollowLoading(true);
+    if (isFollowing) {
+      await (supabase as any).from("society_followers").delete().eq("society_id", societyId).eq("user_id", userId);
+      setIsFollowing(false);
+    } else {
+      await (supabase as any).from("society_followers").insert({ society_id: societyId, user_id: userId });
+      setIsFollowing(true);
+    }
+    setFollowLoading(false);
+  };
+
+  const toggleJoin = async () => {
+    if (!userId || !society) return;
+    setJoinLoading(true);
+    if (isMember) {
+      await supabase.from("society_members").delete().eq("society_id", societyId).eq("user_id", userId);
+      await supabase.from("societies").update({ member_count: Math.max(0, society.member_count - 1) }).eq("id", societyId);
+      setSociety(s => s ? { ...s, member_count: Math.max(0, s.member_count - 1) } : s);
+      setIsMember(false);
+    } else {
+      await supabase.from("society_members").insert({ society_id: societyId, user_id: userId });
+      await supabase.from("societies").update({ member_count: society.member_count + 1 }).eq("id", societyId);
+      setSociety(s => s ? { ...s, member_count: s.member_count + 1 } : s);
+      setIsMember(true);
+    }
+    setJoinLoading(false);
+  };
+
+  const messageAdmin = async () => {
+    if (!userId || !society?.admin_id || society.admin_id === userId) return;
+    setMsgLoading(true);
+    const adminId = society.admin_id;
+    const { data: existing } = await supabase.from("channels").select("id").eq("type", "dm")
+      .or(`and(dm_user_a.eq.${userId},dm_user_b.eq.${adminId}),and(dm_user_a.eq.${adminId},dm_user_b.eq.${userId})`)
+      .maybeSingle();
+    if (existing) {
+      router.push(`/chat/${existing.id}`);
+    } else {
+      const { data: created } = await supabase.from("channels")
+        .insert({ type: "dm", dm_user_a: userId, dm_user_b: adminId })
+        .select("id").single();
+      if (created) router.push(`/chat/${created.id}`);
+    }
+    setMsgLoading(false);
   };
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,10 +213,11 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
     return <div className="text-center py-20 text-[rgb(var(--muted-fg))]">Society not found.</div>;
   }
 
+  const isEventPost = (p: Post) => p.post_type === "event" || p.type === "event";
   const displayedPosts = tab === "Posts"
-    ? posts.filter(p => p.type === "post")
+    ? posts
     : tab === "Events"
-      ? posts.filter(p => p.type === "event" || p.type === "announcement")
+      ? posts.filter(isEventPost)
       : [];
 
   return (
@@ -181,12 +243,58 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
             )}
           </div>
         </div>
-        <div className="absolute bottom-4 right-4">
+        <div className="absolute bottom-4 right-4 flex items-center gap-2">
+          {society.visibility === "private" && (
+            <span className="flex items-center gap-1 text-white/80 text-xs bg-black/40 px-2 py-1 rounded-lg">
+              <Lock className="w-3 h-3" /> Private
+            </span>
+          )}
           <span className="text-white/70 text-xs flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg">
             <Users className="w-3.5 h-3.5" />{society.member_count}
           </span>
         </div>
       </div>
+
+      {/* Action bar */}
+      {userId && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Follow */}
+          {society.admin_id !== userId && (
+            <button onClick={toggleFollow} disabled={followLoading}
+              className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50",
+                isFollowing
+                  ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.25)]"
+                  : "bg-[rgb(var(--primary))] text-white hover:opacity-90")}>
+              <Heart className={cn("w-4 h-4", isFollowing && "fill-current")} />
+              {followLoading ? "…" : isFollowing ? "Following" : "Follow"}
+            </button>
+          )}
+          {/* Join / Leave */}
+          {society.admin_id !== userId && (
+            <button onClick={toggleJoin} disabled={joinLoading}
+              className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50",
+                isMember
+                  ? "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-red-500/10 hover:text-red-400"
+                  : "bg-[rgb(var(--muted))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--border))]")}>
+              {isMember ? <><UserMinus className="w-4 h-4" />{joinLoading ? "…" : "Leave"}</> : <><UserPlus className="w-4 h-4" />{joinLoading ? "…" : "Join"}</>}
+            </button>
+          )}
+          {/* Message Admin */}
+          {society.admin_id && society.admin_id !== userId && (
+            <button onClick={messageAdmin} disabled={msgLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-[rgb(var(--muted))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--border))] transition-colors disabled:opacity-50">
+              <MessageCircle className="w-4 h-4" />
+              {msgLoading ? "…" : `Message ${society.admin?.full_name?.split(" ")[0] ?? "Admin"}`}
+            </button>
+          )}
+          {/* Admin badge */}
+          {isAdmin && (
+            <span className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-xl bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]">
+              You are the Admin
+            </span>
+          )}
+        </div>
+      )}
 
       {society.description && (
         <p className="text-sm text-[rgb(var(--muted-fg))] px-1">{society.description}</p>

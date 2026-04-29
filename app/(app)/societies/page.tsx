@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Building2, Plus, Star, Heart, Zap, Trash2, Pencil, MoreHorizontal, X, Loader2 } from "lucide-react";
+import { Users, Search, Building2, Plus, Star, Zap, Trash2, Pencil, MoreHorizontal, X, Loader2, Lock } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -10,12 +10,9 @@ import { cn } from "@/lib/utils";
 
 interface University { id: string; name: string; short_name: string; }
 interface Society {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  member_count: number;
-  logo_url: string | null;
+  id: string; name: string; description: string | null;
+  category: string; member_count: number; logo_url: string | null;
+  visibility: string;
   university: { name: string; short_name: string } | null;
 }
 
@@ -57,6 +54,7 @@ export default function SocietiesPage() {
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editVisibility, setEditVisibility] = useState("public");
   const [saving, setSaving] = useState(false);
 
   // Close uni dropdown on outside click
@@ -82,7 +80,7 @@ export default function SocietiesPage() {
     setLoading(true);
     let q = supabase
       .from("societies")
-      .select("id, name, description, category, member_count, logo_url, university:universities!university_id(name, short_name)")
+      .select("id, name, description, category, member_count, logo_url, visibility, university:universities!university_id(name, short_name)")
       .eq("status", "approved")
       .order("member_count", { ascending: false });
     if (selectedUni !== "all") q = q.eq("university_id", selectedUni);
@@ -131,16 +129,18 @@ export default function SocietiesPage() {
     setEditName(s.name);
     setEditDesc(s.description ?? "");
     setEditCategory(s.category);
+    setEditVisibility(s.visibility ?? "public");
     setMenuOpen(null);
   };
 
   const saveEdit = async () => {
     if (!editingSociety) return;
     setSaving(true);
-    await supabase.from("societies").update({
+    await (supabase as any).from("societies").update({
       name: editName.trim(),
       description: editDesc.trim() || null,
       category: editCategory,
+      visibility: editVisibility,
     }).eq("id", editingSociety.id);
     setSocieties(p => p.map(s => s.id === editingSociety.id
       ? { ...s, name: editName.trim(), description: editDesc.trim() || null, category: editCategory }
@@ -413,22 +413,20 @@ export default function SocietiesPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
-                  <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]"><Users className="w-3.5 h-3.5" /> {s.member_count} members</span>
+                  <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
+                    <Users className="w-3.5 h-3.5" /> {s.member_count} members
+                    {s.visibility === "private" && <Lock className="w-3 h-3 ml-1 text-amber-400" />}
+                  </span>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => toggleFollow(s.id)} disabled={following === s.id}
-                      className={cn("flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-40",
-                        followedIds.has(s.id) ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))]" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))]")}>
-                      <Heart className={cn("w-3 h-3", followedIds.has(s.id) && "fill-current")} />
-                      {followedIds.has(s.id) ? "Following" : "Follow"}
-                    </button>
-                    {joinedIds.has(s.id) ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium"><Star className="w-3.5 h-3.5 fill-current" /> Joined</span>
-                    ) : (
-                      <button onClick={() => join(s.id)} disabled={joining === s.id}
-                        className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors disabled:opacity-40">
-                        {joining === s.id ? "Joining…" : "Join"}
-                      </button>
+                    {joinedIds.has(s.id) && (
+                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                        <Star className="w-3.5 h-3.5 fill-current" /> Joined
+                      </span>
                     )}
+                    <Link href={`/societies/${s.id}`}
+                      className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors">
+                      Open →
+                    </Link>
                   </div>
                 </div>
               </motion.div>
@@ -456,14 +454,24 @@ export default function SocietiesPage() {
               <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={3} maxLength={500}
                 className="w-full px-3 py-2 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))] resize-none" />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Category</label>
-              <select value={editCategory} onChange={e => setEditCategory(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]">
-                {["academic","cultural","sports","tech","arts","community","general"].map(c => (
-                  <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Category</label>
+                <select value={editCategory} onChange={e => setEditCategory(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]">
+                  {["academic","cultural","sports","tech","arts","community","general"].map(c => (
+                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1 block">Visibility</label>
+                <select value={editVisibility} onChange={e => setEditVisibility(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl text-sm bg-[rgb(var(--muted))] border border-[rgb(var(--border))] outline-none focus:border-[rgb(var(--primary))]">
+                  <option value="public">Public</option>
+                  <option value="private">Private</option>
+                </select>
+              </div>
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => setEditingSociety(null)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>

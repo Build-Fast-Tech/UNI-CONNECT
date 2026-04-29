@@ -449,19 +449,17 @@ export default function ClubsEventsPage() {
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
                     <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]"><Users className="w-3.5 h-3.5" /> {s.member_count}</span>
-                    {joinedIds.has(s.id) ? (
-                      <button onClick={() => leave(s.id)} disabled={joining === s.id}
-                        className="flex items-center gap-1 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-40 group">
-                        <Star className="w-3.5 h-3.5 fill-current group-hover:hidden" />
-                        <span className="group-hover:hidden">{joining === s.id ? "Leaving…" : "Following"}</span>
-                        <span className="hidden group-hover:inline text-xs">Unfollow</span>
-                      </button>
-                    ) : (
-                      <button onClick={() => join(s.id)} disabled={joining === s.id}
-                        className="text-xs px-4 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white font-medium hover:opacity-90 transition-all disabled:opacity-40">
-                        {joining === s.id ? "Following…" : "Follow"}
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {joinedIds.has(s.id) && (
+                        <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                          <Star className="w-3.5 h-3.5 fill-current" /> Joined
+                        </span>
+                      )}
+                      <Link href={`/societies/${s.id}`}
+                        className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors">
+                        Open →
+                      </Link>
+                    </div>
                   </div>
                 </motion.div>
               ))}
