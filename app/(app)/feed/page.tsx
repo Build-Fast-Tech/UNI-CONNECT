@@ -102,7 +102,10 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
       <div className="absolute right-20 bottom-0 w-36 h-36 rounded-full bg-white/5 translate-y-1/3 pointer-events-none" />
       <div className="relative z-10">
         <h1 className="text-2xl font-bold text-white mb-2 leading-snug">
-          Your university life,<br />all in one place.
+          {subjectsToReview > 0
+            ? <><span className="text-amber-300">{subjectsToReview}</span> subject{subjectsToReview > 1 ? "s" : ""} need{subjectsToReview === 1 ? "s" : ""} your attention</>
+            : <>Your university life,<br />all in one place.</>
+          }
         </h1>
         {daysLeft !== null ? (
           <p className="text-white/80 text-sm mb-3 flex items-center gap-2">
