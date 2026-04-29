@@ -247,13 +247,25 @@ export default function ClubsEventsPage() {
   const join = async (societyId: string) => {
     if (!userId) return;
     setJoining(societyId);
-    await supabase.from("society_members").insert({ society_id: societyId, user_id: userId });
+    // Optimistic UI
     const soc = societies.find(s => s.id === societyId);
-    if (soc) {
-      await supabase.from("societies").update({ member_count: soc.member_count + 1 }).eq("id", societyId);
-      setSocieties(p => p.map(s => s.id === societyId ? { ...s, member_count: s.member_count + 1 } : s));
-    }
-    setJoinedIds(p => new Set([...p, societyId])); setJoining(null);
+    setJoinedIds(p => new Set([...p, societyId]));
+    if (soc) setSocieties(p => p.map(s => s.id === societyId ? { ...s, member_count: s.member_count + 1 } : s));
+    await supabase.from("society_members").insert({ society_id: societyId, user_id: userId });
+    if (soc) await supabase.from("societies").update({ member_count: soc.member_count + 1 }).eq("id", societyId);
+    setJoining(null);
+  };
+
+  const leave = async (societyId: string) => {
+    if (!userId) return;
+    setJoining(societyId);
+    // Optimistic UI
+    const soc = societies.find(s => s.id === societyId);
+    setJoinedIds(p => { const n = new Set(p); n.delete(societyId); return n; });
+    if (soc) setSocieties(p => p.map(s => s.id === societyId ? { ...s, member_count: Math.max(0, s.member_count - 1) } : s));
+    await supabase.from("society_members").delete().eq("society_id", societyId).eq("user_id", userId);
+    if (soc) await supabase.from("societies").update({ member_count: Math.max(0, soc.member_count - 1) }).eq("id", societyId);
+    setJoining(null);
   };
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,7 +450,12 @@ export default function ClubsEventsPage() {
                   <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
                     <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]"><Users className="w-3.5 h-3.5" /> {s.member_count}</span>
                     {joinedIds.has(s.id) ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1 rounded-lg"><Star className="w-3.5 h-3.5 fill-current" /> Following</span>
+                      <button onClick={() => leave(s.id)} disabled={joining === s.id}
+                        className="flex items-center gap-1 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-40 group">
+                        <Star className="w-3.5 h-3.5 fill-current group-hover:hidden" />
+                        <span className="group-hover:hidden">{joining === s.id ? "Leaving…" : "Following"}</span>
+                        <span className="hidden group-hover:inline text-xs">Unfollow</span>
+                      </button>
                     ) : (
                       <button onClick={() => join(s.id)} disabled={joining === s.id}
                         className="text-xs px-4 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white font-medium hover:opacity-90 transition-all disabled:opacity-40">

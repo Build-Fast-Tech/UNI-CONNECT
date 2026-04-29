@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { motion } from "framer-motion";
-import { Users, Calendar, MessageSquare, Plus, Building2, Pin, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef, use } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Users, Calendar, MessageSquare, Plus, Building2, Pin, Trash2, ImageIcon, X, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -16,8 +16,9 @@ interface Society {
 }
 
 interface Post {
-  id: string; title: string | null; content: string; type: string;
+  id: string; title: string | null; content: string; type: string; post_type: string;
   event_date: string | null; is_pinned: boolean; likes: number; created_at: string;
+  image_url: string | null; image_urls: string[];
   author: { full_name: string; avatar_url: string | null } | null;
 }
 
@@ -43,7 +44,10 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const [newContent, setNewContent] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [posting, setPosting] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // society admin_id
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [postImages, setPostImages] = useState<File[]>([]);
+  const [postPreviews, setPostPreviews] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -55,11 +59,11 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
           .single(),
         supabase
           .from("society_posts")
-          .select("id,title,content,type,event_date,is_pinned,likes,created_at,author:profiles!author_id(full_name,avatar_url)")
+          .select("id,title,content,type,post_type,event_date,is_pinned,likes,created_at,image_url,image_urls,author:profiles!author_id(full_name,avatar_url)")
           .eq("society_id", societyId)
           .order("is_pinned", { ascending: false })
           .order("created_at", { ascending: false })
-          .limit(30),
+          .limit(50),
         supabase
           .from("society_members")
           .select("profile:profiles!user_id(full_name,avatar_url,username)")
@@ -90,10 +94,33 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
     setPosts(p => p.filter(post => post.id !== postId));
   };
 
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).slice(0, 30 - postImages.length);
+    setPostImages(p => [...p, ...files]);
+    setPostPreviews(p => [...p, ...files.map(f => URL.createObjectURL(f))]);
+    e.target.value = "";
+  };
+
+  const removePostImage = (i: number) => {
+    URL.revokeObjectURL(postPreviews[i]);
+    setPostImages(p => p.filter((_, idx) => idx !== i));
+    setPostPreviews(p => p.filter((_, idx) => idx !== i));
+  };
+
   const createPost = async () => {
     if (!newContent.trim() || !userId) return;
     setPosting(true);
-    const { data } = await supabase
+
+    // Upload images
+    const imageUrls: string[] = [];
+    for (const file of postImages) {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("society-posts").upload(path, file);
+      if (!upErr) imageUrls.push(supabase.storage.from("society-posts").getPublicUrl(path).data.publicUrl);
+    }
+
+    const { data } = await (supabase as any)
       .from("society_posts")
       .insert({
         society_id: societyId,
@@ -101,14 +128,15 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
         content: newContent.trim(),
         title: newTitle.trim() || null,
         type: "post",
+        post_type: "announcement",
+        image_url: imageUrls[0] ?? null,
+        image_urls: imageUrls,
       })
-      .select("id,title,content,type,event_date,is_pinned,likes,created_at,author:profiles!author_id(full_name,avatar_url)")
+      .select("id,title,content,type,post_type,event_date,is_pinned,likes,created_at,image_url,image_urls,author:profiles!author_id(full_name,avatar_url)")
       .single();
     if (data) setPosts(p => [data as unknown as Post, ...p]);
-    setNewContent("");
-    setNewTitle("");
-    setShowPost(false);
-    setPosting(false);
+    setNewContent(""); setNewTitle(""); setPostImages([]); setPostPreviews([]);
+    setShowPost(false); setPosting(false);
   };
 
   if (loading) {
@@ -178,41 +206,61 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       </div>
 
       {/* Post composer */}
-      {isMember && tab === "Posts" && (
-        <div className="theme-card p-4">
+      {(isMember || isAdmin || isPlatformAdmin) && tab === "Posts" && (
+        <div className="theme-card overflow-hidden">
           {!showPost ? (
-            <button
-              onClick={() => setShowPost(true)}
-              className="w-full text-left text-sm text-[rgb(var(--muted-fg))] px-3 py-2 bg-[rgb(var(--muted))] rounded-xl hover:bg-[rgb(var(--border))] transition-colors"
-            >
-              Share something with the society…
+            <button onClick={() => setShowPost(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[rgb(var(--muted)/0.5)] transition-colors">
+              <div className="w-8 h-8 rounded-full bg-[rgb(var(--primary)/0.1)] flex items-center justify-center">
+                <ImageIcon className="w-4 h-4 text-[rgb(var(--primary))]" />
+              </div>
+              <span className="text-sm text-[rgb(var(--muted-fg))] flex-1 text-left">Share something with the society…</span>
+              <Plus className="w-4 h-4 text-[rgb(var(--muted-fg))]" />
             </button>
           ) : (
-            <div className="space-y-2">
-              <input
-                value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                placeholder="Title (optional)"
-                className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-              />
-              <textarea
-                value={newContent} onChange={e => setNewContent(e.target.value)}
-                rows={3} placeholder="What's on your mind?"
-                className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[rgb(var(--ring))] resize-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={createPost}
-                  disabled={!newContent.trim() || posting}
-                  className="px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium disabled:opacity-40 hover:opacity-90"
-                >
-                  {posting ? "Posting…" : "Post"}
+            <div className="p-4 space-y-3">
+              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Title (optional)"
+                className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+              <textarea value={newContent} onChange={e => setNewContent(e.target.value)} rows={3} placeholder="What's on your mind?"
+                className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] resize-none" />
+
+              {/* Image previews */}
+              {postPreviews.length > 0 && (
+                <div className="grid grid-cols-5 gap-1.5">
+                  {postPreviews.map((src, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-[rgb(var(--muted))]">
+                      <img src={src} alt="" className="w-full h-full object-cover" />
+                      <button onClick={() => removePostImage(i)}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {postImages.length < 30 && (
+                    <button onClick={() => fileRef.current?.click()}
+                      className="aspect-square rounded-lg border-2 border-dashed border-[rgb(var(--border))] flex items-center justify-center text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.4)] hover:text-[rgb(var(--primary))] transition-colors">
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button onClick={() => fileRef.current?.click()} disabled={postImages.length >= 30}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors disabled:opacity-40">
+                  <ImageIcon className="w-3.5 h-3.5" /> Add Photos {postImages.length > 0 && `(${postImages.length}/30)`}
                 </button>
-                <button onClick={() => setShowPost(false)} className="px-4 py-1.5 rounded-xl bg-[rgb(var(--muted))] text-sm">
-                  Cancel
+                <div className="flex-1" />
+                <button onClick={() => { setShowPost(false); setPostImages([]); setPostPreviews([]); }}
+                  className="px-3 py-1.5 rounded-xl text-xs text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]">Cancel</button>
+                <button onClick={createPost} disabled={!newContent.trim() || posting}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-white text-xs font-semibold disabled:opacity-40 hover:opacity-90">
+                  {posting ? "Posting…" : <><Send className="w-3.5 h-3.5" /> Post</>}
                 </button>
               </div>
             </div>
           )}
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagePick} />
         </div>
       )}
 
@@ -251,16 +299,34 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                       )}
                     </div>
                     {post.title && <h3 className="font-semibold mb-1">{post.title}</h3>}
-                    <p className="text-sm text-[rgb(var(--muted-fg))]">{post.content}</p>
+                    <p className="text-sm text-[rgb(var(--muted-fg))] whitespace-pre-line">{post.content}</p>
                     {post.event_date && (
                       <p className="text-xs text-[rgb(var(--primary))] mt-2 flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(post.event_date).toLocaleDateString("en-PK", {
-                          weekday: "short", month: "short", day: "numeric",
-                          hour: "2-digit", minute: "2-digit",
-                        })}
+                        {new Date(post.event_date).toLocaleDateString("en-PK", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     )}
+                    {/* Image grid */}
+                    {(() => {
+                      const imgs = post.image_urls?.length ? post.image_urls : (post.image_url ? [post.image_url] : []);
+                      if (!imgs.length) return null;
+                      const show = imgs.slice(0, 4);
+                      const extra = imgs.length - 4;
+                      return (
+                        <div className={cn("grid gap-0.5 rounded-xl overflow-hidden mt-2", show.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
+                          {show.map((url, idx) => (
+                            <div key={idx} className={cn("relative overflow-hidden bg-[rgb(var(--muted))]", show.length === 1 ? "aspect-[16/9]" : "aspect-square")}>
+                              <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                              {idx === 3 && extra > 0 && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                  <span className="text-white text-xl font-bold">+{extra}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </motion.div>
