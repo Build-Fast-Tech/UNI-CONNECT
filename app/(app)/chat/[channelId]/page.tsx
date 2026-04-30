@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu, Trash2, Reply, X as XIcon, Plus, ImageIcon, Loader2 } from "lucide-react";
+import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu, Trash2, Reply, X as XIcon, Plus, Sticker, Loader2 } from "lucide-react";
 import { filterProfanity } from "@/lib/utils/profanity";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
@@ -48,7 +48,7 @@ const STICKER_TABS = [
   { id: "custom",   label: "⭐ Mine" },
 ];
 
-const GIPHY_KEY = process.env.NEXT_PUBLIC_GIPHY_API_KEY || "dc6zaTOxFJmzC";
+// GIFs and stickers are served via /api/gifs (Tenor, server-side, no CORS)
 const CUSTOM_PACKS_KEY = (uid: string) => `uc_sticker_packs_${uid}`;
 
 function loadCustomPacks(uid: string): CustomPack[] {
@@ -193,14 +193,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const fetchGifs = useCallback(async (query: string) => {
     setGifLoading(true);
     try {
-      const endpoint = query.trim()
-        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=9&rating=pg-13`
-        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=9&rating=pg-13`;
-      const res  = await fetch(endpoint);
+      const params = new URLSearchParams({ type: "gif", limit: "9" });
+      if (query.trim()) params.set("q", query.trim());
+      const res  = await fetch(`/api/gifs?${params}`);
       const data = await res.json();
-      setGifResults((data.data ?? []).map((g: any) => ({
-        id: g.id, url: g.images.original.url, preview: g.images.fixed_height_small.url,
-      })));
+      setGifResults(data.results ?? []);
     } catch { setGifResults([]); }
     setGifLoading(false);
   }, []);
@@ -222,16 +219,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     if (tab === "custom") return;
     setStickerLoading(true);
     try {
-      const endpoint = tab === "trending"
-        ? `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_KEY}&limit=16&rating=g`
-        : `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(tab)}&limit=16&rating=g`;
-      const res  = await fetch(endpoint);
+      const query = tab === "trending" ? "cute" : tab;
+      const params = new URLSearchParams({ type: "sticker", q: query, limit: "16" });
+      const res  = await fetch(`/api/gifs?${params}`);
       const data = await res.json();
-      setStickerResults((data.data ?? []).map((g: any) => ({
-        id: g.id,
-        url: g.images.original.url,
-        preview: g.images.fixed_height_small.url,
-      })));
+      setStickerResults(data.results ?? []);
     } catch { setStickerResults([]); }
     setStickerLoading(false);
   }, []);
@@ -738,7 +730,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                   onClick={() => stickerFileRef.current?.click()}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-[rgb(var(--border))] text-sm text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--primary))] transition-colors"
                 >
-                  <ImageIcon className="w-4 h-4" />
+                  <Sticker className="w-4 h-4" />
                   {newPackFiles.length > 0 ? `${newPackFiles.length} images selected` : "Choose sticker images (up to 20)"}
                 </button>
                 {newPackPreviews.length > 0 && (
@@ -914,9 +906,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
             {/* Stickers */}
             <button type="button" onClick={() => { setShowStickerPicker(p => !p); setShowGifPicker(false); setShowEmojiPicker(false); }}
-              className={cn("flex-shrink-0 mb-0.5 transition-colors text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]", showStickerPicker && "text-[rgb(var(--primary))]")}
+              className={cn("flex-shrink-0 mb-0.5 transition-colors",
+                showStickerPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}
               title="Stickers">
-              <ImageIcon className="w-4 h-4" />
+              <Sticker className="w-4 h-4" />
             </button>
 
             {/* Emoji */}
