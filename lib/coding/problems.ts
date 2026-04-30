@@ -2,6 +2,13 @@ export type Difficulty = "easy" | "medium" | "hard";
 export type Track = "fundamentals" | "oop" | "dsa";
 
 export interface TestCase { input: string; expected: string; }
+
+export interface TraceStep {
+  line: number;
+  variables: Record<string, string | number | boolean>;
+  note: string;
+}
+
 export interface Problem {
   id: string;
   track: Track;
@@ -419,5 +426,221 @@ export const DRY_RUN_SNIPPETS = [
     code: `vector<int> dp(5,0);\ndp[0]=1;\nfor(int i=1;i<5;i++)\n  dp[i]=dp[i-1]*2;\nfor(int x:dp) cout<<x<<\" \";`,
     correctOutput: "1 2 4 8 16 ",
     explanation: "dp[i] = 2^i. Powers of 2 from 2^0 to 2^4.",
+    traceSteps: [
+      { line: 1, variables: { "dp": "[0,0,0,0,0]" }, note: "dp initialized to 5 zeros" },
+      { line: 2, variables: { "dp[0]": 1, "dp": "[1,0,0,0,0]" }, note: "dp[0] = 1" },
+      { line: 3, variables: { i: 1, "dp[1]": 2, "dp": "[1,2,0,0,0]" }, note: "i=1: dp[1]=dp[0]*2=2" },
+      { line: 3, variables: { i: 2, "dp[2]": 4, "dp": "[1,2,4,0,0]" }, note: "i=2: dp[2]=dp[1]*2=4" },
+      { line: 3, variables: { i: 3, "dp[3]": 8, "dp": "[1,2,4,8,0]" }, note: "i=3: dp[3]=8" },
+      { line: 3, variables: { i: 4, "dp[4]": 16, "dp": "[1,2,4,8,16]" }, note: "i=4: dp[4]=16" },
+      { line: 4, variables: { output: "1 2 4 8 16 " }, note: "Print all elements" },
+    ],
+  },
+  {
+    id: "dr-009", track: "fundamentals" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `int a=10, b=3;\ncout << a/b << " ";\ncout << a%b << " ";\ncout << (a&b);`,
+    correctOutput: "3 1 2",
+    explanation: "10/3=3 (integer), 10%3=1, 10&3 = 1010&0011 = 0010 = 2.",
+    traceSteps: [
+      { line: 1, variables: { a: 10, b: 3 }, note: "a=10, b=3 initialized" },
+      { line: 2, variables: { "a/b": 3 }, note: "Integer division: 10/3 = 3" },
+      { line: 3, variables: { "a%b": 1 }, note: "Modulo: 10%3 = 1" },
+      { line: 4, variables: { "a&b": 2 }, note: "Bitwise AND: 1010 & 0011 = 0010 = 2" },
+    ],
+  },
+  {
+    id: "dr-010", track: "oop" as Track, difficulty: "hard" as Difficulty, points: 15,
+    code: `class Base{\npublic:\n  Base(){ cout<<"B"; }\n  ~Base(){ cout<<"~B"; }\n};\nclass Der:public Base{\npublic:\n  Der(){ cout<<"D"; }\n  ~Der(){ cout<<"~D"; }\n};\n{\n  Der d;\n}`,
+    correctOutput: "BD~D~B",
+    explanation: "Base constructor first (B), then Derived (D). Destructors in reverse: ~D then ~B.",
+    traceSteps: [
+      { line: 11, variables: { scope: "enter" }, note: "Enter block, create Der d" },
+      { line: 3, variables: { output: "B" }, note: "Base() constructor called first" },
+      { line: 9, variables: { output: "BD" }, note: "Der() constructor called after Base" },
+      { line: 12, variables: { scope: "exit" }, note: "Block ends, destruction in reverse order" },
+      { line: 10, variables: { output: "BD~D" }, note: "~Der() called first" },
+      { line: 4, variables: { output: "BD~D~B" }, note: "~Base() called last" },
+    ],
   },
 ];
+
+// ── Additional 20+ problems to reach 50+ ─────────────────────────
+export const EXTRA_PROBLEMS: Problem[] = [
+  // FUNDAMENTALS extras
+  {
+    id: "f-016", track: "fundamentals", difficulty: "easy", points: 10,
+    tags: ["arrays", "counting"],
+    title: "Count Even and Odd",
+    description: "Count even and odd numbers in an array.\n\n**Input:** N, then N integers.\n**Output:** Two numbers: count_even count_odd.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    int ev=0,od=0;\n    for(int i=0;i<n;i++){int x;cin>>x;if(x%2==0)ev++;else od++;}\n    cout<<ev<<\" \"<<od<<endl;\n    return 0;\n}`,
+    testCases: [{ input: "6\n1 2 3 4 5 6", expected: "3 3" }],
+    hints: ["x%2==0 means even"],
+  },
+  {
+    id: "f-017", track: "fundamentals", difficulty: "easy", points: 10,
+    tags: ["math", "prime"],
+    title: "Prime Check",
+    description: "Check if N is prime. Print YES or NO.\n\n**Input:** Integer N.\n**Output:** YES or NO.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    if(n<2){cout<<"NO";return 0;}\n    for(int i=2;i*i<=n;i++) if(n%i==0){cout<<"NO";return 0;}\n    cout<<"YES";\n    return 0;\n}`,
+    testCases: [{ input: "7", expected: "YES" }, { input: "4", expected: "NO" }],
+    hints: ["Check divisors up to √n"],
+  },
+  {
+    id: "f-018", track: "fundamentals", difficulty: "easy", points: 10,
+    tags: ["strings", "count"],
+    title: "Count Vowels",
+    description: "Count vowels (a,e,i,o,u) in a lowercase string.\n\n**Input:** A string.\n**Output:** Count of vowels.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    string s; cin>>s;\n    int cnt=0;\n    string v="aeiou";\n    for(char c:s) if(v.find(c)!=string::npos) cnt++;\n    cout<<cnt;\n    return 0;\n}`,
+    testCases: [{ input: "hello", expected: "2" }, { input: "programming", expected: "3" }],
+    hints: ["Check if each char is in 'aeiou'"],
+  },
+  {
+    id: "f-019", track: "fundamentals", difficulty: "medium", points: 20,
+    tags: ["arrays", "rotation"],
+    title: "Rotate Array Left",
+    description: "Left-rotate an array by K positions.\n\n**Input:** N K, then N integers.\n**Output:** Rotated array space-separated.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n,k; cin>>n>>k;\n    vector<int> a(n);\n    for(auto& x:a) cin>>x;\n    k%=n;\n    rotate(a.begin(),a.begin()+k,a.end());\n    for(auto x:a) cout<<x<<\" \";\n    return 0;\n}`,
+    testCases: [{ input: "5 2\n1 2 3 4 5", expected: "3 4 5 1 2 " }],
+    hints: ["std::rotate(begin, begin+k, end)"],
+  },
+  {
+    id: "f-020", track: "fundamentals", difficulty: "medium", points: 20,
+    tags: ["strings", "manipulation"],
+    title: "Word Count",
+    description: "Count words in a sentence.\n\n**Input:** A line of text.\n**Output:** Word count.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    string line; getline(cin,line);\n    istringstream ss(line);\n    string word; int cnt=0;\n    while(ss>>word) cnt++;\n    cout<<cnt;\n    return 0;\n}`,
+    testCases: [{ input: "hello world foo", expected: "3" }],
+    hints: ["Use istringstream to split on spaces"],
+  },
+  {
+    id: "f-021", track: "fundamentals", difficulty: "medium", points: 20,
+    tags: ["math", "gcd"],
+    title: "GCD and LCM",
+    description: "Compute GCD and LCM of two numbers.\n\n**Input:** Two integers a b.\n**Output:** GCD LCM on one line.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    long long a,b; cin>>a>>b;\n    long long g=__gcd(a,b);\n    cout<<g<<\" \"<<(a/g)*b;\n    return 0;\n}`,
+    testCases: [{ input: "12 18", expected: "6 36" }, { input: "7 5", expected: "1 35" }],
+    hints: ["LCM = (a/gcd)*b"],
+  },
+  {
+    id: "f-022", track: "fundamentals", difficulty: "hard", points: 30,
+    tags: ["recursion", "backtracking"],
+    title: "N-Queens Count",
+    description: "Count the number of valid N-Queens configurations.\n\n**Input:** N.\n**Output:** Number of solutions.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint n, cnt=0;\nvector<int> col, diag1, diag2;\nvoid solve(int row){\n    if(row==n){cnt++;return;}\n    for(int c=0;c<n;c++){\n        if(col[c]||diag1[row-c+n-1]||diag2[row+c]) continue;\n        col[c]=diag1[row-c+n-1]=diag2[row+c]=1;\n        solve(row+1);\n        col[c]=diag1[row-c+n-1]=diag2[row+c]=0;\n    }\n}\nint main(){\n    cin>>n;\n    col.assign(n,0); diag1.assign(2*n,0); diag2.assign(2*n,0);\n    solve(0);\n    cout<<cnt;\n    return 0;\n}`,
+    testCases: [{ input: "4", expected: "2" }, { input: "8", expected: "92" }],
+    hints: ["Track columns and both diagonals", "Backtrack when conflict found"],
+  },
+  {
+    id: "f-023", track: "fundamentals", difficulty: "hard", points: 30,
+    tags: ["pointers", "dynamic memory"],
+    title: "Dynamic Array Operations",
+    description: "Create a dynamic int array of size N, fill with squares, find max.\n\n**Input:** N.\n**Output:** All squares then max, each on separate lines.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    int* arr = new int[n];\n    for(int i=0;i<n;i++) arr[i]=(i+1)*(i+1);\n    for(int i=0;i<n;i++) cout<<arr[i]<<\"\\n\";\n    cout<<*max_element(arr,arr+n)<<\"\\n\";\n    delete[] arr;\n    return 0;\n}`,
+    testCases: [{ input: "4", expected: "1\n4\n9\n16\n16" }],
+    hints: ["new int[n] allocates on heap", "delete[] to free"],
+  },
+  // OOP extras
+  {
+    id: "o-009", track: "oop", difficulty: "easy", points: 10,
+    tags: ["classes", "static"],
+    title: "Static Member Counter",
+    description: "Track total object instances using a static member.\n\n**Input:** N (number of objects to create).\n**Output:** Total count after creation.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nclass Widget{\n    static int count;\npublic:\n    Widget(){ count++; }\n    static int getCount(){ return count; }\n};\nint Widget::count=0;\nint main(){\n    int n; cin>>n;\n    vector<Widget> v(n);\n    cout<<Widget::getCount();\n    return 0;\n}`,
+    testCases: [{ input: "5", expected: "5" }],
+    hints: ["Static members are shared across all instances"],
+  },
+  {
+    id: "o-010", track: "oop", difficulty: "medium", points: 20,
+    tags: ["copy constructor"],
+    title: "Deep Copy vs Shallow Copy",
+    description: "Implement a class with a deep-copy constructor. Modify copy and verify original unchanged.\n\n**Input:** Array values and a change index and new value.\n**Output:** Original value at index after copy is modified.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nclass MyArr{\npublic:\n    int* data; int n;\n    MyArr(int sz):n(sz){ data=new int[n]; for(int i=0;i<n;i++) data[i]=i+1; }\n    MyArr(const MyArr& o):n(o.n){ data=new int[n]; for(int i=0;i<n;i++) data[i]=o.data[i]; }\n    ~MyArr(){ delete[] data; }\n};\nint main(){\n    int n,idx,val; cin>>n>>idx>>val;\n    MyArr a(n);\n    MyArr b(a); // deep copy\n    b.data[idx]=val;\n    cout<<a.data[idx];\n    return 0;\n}`,
+    testCases: [{ input: "5 2 99", expected: "3" }],
+    hints: ["Deep copy: allocate new memory", "Modifying copy shouldn't affect original"],
+  },
+  {
+    id: "o-011", track: "oop", difficulty: "hard", points: 30,
+    tags: ["abstract", "interface"],
+    title: "Abstract Payment System",
+    description: "Design Payment abstract class with process() and fee(). CreditCard fee=2%, Cash fee=0%. Print net amount.\n\n**Input:** type (credit/cash) and amount.\n**Output:** amount - fee(amount) to 2dp.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nclass Payment{\npublic:\n    virtual double fee(double amt)=0;\n    double process(double amt){ return amt-fee(amt); }\n    virtual ~Payment(){}\n};\nclass CreditCard:public Payment{ public: double fee(double a){ return a*0.02; } };\nclass Cash:public Payment{ public: double fee(double){ return 0; } };\nint main(){\n    string t; double amt; cin>>t>>amt;\n    Payment* p = t=="credit"?new CreditCard():new Cash();\n    cout<<fixed<<setprecision(2)<<p->process(amt)<<\"\\n\";\n    delete p; return 0;\n}`,
+    testCases: [{ input: "credit 100", expected: "98.00" }, { input: "cash 100", expected: "100.00" }],
+    hints: ["CreditCard deducts 2%", "Cash has no fee"],
+  },
+  // DSA extras
+  {
+    id: "d-013", track: "dsa", difficulty: "easy", points: 10,
+    tags: ["arrays", "sliding window"],
+    title: "Maximum Subarray (Kadane's)",
+    description: "Find the maximum sum contiguous subarray.\n\n**Input:** N, then N integers.\n**Output:** Maximum subarray sum.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    vector<int> a(n);\n    for(auto& x:a) cin>>x;\n    int maxSum=a[0], cur=a[0];\n    for(int i=1;i<n;i++){\n        cur=max(a[i],cur+a[i]);\n        maxSum=max(maxSum,cur);\n    }\n    cout<<maxSum;\n    return 0;\n}`,
+    testCases: [{ input: "8\n-2 1 -3 4 -1 2 1 -5 4", expected: "6" }],
+    hints: ["Kadane's: extend or restart subarray at each step"],
+  },
+  {
+    id: "d-014", track: "dsa", difficulty: "medium", points: 20,
+    tags: ["graph", "dfs"],
+    title: "Number of Connected Components",
+    description: "Count connected components in an undirected graph.\n\n**Input:** N nodes, M edges, then M pairs.\n**Output:** Number of components.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nvector<vector<int>> adj;\nvector<bool> vis;\nvoid dfs(int u){ vis[u]=true; for(int v:adj[u]) if(!vis[v]) dfs(v); }\nint main(){\n    int n,m; cin>>n>>m;\n    adj.resize(n); vis.assign(n,false);\n    for(int i=0;i<m;i++){int u,v;cin>>u>>v;adj[u].push_back(v);adj[v].push_back(u);}\n    int cnt=0;\n    for(int i=0;i<n;i++) if(!vis[i]){dfs(i);cnt++;}\n    cout<<cnt;\n    return 0;\n}`,
+    testCases: [{ input: "5 3\n0 1\n1 2\n3 4", expected: "2" }],
+    hints: ["DFS from each unvisited node = new component"],
+  },
+  {
+    id: "d-015", track: "dsa", difficulty: "medium", points: 20,
+    tags: ["dp", "coin change"],
+    title: "Coin Change (Min Coins)",
+    description: "Find minimum coins to make amount. Return -1 if impossible.\n\n**Input:** N coins, then N values, then amount.\n**Output:** Min coins or -1.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    vector<int> coins(n);\n    for(auto& c:coins) cin>>c;\n    int amt; cin>>amt;\n    vector<int> dp(amt+1,INT_MAX);\n    dp[0]=0;\n    for(int i=1;i<=amt;i++) for(int c:coins) if(c<=i&&dp[i-c]!=INT_MAX) dp[i]=min(dp[i],dp[i-c]+1);\n    cout<<(dp[amt]==INT_MAX?-1:dp[amt]);\n    return 0;\n}`,
+    testCases: [{ input: "3\n1 5 6\n11", expected: "2" }, { input: "2\n3 5\n7", expected: "-1" }],
+    hints: ["dp[i] = min coins for amount i"],
+  },
+  {
+    id: "d-016", track: "dsa", difficulty: "hard", points: 30,
+    tags: ["trees", "level order"],
+    title: "Level Order Traversal",
+    description: "Print binary tree level-by-level. Build tree from input as parent-child pairs.\n\n**Input:** N nodes, then N-1 pairs (parent child direction L/R), then query for level count.\n**Output:** Level order, levels separated by |.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nstruct Node{ int val; Node *l=nullptr,*r=nullptr; Node(int v):val(v){} };\nint main(){\n    int n; cin>>n;\n    map<int,Node*> nodes;\n    for(int i=1;i<=n;i++) nodes[i]=new Node(i);\n    int root=1;\n    for(int i=0;i<n-1;i++){\n        int p,c; char d; cin>>p>>c>>d;\n        if(d=='L') nodes[p]->l=nodes[c];\n        else nodes[p]->r=nodes[c];\n    }\n    queue<Node*> q; q.push(nodes[root]);\n    bool first=true;\n    while(!q.empty()){\n        int sz=q.size();\n        if(!first) cout<<\"|\";\n        first=false;\n        while(sz--){\n            auto nd=q.front();q.pop();\n            cout<<nd->val<<\" \";\n            if(nd->l) q.push(nd->l);\n            if(nd->r) q.push(nd->r);\n        }\n    }\n    return 0;\n}`,
+    testCases: [{ input: "5\n1 2 L\n1 3 R\n2 4 L\n2 5 R", expected: "1 |2 3 |4 5 " }],
+    hints: ["BFS for level order", "Use queue, process level by level"],
+  },
+  {
+    id: "d-017", track: "dsa", difficulty: "easy", points: 10,
+    tags: ["sorting", "merge sort"],
+    title: "Merge Sort",
+    description: "Implement merge sort and print sorted array.\n\n**Input:** N, then N integers.\n**Output:** Sorted array space-separated.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nvoid merge(vector<int>& a,int l,int m,int r){\n    vector<int> tmp;\n    int i=l,j=m+1;\n    while(i<=m&&j<=r) a[i]<=a[j]?tmp.push_back(a[i++]):tmp.push_back(a[j++]);\n    while(i<=m) tmp.push_back(a[i++]);\n    while(j<=r) tmp.push_back(a[j++]);\n    for(int k=l;k<=r;k++) a[k]=tmp[k-l];\n}\nvoid msort(vector<int>& a,int l,int r){ if(l<r){int m=(l+r)/2;msort(a,l,m);msort(a,m+1,r);merge(a,l,m,r);} }\nint main(){\n    int n; cin>>n;\n    vector<int> a(n); for(auto& x:a) cin>>x;\n    msort(a,0,n-1);\n    for(auto x:a) cout<<x<<\" \";\n    return 0;\n}`,
+    testCases: [{ input: "6\n5 2 8 1 9 3", expected: "1 2 3 5 8 9 " }],
+    hints: ["Divide into halves, sort each, merge"],
+  },
+  {
+    id: "d-018", track: "dsa", difficulty: "medium", points: 20,
+    tags: ["dp", "longest increasing subsequence"],
+    title: "Longest Increasing Subsequence",
+    description: "Find the length of LIS in an array.\n\n**Input:** N, then N integers.\n**Output:** LIS length.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    int n; cin>>n;\n    vector<int> a(n); for(auto& x:a) cin>>x;\n    vector<int> dp(n,1);\n    for(int i=1;i<n;i++) for(int j=0;j<i;j++) if(a[j]<a[i]) dp[i]=max(dp[i],dp[j]+1);\n    cout<<*max_element(dp.begin(),dp.end());\n    return 0;\n}`,
+    testCases: [{ input: "6\n3 10 2 1 20 4", expected: "3" }],
+    hints: ["dp[i] = length of LIS ending at index i"],
+  },
+  {
+    id: "d-019", track: "dsa", difficulty: "hard", points: 30,
+    tags: ["graph", "dijkstra"],
+    title: "Dijkstra's Shortest Path",
+    description: "Find shortest path from node 0 to all nodes.\n\n**Input:** N nodes, M weighted edges, then M triples u v w.\n**Output:** Distances from 0, space-separated (-1 if unreachable).",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\ntypedef pair<int,int> pii;\nint main(){\n    int n,m; cin>>n>>m;\n    vector<vector<pii>> adj(n);\n    for(int i=0;i<m;i++){int u,v,w;cin>>u>>v>>w;adj[u].push_back({v,w});adj[v].push_back({u,w});}\n    vector<int> dist(n,INT_MAX); dist[0]=0;\n    priority_queue<pii,vector<pii>,greater<>> pq; pq.push({0,0});\n    while(!pq.empty()){\n        auto[d,u]=pq.top();pq.pop();\n        if(d>dist[u]) continue;\n        for(auto[v,w]:adj[u]) if(dist[u]+w<dist[v]){dist[v]=dist[u]+w;pq.push({dist[v],v});}\n    }\n    for(int i=0;i<n;i++) cout<<(dist[i]==INT_MAX?-1:dist[i])<<\" \";\n    return 0;\n}`,
+    testCases: [{ input: "4 5\n0 1 1\n0 2 4\n1 2 2\n1 3 5\n2 3 1", expected: "0 1 3 4 " }],
+    hints: ["Min-heap priority queue", "Relax edges when shorter path found"],
+  },
+  {
+    id: "d-020", track: "dsa", difficulty: "hard", points: 30,
+    tags: ["union find"],
+    title: "Minimum Spanning Tree (Kruskal's)",
+    description: "Find MST weight using Kruskal's algorithm.\n\n**Input:** N nodes, M edges, then M triples u v w.\n**Output:** MST total weight.",
+    starterCode: `#include<bits/stdc++.h>\nusing namespace std;\nstruct DSU{ vector<int> p,r; DSU(int n):p(n),r(n,0){iota(p.begin(),p.end(),0);} int find(int x){return p[x]==x?x:p[x]=find(p[x]);} bool unite(int a,int b){a=find(a);b=find(b);if(a==b)return false;if(r[a]<r[b])swap(a,b);p[b]=a;if(r[a]==r[b])r[a]++;return true;} };\nint main(){\n    int n,m; cin>>n>>m;\n    vector<tuple<int,int,int>> edges;\n    for(int i=0;i<m;i++){int u,v,w;cin>>u>>v>>w;edges.push_back({w,u,v});}\n    sort(edges.begin(),edges.end());\n    DSU dsu(n); int mst=0;\n    for(auto[w,u,v]:edges) if(dsu.unite(u,v)) mst+=w;\n    cout<<mst;\n    return 0;\n}`,
+    testCases: [{ input: "4 5\n0 1 1\n0 2 4\n1 2 2\n1 3 5\n2 3 1", expected: "4" }],
+    hints: ["Sort edges by weight", "Use Union-Find to avoid cycles"],
+  },
+];
+
+// Combined export — all 50+ problems
+export const ALL_PROBLEMS: Problem[] = [...PROBLEMS, ...EXTRA_PROBLEMS];
