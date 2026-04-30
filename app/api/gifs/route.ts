@@ -1,42 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Tenor v1 public test key — works without registration for development
-const TENOR_KEY = process.env.TENOR_API_KEY || "LIVIDSEARCH";
-const TENOR_BASE = "https://api.tenor.com/v1";
+// Priority: Giphy key → Tenor v2 (Google) key → no results with a hint
+const GIPHY_KEY  = process.env.GIPHY_API_KEY;
+const TENOR_KEY  = process.env.TENOR_API_KEY; // Google API key with Tenor API enabled
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const q    = searchParams.get("q")    ?? "";
-  const type = searchParams.get("type") ?? "gif"; // gif | sticker
+  const q     = searchParams.get("q")    ?? "";
+  const type  = searchParams.get("type") ?? "gif";
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "9"), 24);
 
-  try {
-    let url: string;
-    if (type === "sticker") {
-      // Tenor sticker searches — search for known sticker-style terms
-      const query = q || "sticker";
-      url = `${TENOR_BASE}/search?q=${encodeURIComponent(query + " sticker")}&key=${TENOR_KEY}&limit=${limit}&media_filter=minimal&contentfilter=low&ar_range=all`;
-    } else if (q.trim()) {
-      url = `${TENOR_BASE}/search?q=${encodeURIComponent(q)}&key=${TENOR_KEY}&limit=${limit}&media_filter=minimal&contentfilter=low`;
-    } else {
-      url = `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=${limit}&media_filter=minimal&contentfilter=low`;
+  // ── Giphy (recommended — free key at developers.giphy.com) ──────────────
+  if (GIPHY_KEY) {
+    try {
+      let url: string;
+      if (type === "sticker") {
+        url = q.trim()
+          ? `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=${limit}&rating=pg-13`
+          : `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_KEY}&limit=${limit}&rating=pg-13`;
+      } else {
+        url = q.trim()
+          ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=${limit}&rating=pg-13`
+          : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=${limit}&rating=pg-13`;
+      }
+      const res  = await fetch(url, { next: { revalidate: 60 } });
+      const data = await res.json();
+      if (data.meta?.status === 200) {
+        const results = (data.data ?? []).map((g: any) => ({
+          id:      g.id,
+          url:     g.images?.original?.url ?? "",
+          preview: g.images?.fixed_height_small?.url ?? g.images?.original?.url ?? "",
+        })).filter((r: any) => r.url);
+        return NextResponse.json({ results, provider: "giphy" });
+      }
+    } catch (e) {
+      console.error("[/api/gifs] Giphy error:", e);
     }
-
-    const res  = await fetch(url, { next: { revalidate: 60 } });
-    const data = await res.json();
-
-    const results = (data.results ?? []).map((item: any) => {
-      const media = item.media?.[0] ?? {};
-      return {
-        id:      item.id,
-        url:     media.gif?.url     ?? media.mediumgif?.url ?? "",
-        preview: media.tinygif?.url ?? media.nanogif?.url   ?? media.gif?.url ?? "",
-      };
-    }).filter((r: any) => r.url);
-
-    return NextResponse.json({ results });
-  } catch (err) {
-    console.error("[/api/gifs]", err);
-    return NextResponse.json({ results: [] }, { status: 500 });
   }
+
+  // ── Tenor v2 (enable at console.cloud.google.com → Tenor API) ───────────
+  if (TENOR_KEY) {
+    try {
+      const base = "https://tenor.googleapis.com/v2";
+      const stickerQ = type === "sticker" ? (q || "cute") : q;
+      const url = stickerQ.trim()
+        ? `${base}/search?q=${encodeURIComponent(stickerQ)}&key=${TENOR_KEY}&limit=${limit}&client_key=uniconnect&media_filter=gif,tinygif`
+        : `${base}/featured?key=${TENOR_KEY}&limit=${limit}&client_key=uniconnect&media_filter=gif,tinygif`;
+      const res  = await fetch(url, { next: { revalidate: 60 } });
+      const data = await res.json();
+      if (!data.error) {
+        const results = (data.results ?? []).map((item: any) => {
+          const fmt = item.media_formats ?? {};
+          return {
+            id:      item.id,
+            url:     fmt.gif?.url     ?? "",
+            preview: fmt.tinygif?.url ?? fmt.gif?.url ?? "",
+          };
+        }).filter((r: any) => r.url);
+        return NextResponse.json({ results, provider: "tenor" });
+      }
+    } catch (e) {
+      console.error("[/api/gifs] Tenor error:", e);
+    }
+  }
+
+  // ── No key configured ────────────────────────────────────────────────────
+  return NextResponse.json({
+    results: [],
+    setup_required: true,
+    message: "Add GIPHY_API_KEY to .env.local (free at developers.giphy.com) or enable the Tenor API in your Google Cloud project and add TENOR_API_KEY.",
+  });
 }

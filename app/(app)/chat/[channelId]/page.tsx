@@ -101,6 +101,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [gifSearch,     setGifSearch]     = useState("");
   const [gifResults,    setGifResults]    = useState<GifResult[]>([]);
   const [gifLoading,    setGifLoading]    = useState(false);
+  const [gifSetupRequired, setGifSetupRequired] = useState(false);
 
   // Sticker picker
   const [showStickerPicker,  setShowStickerPicker]  = useState(false);
@@ -123,10 +124,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const fileInputRef     = useRef<HTMLInputElement>(null);
   const stickerFileRef   = useRef<HTMLInputElement>(null);
 
-  // Emoji
+  // Emoji — preload data in the background on mount so picker opens instantly
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [emojiData, setEmojiData] = useState<any>(null);
+
+  useEffect(() => {
+    import("@emoji-mart/data").then(mod => setEmojiData(mod.default));
+  }, []);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const bottomRef       = useRef<HTMLDivElement>(null);
@@ -181,13 +186,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     textareaRef.current?.focus();
     resizeTextarea();
   };
-  const toggleEmojiPicker = async () => {
-    if (!showEmojiPicker && !emojiData) {
-      const mod = await import("@emoji-mart/data");
-      setEmojiData(mod.default);
-    }
-    setShowEmojiPicker(p => !p);
-  };
+  const toggleEmojiPicker = () => setShowEmojiPicker(p => !p);
 
   // ─── GIF ──────────────────────────────────────────────────────────────────
   const fetchGifs = useCallback(async (query: string) => {
@@ -197,6 +196,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       if (query.trim()) params.set("q", query.trim());
       const res  = await fetch(`/api/gifs?${params}`);
       const data = await res.json();
+      setGifSetupRequired(!!data.setup_required);
       setGifResults(data.results ?? []);
     } catch { setGifResults([]); }
     setGifLoading(false);
@@ -692,6 +692,18 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             <div className="p-3">
               {gifLoading ? (
                 <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-[rgb(var(--muted-fg))]" /></div>
+              ) : gifSetupRequired ? (
+                <div className="text-center py-6 px-2">
+                  <p className="text-xs font-semibold text-[rgb(var(--fg))] mb-1">API key needed</p>
+                  <p className="text-[11px] text-[rgb(var(--muted-fg))] leading-relaxed">
+                    Get a free key at{" "}
+                    <a href="https://developers.giphy.com" target="_blank" rel="noreferrer" className="text-[rgb(var(--primary))] underline">developers.giphy.com</a>
+                    {" "}then add to <code className="bg-[rgb(var(--muted))] px-1 rounded">.env.local</code>:
+                  </p>
+                  <code className="block mt-2 text-[11px] bg-[rgb(var(--muted))] px-3 py-1.5 rounded-lg text-[rgb(var(--primary))] text-left">
+                    GIPHY_API_KEY=your_key_here
+                  </code>
+                </div>
               ) : gifResults.length === 0 ? (
                 <p className="text-center text-xs text-[rgb(var(--muted-fg))] py-6">No GIFs found</p>
               ) : (
@@ -704,7 +716,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                   ))}
                 </div>
               )}
-              <p className="text-[10px] text-[rgb(var(--muted-fg))] text-center mt-2">Powered by GIPHY</p>
             </div>
           </div>
         )}
