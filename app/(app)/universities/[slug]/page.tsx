@@ -344,7 +344,7 @@ export default function UniversityHubPage({ params }: { params: Promise<{ slug: 
                 <p className="text-sm text-[rgb(var(--muted-fg))] max-w-sm">One shared chat for all {uni.short_name} students.</p>
               </div>
               {uniChannelId
-                ? <Link href={`/chat/${uniChannelId}`} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm bg-[rgb(var(--primary))] text-white hover:opacity-90 active:scale-95">Open Chat <ArrowRight className="w-4 h-4" /></Link>
+                ? <Link href={`/chat/${uniChannelId}`} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 active:scale-95">Open Chat <ArrowRight className="w-4 h-4" /></Link>
                 : <div className="h-10 w-32 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />}
               <p className="text-xs text-[rgb(var(--muted-fg))]">{members.length} member{members.length !== 1 ? "s" : ""} · campus badge shown on every message</p>
             </div>
@@ -355,7 +355,7 @@ export default function UniversityHubPage({ params }: { params: Promise<{ slug: 
             <div>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-[rgb(var(--muted-fg))]">{notes.length > 0 ? `${notes.length} note${notes.length !== 1 ? "s" : ""} from ${uni.short_name} students` : `No notes from ${uni.short_name} yet`}</p>
-                <Link href="/notes/upload" className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-[rgb(var(--primary))] text-white hover:opacity-90">
+                <Link href="/notes/upload" className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90">
                   <Upload className="w-3.5 h-3.5" /> Upload
                 </Link>
               </div>
@@ -438,7 +438,7 @@ export default function UniversityHubPage({ params }: { params: Promise<{ slug: 
                   </div>
 
                   <button onClick={submitReview} disabled={submitting || myRating === 0}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-white hover:opacity-90 disabled:opacity-40 transition-opacity">
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-40 transition-opacity">
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     {submitting ? "Saving…" : editingId ? "Update Review" : "Post Review"}
                   </button>

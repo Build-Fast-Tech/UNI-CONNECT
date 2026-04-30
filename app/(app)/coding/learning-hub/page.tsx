@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -80,7 +80,7 @@ export default function LearningHubPage() {
               )}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-3xl">{track.icon}</span>
-                {isActive && <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[rgb(var(--primary))] text-white">Active</span>}
+                {isActive && <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]">Active</span>}
               </div>
               <h3 className="font-bold text-base mb-1">{track.label}</h3>
               <p className="text-xs text-[rgb(var(--muted-fg))] mb-3">{track.description}</p>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
           </Link>
           <button
             onClick={() => setShowAdd(p => !p)}
-            className="px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+            className="px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Add Subject
           </button>
@@ -305,7 +305,7 @@ export default function AnalyticsPage() {
               <button
                 onClick={addSubject}
                 disabled={!newName.trim() || saving}
-                className="px-6 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+                className="px-6 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
               >
                 {saving ? "Adding…" : "Add Subject"}
               </button>

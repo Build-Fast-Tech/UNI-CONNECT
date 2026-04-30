@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -254,7 +254,7 @@ function InboxContent() {
             "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
             showSearch
               ? "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]"
-              : "bg-[rgb(var(--primary))] text-white hover:opacity-90"
+              : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90"
           )}
         >
           {showSearch ? <><X className="w-4 h-4" /> Cancel</> : <><Plus className="w-4 h-4" /> New DM</>}

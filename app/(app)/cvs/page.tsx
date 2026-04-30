@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -124,7 +124,7 @@ export default function CVsPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold">My CVs <span className="text-sm font-normal text-[rgb(var(--muted-fg))]">{myCvs.length}</span></h2>
             <Link href="/cvs/upload"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium hover:opacity-90 transition-opacity">
               <Plus className="w-4 h-4" /> Upload Another CV
             </Link>
           </div>
@@ -139,7 +139,7 @@ export default function CVsPage() {
                 <p className="text-sm text-[rgb(var(--muted-fg))]">Upload your CV so employers can find you by skills, university, and availability.</p>
               </div>
               <Link href="/cvs/upload"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm bg-[rgb(var(--primary))] text-white font-medium hover:opacity-90 transition-opacity flex-shrink-0">
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-medium hover:opacity-90 transition-opacity flex-shrink-0">
                 <Upload className="w-4 h-4" /> Upload CV
               </Link>
             </div>
@@ -178,7 +178,7 @@ export default function CVsPage() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {cv.file_url && (
                       <a href={cv.file_url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-[rgb(var(--primary))] text-white hover:opacity-90 transition-opacity">
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity">
                         <Download className="w-4 h-4" />
                       </a>
                     )}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -143,7 +143,7 @@ export default function AdminEmployersPage() {
             className={cn(
               "px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-all",
               filter === f
-                ? "bg-[rgb(var(--primary))] text-white"
+                ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]"
                 : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted)/0.7)]"
             )}
           >

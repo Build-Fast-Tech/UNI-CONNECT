@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -141,7 +141,7 @@ export default function MyProfilePage() {
         <div className="theme-card p-8 text-center space-y-4">
           <p className="text-lg font-semibold">Profile not set up yet</p>
           <p className="text-sm text-[rgb(var(--muted-fg))]">Complete onboarding to set up your profile.</p>
-          <a href="/onboarding" className="inline-block mt-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium">
+          <a href="/onboarding" className="inline-block mt-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium">
             Complete Onboarding
           </a>
         </div>

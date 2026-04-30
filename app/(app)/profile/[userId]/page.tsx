@@ -121,7 +121,7 @@ export default function PublicProfilePage({
                 </Link>
               ) : (
                 <Link href={`/inbox?dm=${userId}`}>
-                  <button className="flex items-center gap-1.5 text-xs bg-[rgb(var(--primary))] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
+                  <button className="flex items-center gap-1.5 text-xs bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
                     <MessageCircle className="w-3.5 h-3.5" /> Message
                   </button>
                 </Link>

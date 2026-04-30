@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -137,7 +137,7 @@ export default function CalendarPage() {
         </div>
         <button
           onClick={() => setShowBuilder(p => !p)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           <CalendarPlus className="w-4 h-4" /> Plan Day
         </button>
@@ -216,7 +216,7 @@ export default function CalendarPage() {
               <div className="flex gap-3 pt-1">
                 <button onClick={saveSchedule}
                   disabled={buildSaving || !buildBlocks.some(b => b.title.trim())}
-                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
+                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
                   {buildSaving ? "Saving…" : `Add ${buildBlocks.filter(b => b.title.trim()).length} event${buildBlocks.filter(b => b.title.trim()).length !== 1 ? "s" : ""} to Calendar`}
                 </button>
                 <button onClick={() => setShowBuilder(false)}
@@ -302,7 +302,7 @@ export default function CalendarPage() {
               <div className="flex gap-3 pt-1">
                 <button onClick={saveSchedule}
                   disabled={buildSaving || !buildBlocks.some(b => b.title.trim())}
-                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
+                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
                   {buildSaving ? "Saving…" : `Add ${buildBlocks.filter(b => b.title.trim()).length} event${buildBlocks.filter(b => b.title.trim()).length !== 1 ? "s" : ""} to Calendar`}
                 </button>
                 <button onClick={() => setShowBuilder(false)}
@@ -357,7 +357,7 @@ export default function CalendarPage() {
                   <>
                     <div className={cn(
                       "w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium mb-1 mx-auto",
-                      isToday ? "bg-[rgb(var(--primary))] text-white font-bold" : "text-[rgb(var(--fg))]"
+                      isToday ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-bold" : "text-[rgb(var(--fg))]"
                     )}>{day}</div>
                     <div className="space-y-0.5">
                       {dayEvents.slice(0, 3).map(ev => (
@@ -443,7 +443,7 @@ export default function CalendarPage() {
             placeholder="End"
             className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
           <button onClick={addEvent} disabled={!qTitle.trim() || adding}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40 flex-shrink-0">
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40 flex-shrink-0">
             <Plus className="w-4 h-4" /> Add
           </button>
         </div>

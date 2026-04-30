@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -194,7 +194,7 @@ export default function PostJobPage() {
         </p>
         <Link
           href="/employer/apply"
-          className="inline-block px-6 py-3 rounded-xl bg-[rgb(var(--primary))] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+          className="inline-block px-6 py-3 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-semibold text-sm hover:opacity-90 transition-opacity"
         >
           Apply to Become an Employer
         </Link>
@@ -365,7 +365,7 @@ export default function PostJobPage() {
               "w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200",
               submitting || !title || !company
                 ? "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
-                : "bg-[rgb(var(--primary))] text-white hover:opacity-90 active:scale-[0.99]"
+                : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 active:scale-[0.99]"
             )}
           >
             {submitting ? "Publishing…" : "Publish Job"}

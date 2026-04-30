@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -336,7 +336,7 @@ export default function GPAPage() {
           </p>
           <a
             href="/study/analytics"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium hover:opacity-90 transition-opacity"
           >
             Go to Analytics →
           </a>
@@ -468,7 +468,7 @@ export default function GPAPage() {
                               <button
                                 onClick={() => addAssignment(subject.id)}
                                 disabled={!form.name || !form.grade || saving}
-                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white text-sm font-medium disabled:opacity-40 hover:opacity-90"
+                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium disabled:opacity-40 hover:opacity-90"
                               >
                                 <Check className="w-3.5 h-3.5" /> Save
                               </button>

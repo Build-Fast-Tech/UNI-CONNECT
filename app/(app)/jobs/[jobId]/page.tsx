@@ -225,7 +225,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
                 ? "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
                 : applied
                 ? "bg-emerald-500/10 text-emerald-500 cursor-default"
-                : "bg-[rgb(var(--primary))] text-white hover:opacity-90 active:scale-95"
+                : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 active:scale-95"
             )}
           >
             {isClosed ? (

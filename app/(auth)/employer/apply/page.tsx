@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -168,7 +168,7 @@ export default function EmployerApplyPage() {
             "w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200",
             submitting || !fullName || !email || !companyName
               ? "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
-              : "bg-[rgb(var(--primary))] text-white hover:opacity-90 active:scale-[0.99]"
+              : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 active:scale-[0.99]"
           )}
         >
           {submitting ? "Submitting…" : "Submit Application"}
