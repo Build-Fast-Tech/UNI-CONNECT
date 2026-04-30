@@ -1,7 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search, Upload, BookOpen, Download, ThumbsUp,
   Filter, X, FileText, FileImage, Archive,
@@ -27,15 +26,15 @@ const FILE_ICONS: Record<string, React.ElementType> = {
 const SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
 const CATEGORIES = [
-  { id: "all",        label: "All",              icon: BookOpen },
-  { id: "notes",      label: "Notes",            icon: FileText },
-  { id: "quiz",       label: "Quizzes",          icon: PenLine },
-  { id: "assignment", label: "Assignments",      icon: ClipboardList },
-  { id: "sessional1", label: "Sessional I",        icon: ScrollText },
-  { id: "sessional2", label: "Sessional II",       icon: ScrollText },
-  { id: "final",      label: "Finals",           icon: GraduationCap },
-  { id: "textbook",   label: "Textbooks",        icon: BookOpen },
-  { id: "other",      label: "Other",            icon: Archive },
+  { id: "all",        label: "All",          icon: BookOpen },
+  { id: "notes",      label: "Notes",        icon: FileText },
+  { id: "quiz",       label: "Quizzes",      icon: PenLine },
+  { id: "assignment", label: "Assignments",  icon: ClipboardList },
+  { id: "sessional1", label: "Sessional I",  icon: ScrollText },
+  { id: "sessional2", label: "Sessional II", icon: ScrollText },
+  { id: "final",      label: "Finals",       icon: GraduationCap },
+  { id: "textbook",   label: "Textbooks",    icon: BookOpen },
+  { id: "other",      label: "Other",        icon: Archive },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]["id"];
@@ -51,9 +50,12 @@ const CATEGORY_COLORS: Record<string, string> = {
   other:      "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",
 };
 
+const PAGE_SIZE = 48;
+
 export default function NotesPage() {
   const supabase = createClient();
   const [notes, setNotes]       = useState<Note[]>([]);
+  const [total, setTotal]       = useState(0);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading]   = useState(true);
   const [userId, setUserId]     = useState<string | null>(null);
@@ -61,71 +63,75 @@ export default function NotesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
 
-  // filters
   const [filterSubject,  setFilterSubject]  = useState("");
   const [filterSemester, setFilterSemester] = useState("");
   const [filterType,     setFilterType]     = useState("");
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load subjects once
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+    supabase.from("subjects").select("name").order("name").then(({ data }) => {
+      setSubjects(mergeSubjects((data || []).map(s => s.name)));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const fetchNotes = useCallback(async (searchVal: string) => {
+    setLoading(true);
+
+    let q = supabase
+      .from("notes")
+      .select("*, profiles!uploader_id(full_name, avatar_url, university_id), universities!university_id(short_name)", { count: "exact" })
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+
+    if (activeCategory !== "all") q = (q as any).eq("category", activeCategory);
+    if (filterSubject)  q = q.eq("subject", filterSubject);
+    if (filterSemester) q = q.eq("semester", filterSemester);
+    if (filterType)     q = q.ilike("file_type", `%${filterType}%`);
+    if (searchVal.trim()) {
+      q = q.or(`title.ilike.%${searchVal.trim()}%,subject.ilike.%${searchVal.trim()}%,course_code.ilike.%${searchVal.trim()}%`);
+    }
+
+    const { data, count } = await q;
+    setNotes((data as Note[]) ?? []);
+    setTotal(count ?? 0);
+    setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, filterSubject, filterSemester, filterType]);
+
+  // Re-fetch when filters change (immediate)
   useEffect(() => {
-    Promise.all([
-      supabase
-        .from("notes")
-        .select("*, profiles!uploader_id(full_name, avatar_url, university_id), universities!university_id(short_name)")
-        .eq("status", "published")
-        .order("created_at", { ascending: false })
-        .limit(1000),
-      supabase.from("subjects").select("name").order("name"),
-    ]).then(([{ data: notesData, error: notesErr }, { data: subjectsData }]) => {
-      if (notesErr) console.error("notes fetch error:", notesErr);
-      setNotes(notesData || []);
-      setSubjects(mergeSubjects((subjectsData || []).map(s => s.name)));
-      setLoading(false);
-    });
-  }, []);
+    fetchNotes(search);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchNotes]);
 
-  const filtered = useMemo(() => {
-    return notes.filter(n => {
-      const q = search.toLowerCase();
-      const matchSearch =
-        !q ||
-        n.title.toLowerCase().includes(q) ||
-        n.subject.toLowerCase().includes(q) ||
-        (n.course_code || "").toLowerCase().includes(q) ||
-        (n.description || "").toLowerCase().includes(q);
-      const matchCategory = activeCategory === "all" || (n as any).category === activeCategory;
-      const matchSubject   = !filterSubject  || n.subject === filterSubject;
-      const matchSemester  = !filterSemester || n.semester === filterSemester;
-      const matchType      = !filterType     || (n.file_type || "").includes(filterType);
-      return matchSearch && matchCategory && matchSubject && matchSemester && matchType;
-    });
-  }, [notes, search, activeCategory, filterSubject, filterSemester, filterType]);
+  // Debounce search input
+  const handleSearch = (val: string) => {
+    setSearch(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchNotes(val), 350);
+  };
 
   const deleteNote = async (id: string) => {
     await supabase.from("notes").delete().eq("id", id).eq("uploader_id", userId ?? "");
     setNotes(prev => prev.filter(n => n.id !== id));
+    setTotal(prev => prev - 1);
   };
 
   const activeFilters = [filterSubject, filterSemester, filterType].filter(Boolean).length;
 
-  const countFor = (cat: CategoryId) =>
-    cat === "all" ? notes.length : notes.filter(n => (n as any).category === cat).length;
-
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between gap-4"
-      >
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-1">Notes</h1>
           <p className="text-[rgb(var(--muted-fg))]">
-            {notes.length > 0 ? `${notes.length} files` : "Global notes library"} — shared by students across Pakistan.
+            {total > 0 ? `${total} files` : "Global notes library"} — shared by students across Pakistan.
           </p>
         </div>
         <Link href="/notes/upload">
@@ -133,24 +139,18 @@ export default function NotesPage() {
             <Upload className="w-4 h-4" /> Upload
           </button>
         </Link>
-      </motion.div>
+      </div>
 
       {/* Category tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.04 }}
-        className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
-      >
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         {CATEGORIES.map(({ id, label, icon: Icon }) => {
-          const count = countFor(id);
           const active = activeCategory === id;
           return (
             <button
               key={id}
               onClick={() => setActiveCategory(id)}
               className={cn(
-                "flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-200 border",
+                "flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-150 border",
                 active
                   ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] border-transparent"
                   : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]"
@@ -158,33 +158,20 @@ export default function NotesPage() {
             >
               <Icon className="w-3.5 h-3.5" />
               {label}
-              {count > 0 && (
-                <span className={cn(
-                  "text-xs px-1.5 py-0.5 rounded-full",
-                  active ? "bg-white/20 text-white" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
-                )}>
-                  {count}
-                </span>
-              )}
             </button>
           );
         })}
-      </motion.div>
+      </div>
 
       {/* Search + filter bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08 }}
-        className="space-y-3"
-      >
+      <div className="space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
               placeholder="Search by title, subject, course code…"
               className={cn(
                 "w-full h-11 pl-10 pr-4 rounded-xl text-sm",
@@ -197,7 +184,7 @@ export default function NotesPage() {
           <button
             onClick={() => setShowFilters(s => !s)}
             className={cn(
-              "flex items-center gap-2 px-4 h-11 rounded-xl text-sm font-medium border transition-all duration-200",
+              "flex items-center gap-2 px-4 h-11 rounded-xl text-sm font-medium border transition-all duration-150",
               showFilters || activeFilters > 0
                 ? "bg-[rgb(var(--primary)/0.1)] border-[rgb(var(--primary)/0.4)] text-[rgb(var(--primary))]"
                 : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
@@ -214,12 +201,7 @@ export default function NotesPage() {
         </div>
 
         {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="theme-card p-4 grid sm:grid-cols-3 gap-4"
-          >
+          <div className="theme-card p-4 grid sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
               <select
@@ -281,14 +263,14 @@ export default function NotesPage() {
                 </button>
               </div>
             )}
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Results */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="theme-card p-5 animate-pulse space-y-3">
               <div className="h-4 bg-[rgb(var(--muted))] rounded w-3/4" />
               <div className="h-3 bg-[rgb(var(--muted))] rounded w-1/2" />
@@ -296,12 +278,12 @@ export default function NotesPage() {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : notes.length === 0 ? (
         <div className="theme-card p-16 text-center">
           <BookOpen className="w-12 h-12 text-[rgb(var(--muted-fg))] mx-auto mb-3" />
           <p className="font-semibold mb-1">No files found</p>
           <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">
-            {notes.length === 0 ? "Be the first to upload!" : "Try different filters or search terms."}
+            Try different filters or search terms.
           </p>
           <Link href="/notes/upload">
             <button className="px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity">
@@ -311,8 +293,8 @@ export default function NotesPage() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((note, i) => (
-            <NoteCard key={note.id} note={note} index={i} userId={userId} onDelete={deleteNote} />
+          {notes.map((note) => (
+            <NoteCard key={note.id} note={note} userId={userId} onDelete={deleteNote} />
           ))}
         </div>
       )}
@@ -320,7 +302,7 @@ export default function NotesPage() {
   );
 }
 
-function NoteCard({ note, index, userId, onDelete }: { note: Note; index: number; userId: string | null; onDelete: (id: string) => void }) {
+function NoteCard({ note, userId, onDelete }: { note: Note; userId: string | null; onDelete: (id: string) => void }) {
   const ext = (note.file_type || "pdf").replace("application/", "").replace("vnd.openxmlformats-officedocument.", "").split(".").pop() || "pdf";
   const Icon = FILE_ICONS[ext] || FileText;
   const category = (note as any).category as string | undefined;
@@ -328,15 +310,10 @@ function NoteCard({ note, index, userId, onDelete }: { note: Note; index: number
   const categoryColor = CATEGORY_COLORS[category || "other"];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.5) }}
-      className="relative group"
-    >
+    <div className="relative group">
       <Link
         href={`/notes/${note.id}`}
-        className="theme-card p-5 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-200 block"
+        className="theme-card p-5 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-150 block"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
@@ -392,6 +369,6 @@ function NoteCard({ note, index, userId, onDelete }: { note: Note; index: number
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       )}
-    </motion.div>
+    </div>
   );
 }

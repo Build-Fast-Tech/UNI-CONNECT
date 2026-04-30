@@ -325,15 +325,22 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
 
   const fetchLastMessages = useCallback(async (channelIds: string[]) => {
     if (channelIds.length === 0) return new Map<string, { content: string | null; created_at: string }>();
-    const { data } = await supabase
-      .from("messages")
-      .select("channel_id, content, created_at")
-      .in("channel_id", channelIds)
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false });
+    // Fetch last message per channel in parallel (1 row each) instead of one unbounded query
+    const results = await Promise.all(
+      channelIds.map(id =>
+        supabase
+          .from("messages")
+          .select("channel_id, content, created_at")
+          .eq("channel_id", id)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      )
+    );
     const map = new Map<string, { content: string | null; created_at: string }>();
-    for (const m of data ?? []) {
-      if (!map.has(m.channel_id)) map.set(m.channel_id, { content: m.content, created_at: m.created_at });
+    for (const { data } of results) {
+      if (data) map.set(data.channel_id, { content: data.content, created_at: data.created_at });
     }
     return map;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -347,8 +354,12 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
       setMyId(user.id);
       setPins(readPins(user.id));
 
-      const { data: global } = await supabase.from("channels").select("id, type, name").eq("type", "global").single();
-      const { data: profile } = await supabase.from("profiles").select("university_id, universities(short_name)").eq("id", user.id).single();
+      // Fetch global channel, profile, and DMs in parallel
+      const [{ data: global }, { data: profile }, { data: dms }] = await Promise.all([
+        supabase.from("channels").select("id, type, name").eq("type", "global").single(),
+        supabase.from("profiles").select("university_id, universities(short_name)").eq("id", user.id).single(),
+        supabase.from("channels").select("id, type, dm_user_a, dm_user_b").eq("type", "dm").or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`).limit(30),
+      ]);
 
       let uniChannel: { id: string; name: string | null } | null = null;
       if (profile?.university_id) {
@@ -361,11 +372,17 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
         uniChannel = existing;
       }
 
-      const { data: dms } = await supabase.from("channels").select("id, type, dm_user_a, dm_user_b").eq("type", "dm").or(`dm_user_a.eq.${user.id},dm_user_b.eq.${user.id}`).limit(30);
-
       const dmIds = (dms ?? []).map(d => d.id);
       const channelIds = [...(global ? [global.id] : []), ...(uniChannel ? [uniChannel.id] : []), ...dmIds];
-      const lastMsgMap = await fetchLastMessages(channelIds);
+
+      // Fetch DM partner profiles and last messages in parallel
+      const otherIds = (dms ?? []).map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean) as string[];
+      const [lastMsgMap, { data: dmProfiles }] = await Promise.all([
+        fetchLastMessages(channelIds),
+        otherIds.length > 0
+          ? supabase.from("profiles").select("id, full_name").in("id", otherIds)
+          : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+      ]);
 
       if (global) {
         const last = lastMsgMap.get(global.id);
@@ -379,10 +396,7 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
       }
 
       if (dms && dms.length > 0) {
-        const otherIds = dms.map(d => d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a).filter(Boolean) as string[];
-        const { data: dmProfiles } = await supabase.from("profiles").select("id, full_name").in("id", otherIds);
-        const profileMap = new Map(dmProfiles?.map(p => [p.id, p]) ?? []);
-
+        const profileMap = new Map((dmProfiles ?? []).map(p => [p.id, p]));
         setDmChannels(dms.map(d => {
           const otherId = (d.dm_user_a === user.id ? d.dm_user_b : d.dm_user_a) ?? "";
           const otherProfile = profileMap.get(otherId);
