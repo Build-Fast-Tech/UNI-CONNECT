@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, GraduationCap, ExternalLink } from "lucide-react";
+import { Search, MapPin, GraduationCap, ExternalLink, Star } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -15,19 +15,36 @@ const PROVINCES = ["All", "Punjab", "Sindh", "KPK", "Balochistan", "Islamabad", 
 export default function UniversitiesPage() {
   const supabase = createClient();
   const [universities, setUniversities] = useState<University[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [province, setProvince] = useState("All");
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState("");
+  const [province, setProvince]         = useState("All");
+  // Map of university_id → { avg, count }
+  const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
 
   useEffect(() => {
-    supabase
-      .from("universities")
-      .select("*")
-      .order("is_featured", { ascending: false })
-      .order("name")
+    supabase.from("universities").select("*")
+      .order("is_featured", { ascending: false }).order("name")
       .then(({ data }) => {
         setUniversities(data || []);
         setLoading(false);
+      });
+
+    // Fetch aggregated ratings for all universities
+    (supabase as any)
+      .from("university_reviews")
+      .select("university_id, rating")
+      .then(({ data }: any) => {
+        const map: Record<string, { sum: number; count: number }> = {};
+        (data || []).forEach((r: any) => {
+          if (!map[r.university_id]) map[r.university_id] = { sum: 0, count: 0 };
+          map[r.university_id].sum   += r.rating;
+          map[r.university_id].count += 1;
+        });
+        const result: Record<string, { avg: number; count: number }> = {};
+        Object.entries(map).forEach(([id, { sum, count }]) => {
+          result[id] = { avg: sum / count, count };
+        });
+        setRatings(result);
       });
   }, []);
 
@@ -37,18 +54,16 @@ export default function UniversitiesPage() {
         u.name.toLowerCase().includes(search.toLowerCase()) ||
         u.short_name.toLowerCase().includes(search.toLowerCase()) ||
         (u.city || "").toLowerCase().includes(search.toLowerCase());
-      const matchProvince =
-        province === "All" || (u.province || "").toLowerCase() === province.toLowerCase();
+      const matchProvince = province === "All" || (u.province || "").toLowerCase() === province.toLowerCase();
       return matchSearch && matchProvince;
     });
   }, [universities, search, province]);
 
   const featured = filtered.filter(u => u.is_featured);
-  const rest = filtered.filter(u => !u.is_featured);
+  const rest      = filtered.filter(u => !u.is_featured);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-bold mb-1">Universities</h1>
         <p className="text-[rgb(var(--muted-fg))]">
@@ -56,41 +71,23 @@ export default function UniversitiesPage() {
         </p>
       </motion.div>
 
-      {/* Search + filter bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="flex flex-col sm:flex-row gap-3"
-      >
+      {/* Search + filter */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+        className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search NUST, LUMS, FAST…"
-            className={cn(
-              "w-full h-11 pl-10 pr-4 rounded-xl text-sm",
+            className={cn("w-full h-11 pl-10 pr-4 rounded-xl text-sm",
               "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
               "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
-              "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))] transition-shadow"
-            )}
-          />
+              "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))] transition-shadow")} />
         </div>
-
         <div className="flex gap-2 overflow-x-auto pb-1">
           {PROVINCES.map(p => (
-            <button
-              key={p}
-              onClick={() => setProvince(p)}
-              className={cn(
-                "px-4 h-11 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-200",
-                province === p
-                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]"
-                  : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted)/0.7)]"
-              )}
-            >
+            <button key={p} onClick={() => setProvince(p)}
+              className={cn("px-4 h-11 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-200",
+                province === p ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted)/0.7)]")}>
               {p}
             </button>
           ))}
@@ -113,35 +110,27 @@ export default function UniversitiesPage() {
         </div>
       ) : (
         <>
-          {/* Featured */}
           {featured.length > 0 && search === "" && province === "All" && (
             <section>
-              <h2 className="text-sm font-semibold text-[rgb(var(--muted-fg))] uppercase tracking-wider mb-3">
-                Featured
-              </h2>
+              <h2 className="text-sm font-semibold text-[rgb(var(--muted-fg))] uppercase tracking-wider mb-3">Featured</h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {featured.map((uni, i) => (
-                  <UniversityCard key={uni.id} uni={uni} index={i} featured />
-                ))}
+                {featured.map((uni, i) => <UniversityCard key={uni.id} uni={uni} index={i} featured rating={ratings[uni.id]} />)}
               </div>
             </section>
           )}
 
-          {/* All results */}
-          {rest.length > 0 || (featured.length === 0) ? (
+          {(rest.length > 0 || featured.length === 0) && (
             <section>
               {featured.length > 0 && search === "" && province === "All" && (
-                <h2 className="text-sm font-semibold text-[rgb(var(--muted-fg))] uppercase tracking-wider mb-3">
-                  All Universities
-                </h2>
+                <h2 className="text-sm font-semibold text-[rgb(var(--muted-fg))] uppercase tracking-wider mb-3">All Universities</h2>
               )}
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(search !== "" || province !== "All" ? filtered : rest).map((uni, i) => (
-                  <UniversityCard key={uni.id} uni={uni} index={i} />
+                  <UniversityCard key={uni.id} uni={uni} index={i} rating={ratings[uni.id]} />
                 ))}
               </div>
             </section>
-          ) : null}
+          )}
 
           {filtered.length === 0 && (
             <div className="theme-card p-12 text-center">
@@ -155,60 +144,57 @@ export default function UniversitiesPage() {
   );
 }
 
-function UniversityCard({
-  uni,
-  index,
-  featured = false,
-}: {
-  uni: University;
-  index: number;
-  featured?: boolean;
+function StarDisplay({ avg, count }: { avg: number; count: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex gap-0.5">
+        {[1,2,3,4,5].map(s => (
+          <Star key={s} className="w-3 h-3"
+            fill={s <= Math.round(avg) ? "#FBBF24" : "none"}
+            stroke={s <= Math.round(avg) ? "#FBBF24" : "rgb(var(--border))"}
+            strokeWidth={1.5} />
+        ))}
+      </div>
+      <span className="text-xs font-semibold text-amber-400">{avg.toFixed(1)}</span>
+      <span className="text-xs text-[rgb(var(--muted-fg))]">({count})</span>
+    </div>
+  );
+}
+
+function UniversityCard({ uni, index, featured = false, rating }: {
+  uni: University; index: number; featured?: boolean; rating?: { avg: number; count: number };
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.4) }}
-    >
-      <Link
-        href={`/universities/${uni.slug}`}
-        className={cn(
-          "theme-card p-5 flex flex-col gap-3 h-full",
-          "hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-200 group"
-        )}
-      >
-        {/* Logo / initials */}
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.04, 0.4) }}>
+      <Link href={`/universities/${uni.slug}`}
+        className={cn("theme-card p-5 flex flex-col gap-3 h-full",
+          "hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-200 group")}>
+
         <div className="flex items-start justify-between gap-3">
           <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center flex-shrink-0">
-            {uni.logo_url ? (
+            {uni.logo_url
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={uni.logo_url} alt={uni.short_name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-sm font-bold text-white">{uni.short_name.slice(0, 3)}</span>
-            )}
+              ? <img src={uni.logo_url} alt={uni.short_name} className="w-full h-full object-cover" />
+              : <span className="text-sm font-bold text-white">{uni.short_name.slice(0, 3)}</span>}
           </div>
           {featured && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent))] font-medium flex-shrink-0">
-              Featured
-            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent))] font-medium flex-shrink-0">Featured</span>
           )}
         </div>
 
-        {/* Info */}
         <div className="flex-1">
-          <h3 className="font-semibold text-sm leading-tight group-hover:text-[rgb(var(--primary))] transition-colors">
-            {uni.name}
-          </h3>
+          <h3 className="font-semibold text-sm leading-tight group-hover:text-[rgb(var(--primary))] transition-colors">{uni.name}</h3>
           <p className="text-xs text-[rgb(var(--primary))] font-medium mt-0.5">{uni.short_name}</p>
         </div>
 
-        {/* Meta */}
+        {/* Star rating */}
+        {rating && rating.count > 0 && (
+          <StarDisplay avg={rating.avg} count={rating.count} />
+        )}
+
         <div className="flex items-center gap-3 text-xs text-[rgb(var(--muted-fg))]">
           {uni.city && (
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {uni.city}
-            </span>
+            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{uni.city}</span>
           )}
           {uni.website && (
             <span className="ml-auto flex items-center gap-1 text-[rgb(var(--primary))]">
