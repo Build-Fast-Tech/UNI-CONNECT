@@ -726,39 +726,48 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
             {/* Add custom pack modal (overlay inside sticker picker) */}
             {showAddPack && (
-              <div className="absolute inset-0 bg-[rgb(var(--card))] z-10 p-4 flex flex-col gap-3 rounded-2xl">
-                <div className="flex items-center justify-between">
+              <div className="absolute inset-0 bg-[rgb(var(--card))] z-10 rounded-2xl flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pt-4 pb-3 flex-shrink-0">
                   <p className="font-semibold text-sm">New Sticker Pack</p>
                   <button onClick={() => { setShowAddPack(false); setNewPackFiles([]); setNewPackPreviews([]); setNewPackName(""); }} className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"><XIcon className="w-4 h-4" /></button>
                 </div>
-                <input
-                  value={newPackName}
-                  onChange={e => setNewPackName(e.target.value)}
-                  placeholder="Pack name (e.g. My Memes)"
-                  className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]"
-                />
-                <button
-                  onClick={() => stickerFileRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-[rgb(var(--border))] text-sm text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--primary))] transition-colors"
-                >
-                  <Sticker className="w-4 h-4" />
-                  {newPackFiles.length > 0 ? `${newPackFiles.length} images selected` : "Choose sticker images (up to 20)"}
-                </button>
-                {newPackPreviews.length > 0 && (
-                  <div className="grid grid-cols-5 gap-1.5 max-h-28 overflow-y-auto">
-                    {newPackPreviews.map((url, i) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={i} src={url} alt="" className="w-full aspect-square object-contain rounded-lg bg-[rgb(var(--muted))]" />
-                    ))}
-                  </div>
-                )}
-                <button
-                  onClick={handleSavePack}
-                  disabled={!newPackName.trim() || newPackFiles.length === 0 || packUploading}
-                  className="w-full py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
-                >
-                  {packUploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</> : "Save Pack"}
-                </button>
+
+                {/* Scrollable middle */}
+                <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-3 min-h-0">
+                  <input
+                    value={newPackName}
+                    onChange={e => setNewPackName(e.target.value)}
+                    placeholder="Pack name (e.g. My Memes)"
+                    className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]"
+                  />
+                  <button
+                    onClick={() => stickerFileRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-[rgb(var(--border))] text-sm text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--primary))] transition-colors"
+                  >
+                    <Sticker className="w-4 h-4" />
+                    {newPackFiles.length > 0 ? `${newPackFiles.length} images selected` : "Choose sticker images (up to 20)"}
+                  </button>
+                  {newPackPreviews.length > 0 && (
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {newPackPreviews.map((url, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={url} alt="" className="w-full aspect-square object-contain rounded-lg bg-[rgb(var(--muted))]" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Save button — always visible at bottom */}
+                <div className="px-4 py-3 flex-shrink-0 border-t border-[rgb(var(--border))]">
+                  <button
+                    onClick={handleSavePack}
+                    disabled={!newPackName.trim() || newPackFiles.length === 0 || packUploading}
+                    className="w-full py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+                  >
+                    {packUploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</> : "Save Pack"}
+                  </button>
+                </div>
               </div>
             )}
 
