@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -145,7 +145,7 @@ export default function OnboardingPage() {
                 step > i + 1
                   ? "bg-[rgb(var(--success))] text-white"
                   : step === i + 1
-                  ? "bg-[rgb(var(--primary))] text-white"
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]"
                   : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
               )}>
                 {step > i + 1 ? <CheckCircle className="w-4 h-4" /> : i + 1}

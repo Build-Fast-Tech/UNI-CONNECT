@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
@@ -206,7 +206,7 @@ export default function SocietiesPage() {
           </Link>
           <Link
             href="/societies/register"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium hover:opacity-90 transition-opacity"
           >
             <Plus className="w-4 h-4" /> Register Society
           </Link>
@@ -313,7 +313,7 @@ export default function SocietiesPage() {
             className={cn(
               "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
               selectedUni === "all"
-                ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
+                ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
                 : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--fg))]"
             )}>
             All Institutions
@@ -323,7 +323,7 @@ export default function SocietiesPage() {
               className={cn(
                 "px-4 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all border",
                 selectedUni === u.id
-                  ? "bg-[rgb(var(--primary))] text-white border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] border-transparent shadow-lg shadow-[rgb(var(--primary)/0.2)]"
                   : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--fg))]"
               )}>
               {u.name}
@@ -476,7 +476,7 @@ export default function SocietiesPage() {
             <div className="flex gap-2 pt-1">
               <button onClick={() => setEditingSociety(null)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
               <button onClick={saveEdit} disabled={saving || !editName.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
               </button>
             </div>

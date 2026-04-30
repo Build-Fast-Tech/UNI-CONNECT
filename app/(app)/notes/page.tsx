@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -152,7 +152,7 @@ export default function NotesPage() {
               className={cn(
                 "flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-200 border",
                 active
-                  ? "bg-[rgb(var(--primary))] text-white border-transparent"
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] border-transparent"
                   : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]"
               )}
             >

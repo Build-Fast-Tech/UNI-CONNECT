@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -393,7 +393,7 @@ export default function UploadNotePage() {
                 className={cn(
                   "px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200",
                   category === c.value
-                    ? "bg-[rgb(var(--primary))] text-white border-transparent"
+                    ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] border-transparent"
                     : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
                 )}
               >

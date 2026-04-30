@@ -264,7 +264,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
               className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50",
                 isFollowing
                   ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.25)]"
-                  : "bg-[rgb(var(--primary))] text-white hover:opacity-90")}>
+                  : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90")}>
               <Heart className={cn("w-4 h-4", isFollowing && "fill-current")} />
               {followLoading ? "…" : isFollowing ? "Following" : "Follow"}
             </button>
@@ -362,7 +362,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                 <button onClick={() => { setShowPost(false); setPostImages([]); setPostPreviews([]); }}
                   className="px-3 py-1.5 rounded-xl text-xs text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]">Cancel</button>
                 <button onClick={createPost} disabled={!newContent.trim() || posting}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-white text-xs font-semibold disabled:opacity-40 hover:opacity-90">
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold disabled:opacity-40 hover:opacity-90">
                   {posting ? "Posting…" : <><Send className="w-3.5 h-3.5" /> Post</>}
                 </button>
               </div>

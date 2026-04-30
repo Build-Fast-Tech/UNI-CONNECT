@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -309,7 +309,7 @@ function AIChat() {
               <div className={cn(
                 "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
                 msg.role === "user"
-                  ? "bg-[rgb(var(--primary))] text-white rounded-tr-sm"
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] rounded-tr-sm"
                   : "bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] rounded-tl-sm"
               )}>
                 {msg.content ? (

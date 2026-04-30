@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -461,7 +461,7 @@ export default function StudyPage() {
                 </div>
                 <button
                   onClick={saveTimerConfig}
-                  className="w-full py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                  className="w-full py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   Apply & Reset Timer
                 </button>
@@ -576,7 +576,7 @@ export default function StudyPage() {
                       </p>
                     )}
                     <div className="flex gap-2">
-                      <button onClick={addSubject} disabled={!newSubjectName.trim()} className="flex-1 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white text-sm font-medium disabled:opacity-40">Add</button>
+                      <button onClick={addSubject} disabled={!newSubjectName.trim()} className="flex-1 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium disabled:opacity-40">Add</button>
                       <button onClick={() => { setShowAddSubject(false); setAddSubjectError(""); }} className="px-3 py-1.5 rounded-lg bg-[rgb(var(--border))] text-sm">Cancel</button>
                     </div>
                   </div>
@@ -687,7 +687,7 @@ export default function StudyPage() {
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[rgb(var(--muted))] border border-[rgb(var(--border))] text-sm outline-none focus:border-[rgb(var(--primary))]" />
               </div>
               <button onClick={() => setShowCreateGroup(p => !p)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold">
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold">
                 <Plus className="w-4 h-4" /> New Group
               </button>
             </div>
@@ -708,7 +708,7 @@ export default function StudyPage() {
                       {(["permanent", "temporary"] as const).map(t => (
                         <button key={t} onClick={() => setNewGroupType(t)}
                           className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors capitalize",
-                            newGroupType === t ? "bg-[rgb(var(--primary))] text-white" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]")}>
+                            newGroupType === t ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]")}>
                           {t}
                         </button>
                       ))}
@@ -718,7 +718,7 @@ export default function StudyPage() {
                     )}
                     <div className="flex gap-2">
                       <button onClick={createStudyGroup} disabled={!newGroupName.trim()}
-                        className="flex-1 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-40">Create</button>
+                        className="flex-1 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40">Create</button>
                       <button onClick={() => setShowCreateGroup(false)}
                         className="px-4 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
                     </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -249,7 +249,7 @@ function CvUploadForm() {
           <button type="submit" disabled={submitting}
             className={cn("w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200",
               submitting ? "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
-                : "bg-[rgb(var(--primary))] text-white hover:opacity-90 active:scale-[0.99]")}>
+                : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 active:scale-[0.99]")}>
             {submitting ? "Saving…" : editId ? "Save Changes" : "Upload CV"}
           </button>
         </form>

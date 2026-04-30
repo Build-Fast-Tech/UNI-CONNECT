@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -89,7 +89,7 @@ export default function StatusTrackingPage() {
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">Sign in required</h2>
         <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">You need to be logged in to track your submissions.</p>
-        <Link href="/login" className="px-6 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white font-semibold text-sm hover:opacity-90">
+        <Link href="/login" className="px-6 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-semibold text-sm hover:opacity-90">
           Sign in
         </Link>
       </div>

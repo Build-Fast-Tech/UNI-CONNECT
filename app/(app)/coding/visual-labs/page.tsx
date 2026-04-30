@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -78,7 +78,7 @@ function PointerPlayground() {
       )}
 
       <button onClick={derefModify} disabled={!ptr}
-        className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-white hover:opacity-90 disabled:opacity-30 transition-opacity">
+        className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-30 transition-opacity">
         Execute: (*p)++
       </button>
 
@@ -137,7 +137,7 @@ function RecursionTree() {
           className="flex-1" />
         <span className="w-8 text-center font-bold font-mono text-[rgb(var(--primary))]">{n}</span>
         <button onClick={() => { setShowTree(false); setTimeout(() => setShowTree(true), 100); }}
-          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white">
+          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]">
           <Play className="w-3 h-3" /> Draw
         </button>
       </div>
@@ -215,7 +215,7 @@ function ArrayEngine() {
             <RotateCcw className="w-3 h-3" /> Randomize
           </button>
           <button onClick={bubbleSort} disabled={animating || sorted}
-            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-white hover:opacity-90 disabled:opacity-40">
+            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-40">
             <Play className="w-3 h-3" /> Bubble Sort
           </button>
         </div>

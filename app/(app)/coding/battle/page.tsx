@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -149,7 +149,7 @@ export default function BattlePage() {
         </div>
         {userId && (
           <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-white hover:opacity-90 transition-opacity">
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity">
             <Plus className="w-4 h-4" /> Create Room
           </button>
         )}
@@ -165,7 +165,7 @@ export default function BattlePage() {
           <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">Create one and challenge other coders!</p>
           {userId && (
             <button onClick={() => setShowCreate(true)}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-white hover:opacity-90">
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90">
               Create First Room
             </button>
           )}
@@ -201,7 +201,7 @@ export default function BattlePage() {
                   className={cn("flex-1 py-2 rounded-lg text-sm font-semibold transition-all",
                     room.creator_id === userId
                       ? "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
-                      : "bg-[rgb(var(--primary))] text-white hover:opacity-90 disabled:opacity-40")}>
+                      : "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-40")}>
                   {joining === room.id ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                     : room.creator_id === userId ? "Your Room" : "Join →"}
                 </button>
@@ -234,7 +234,7 @@ export default function BattlePage() {
                       {TOPICS.map(t => (
                         <button key={t} onClick={() => setForm(f => ({ ...f, topic: t }))}
                           className={cn("px-3 py-1 rounded-lg text-xs font-medium transition-all",
-                            form.topic === t ? "bg-[rgb(var(--primary))] text-white" : "bg-[rgb(var(--muted))] hover:bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]")}>
+                            form.topic === t ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]" : "bg-[rgb(var(--muted))] hover:bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]")}>
                           {t}
                         </button>
                       ))}

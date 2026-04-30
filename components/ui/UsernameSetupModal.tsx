@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
@@ -156,7 +156,7 @@ export function UsernameSetupModal({ userId, onDone }: Props) {
             disabled={!canSave}
             className={cn(
               "w-full h-11 rounded-xl font-semibold text-sm transition-all mt-1",
-              "bg-[rgb(var(--primary))] text-white",
+              "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]",
               canSave
                 ? "hover:opacity-90 active:scale-[0.98]"
                 : "opacity-40 cursor-not-allowed"

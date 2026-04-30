@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -124,7 +124,7 @@ export default function JobsPage() {
           href="/jobs/post"
           className={cn(
             "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium flex-shrink-0",
-            "bg-[rgb(var(--primary))] text-white hover:opacity-90 transition-opacity active:scale-95"
+            "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity active:scale-95"
           )}
         >
           <Plus className="w-4 h-4" /> Post a Job

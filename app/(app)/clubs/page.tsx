@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -345,7 +345,7 @@ export default function ClubsEventsPage() {
           <p className="text-sm text-[rgb(var(--muted-fg))] mt-0.5">Join societies and stay on top of campus events</p>
         </div>
         <Link href="/societies/register"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-medium hover:opacity-90 transition-opacity">
           <Plus className="w-4 h-4" /> Register Society
         </Link>
       </div>
@@ -568,7 +568,7 @@ export default function ClubsEventsPage() {
                           Cancel
                         </button>
                         <button onClick={submitPost} disabled={posting || !postContent.trim()}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[rgb(var(--primary))] text-white hover:opacity-90 disabled:opacity-40 transition-opacity">
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-40 transition-opacity">
                           {posting ? "Posting…" : <><Send className="w-3.5 h-3.5" /> Post</>}
                         </button>
                       </div>
@@ -589,7 +589,7 @@ export default function ClubsEventsPage() {
             </div>
             <button onClick={() => setShowUpcomingOnly(p => !p)}
               className={cn("flex items-center gap-2 px-4 py-2 h-10 rounded-xl text-sm font-medium transition-all border flex-shrink-0",
-                showUpcomingOnly ? "bg-[rgb(var(--primary))] text-white border-transparent" : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]")}>
+                showUpcomingOnly ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] border-transparent" : "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)]")}>
               <Clock className="w-4 h-4" /> Upcoming only
             </button>
           </div>

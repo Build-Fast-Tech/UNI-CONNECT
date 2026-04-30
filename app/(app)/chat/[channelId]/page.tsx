@@ -762,7 +762,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                 onKeyDown={e => e.key === "Enter" && searchGifs(gifSearch)}
                 placeholder="Search GIFs…"
                 className="flex-1 bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-[rgb(var(--primary))]" />
-              <button onClick={() => searchGifs(gifSearch)} className="px-3 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm">Search</button>
+              <button onClick={() => searchGifs(gifSearch)} className="px-3 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm">Search</button>
             </div>
             {gifLoading ? (
               <p className="text-center text-xs text-[rgb(var(--muted-fg))] py-4">Loading…</p>
@@ -896,7 +896,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               className={cn(
                 "flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
                 input.trim()
-                  ? "bg-[rgb(var(--primary))] text-white hover:opacity-90"
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90"
                   : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
               )}
             >

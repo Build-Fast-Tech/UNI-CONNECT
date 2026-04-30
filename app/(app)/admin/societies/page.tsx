@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -438,7 +438,7 @@ export default function AdminSocietiesPage() {
             <div className="flex gap-2 pt-1">
               <button onClick={() => setEditingSociety(null)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
               <button onClick={saveEdit} disabled={saving || !editName.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
               </button>
             </div>
