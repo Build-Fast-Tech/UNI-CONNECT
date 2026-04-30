@@ -37,7 +37,7 @@ export function ThemeSwitcher() {
               "absolute right-0 top-11 z-50 p-2 rounded-2xl",
               "bg-[rgb(var(--card))] border border-[rgb(var(--card-border))]",
               "shadow-[0_8px_32px_rgb(0,0,0,0.4)]",
-              "grid grid-cols-2 gap-1 w-48"
+              "flex flex-col gap-1 w-44"
             )}
           >
             {THEMES.map((t) => (

@@ -317,7 +317,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         {/* New Post button — desktop */}
         <Link
           href="/notes/upload"
-          className="hidden lg:flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+          className="hidden lg:flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           <Plus className="w-4 h-4" />
           New Post
