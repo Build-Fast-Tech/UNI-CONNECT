@@ -1,84 +1,55 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, FlaskConical, Eye, Trophy, Cpu, Swords, Terminal } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const TABS = [
-  { href: "/coding/learning-hub",  label: "Learning Hub",  icon: BookOpen },
-  { href: "/coding/practice",      label: "Practice",      icon: FlaskConical },
-  { href: "/coding/dry-runs",      label: "Dry Runs",      icon: Eye },
-  { href: "/coding/leaderboard",   label: "Leaderboard",   icon: Trophy },
-  { href: "/coding/visual-labs",   label: "Visual Labs",   icon: Cpu },
-  { href: "/coding/battle",        label: "Battle",        icon: Swords },
-];
+import { Code2, ArrowLeft } from "lucide-react";
 
 export default function CodingLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
   return (
-    <div className="flex flex-col min-h-full -m-4 md:-m-6">
-      {/* Command-center header */}
-      <div
-        className="sticky top-0 z-20 border-b"
-        style={{
-          background: "linear-gradient(180deg, #1A0B2E 0%, #130921 100%)",
-          borderColor: "rgba(255,255,255,0.07)",
-        }}
-      >
-        {/* Brand strip */}
-        <div className="flex items-center gap-3 px-5 pt-3 pb-0">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#6C3FD4,#4F46E5)", boxShadow: "0 0 16px rgba(108,63,212,0.5)" }}>
-              <Terminal className="w-3.5 h-3.5 text-white" />
+    <div className="flex items-center justify-center min-h-[70vh]">
+      <div className="text-center max-w-md mx-auto px-6">
+        {/* Icon */}
+        <div className="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
+          style={{ background: "linear-gradient(135deg,#6C3FD4,#4F46E5)", boxShadow: "0 0 40px rgba(108,63,212,0.4)" }}>
+          <Code2 className="w-9 h-9 text-white" />
+        </div>
+
+        {/* Badge */}
+        <span className="inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4"
+          style={{ background: "rgba(108,63,212,0.15)", color: "#BD93F9", border: "1px solid rgba(108,63,212,0.3)" }}>
+          Coming Soon
+        </span>
+
+        <h1 className="text-3xl font-bold text-white mb-3">Coding OS</h1>
+        <p className="text-sm leading-relaxed mb-8" style={{ color: "#94A3B8" }}>
+          We're building something powerful — a full in-browser coding environment with an IDE, dry runs, visual labs, battle rooms, and a global leaderboard. Stay tuned.
+        </p>
+
+        {/* Progress indicators */}
+        <div className="space-y-2.5 mb-8 text-left">
+          {[
+            { label: "Learning Hub",  done: true  },
+            { label: "Practice Labs", done: false },
+            { label: "Dry Runs",      done: false },
+            { label: "Visual Labs",   done: false },
+            { label: "Battle Rooms",  done: false },
+            { label: "Leaderboard",   done: false },
+          ].map(item => (
+            <div key={item.label} className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center"
+                style={{ background: item.done ? "rgba(80,250,123,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${item.done ? "rgba(80,250,123,0.4)" : "rgba(255,255,255,0.1)"}` }}>
+                {item.done && <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#50FA7B" }} />}
+              </div>
+              <span className="text-sm" style={{ color: item.done ? "#E2E8F0" : "#6272A4" }}>{item.label}</span>
+              {item.done && <span className="text-[10px] font-semibold ml-auto" style={{ color: "#50FA7B" }}>Ready</span>}
             </div>
-            <span className="text-sm font-bold" style={{ color: "#fff", letterSpacing: "0.04em" }}>
-              CODING<span style={{ color: "#BD93F9" }}>_OS</span>
-            </span>
-          </div>
-          {/* Live indicator */}
-          <div className="flex items-center gap-1.5 ml-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] text-emerald-400 font-mono">ONLINE</span>
-          </div>
+          ))}
         </div>
 
-        {/* Tab bar */}
-        <div className="flex items-end gap-0 px-5 overflow-x-auto scrollbar-none mt-1">
-          {TABS.map(tab => {
-            const active = pathname.startsWith(tab.href);
-            return (
-              <Link key={tab.href} href={tab.href}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-all relative",
-                  "border-b-2 -mb-px",
-                  active
-                    ? "text-white"
-                    : "text-slate-500 hover:text-slate-300"
-                )}
-                style={active ? {
-                  borderBottomColor: "#BD93F9",
-                  textShadow: "0 0 20px rgba(189,147,249,0.8)",
-                } : { borderBottomColor: "transparent" }}
-              >
-                {active && (
-                  <span className="absolute inset-0 rounded-t-lg"
-                    style={{ background: "rgba(108,63,212,0.12)" }} />
-                )}
-                <tab.icon className="w-3.5 h-3.5 relative z-10" />
-                <span className="relative z-10">{tab.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Content area with purple atmosphere */}
-      <div className="flex-1 p-4 md:p-6"
-        style={{ background: "linear-gradient(160deg, #0F051D 0%, #130821 40%, #0D0619 100%)" }}>
-        {children}
+        <Link href="/feed"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#E2E8F0" }}>
+          <ArrowLeft className="w-4 h-4" /> Back to Feed
+        </Link>
       </div>
     </div>
   );
