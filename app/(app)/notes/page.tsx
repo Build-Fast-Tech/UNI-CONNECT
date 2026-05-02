@@ -5,7 +5,7 @@ import {
   Search, Upload, BookOpen, Download, ThumbsUp,
   Filter, X, FileText, FileImage, Archive,
   ClipboardList, GraduationCap, PenLine, ScrollText, Trash2,
-  ChevronDown, Building2, Eye,
+  ChevronDown, Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -518,7 +518,7 @@ function NoteCard({ note, userId, onDelete, onPreview }: { note: Note; userId: s
     <div className="relative group">
       <Link
         href={`/notes/${note.id}`}
-        className="theme-card p-5 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-150 block"
+        className="theme-card p-5 pb-12 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-150 block"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
@@ -570,13 +570,12 @@ function NoteCard({ note, userId, onDelete, onPreview }: { note: Note; userId: s
           </div>
         </div>
       </Link>
-      {/* Preview — visible to everyone on hover */}
+      {/* View — always visible at card bottom */}
       <button
         onClick={e => { e.preventDefault(); onPreview(note); }}
-        className="absolute top-2 left-2 p-1.5 rounded-lg bg-[rgb(var(--card))] border border-[rgb(var(--border))] hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))] text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
-        title="Preview"
+        className="absolute bottom-0 left-0 right-0 h-9 rounded-b-2xl text-xs font-semibold text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.07)] hover:bg-[rgb(var(--primary)/0.14)] transition-colors z-10 border-t border-[rgb(var(--primary)/0.15)]"
       >
-        <Eye className="w-3.5 h-3.5" />
+        View
       </button>
 
       {/* Delete — uploader only */}

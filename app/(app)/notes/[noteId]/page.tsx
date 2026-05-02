@@ -300,7 +300,7 @@ export default function NoteDetailPage({
                     onClick={handleDownload}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity mt-2"
                   >
-                    <Download className="w-4 h-4" /> Download to view
+                    <Download className="w-4 h-4" /> View
                   </button>
                 </div>
               )}
