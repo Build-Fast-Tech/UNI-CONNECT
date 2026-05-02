@@ -450,14 +450,7 @@ export default function NotesPage() {
       {/* Preview modal */}
       {previewNote && (() => {
         const ft = previewNote.file_type ?? "";
-        const isPdf  = ft.includes("pdf");
-        const isDoc  = ft.includes("wordprocessingml") || ft.includes("docx");
-        const isPpt  = ft.includes("presentationml")  || ft.includes("pptx");
-        const previewUrl = isPdf
-          ? previewNote.file_url
-          : (isDoc || isPpt)
-            ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewNote.file_url)}`
-            : null;
+        const isPdf = ft.includes("pdf");
         return (
           <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm">
             {/* Bar */}
@@ -480,23 +473,24 @@ export default function NotesPage() {
             </div>
 
             {/* Content */}
-            {previewUrl ? (
+            {isPdf ? (
               <iframe
-                src={previewUrl}
+                src={previewNote.file_url}
                 className="flex-1 w-full border-0 bg-white"
                 title={previewNote.title}
               />
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-white/60">
-                <Archive className="w-12 h-12 opacity-30" />
-                <p className="text-sm">Preview not available for ZIP files</p>
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/70">
+                <FileText className="w-14 h-14 opacity-25" />
+                <p className="text-base font-semibold text-white/80">{previewNote.title}</p>
+                <p className="text-sm">In-browser preview isn&apos;t available for this file type.</p>
                 <a
                   href={previewNote.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity mt-1"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
-                  <Download className="w-4 h-4" /> Download to view
+                  <Download className="w-4 h-4" /> Open / Download
                 </a>
               </div>
             )}
