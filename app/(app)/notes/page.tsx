@@ -5,6 +5,7 @@ import {
   Search, Upload, BookOpen, Download, ThumbsUp,
   Filter, X, FileText, FileImage, Archive,
   ClipboardList, GraduationCap, PenLine, ScrollText, Trash2,
+  ChevronDown, Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -58,34 +59,72 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const PAGE_SIZE = 48;
 
+const selectCls = cn(
+  "w-full h-9 px-3 rounded-lg text-sm",
+  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
+  "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+);
+
 export default function NotesPage() {
   const supabase = createClient();
-  const [notes, setNotes]             = useState<Note[]>([]);
-  const [total, setTotal]             = useState(0);
-  const [subjects, setSubjects]       = useState<string[]>([]);
+  const [notes, setNotes]               = useState<Note[]>([]);
+  const [total, setTotal]               = useState(0);
+  const [subjects, setSubjects]         = useState<string[]>([]);
   const [universities, setUniversities] = useState<University[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [userId, setUserId]           = useState<string | null>(null);
-  const [search, setSearch]           = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [departments, setDepartments]   = useState<string[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [userId, setUserId]             = useState<string | null>(null);
+  const [search, setSearch]             = useState("");
+  const [showFilters, setShowFilters]   = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
 
-  const [filterUniversity, setFilterUniversity] = useState("");
-  const [filterSubject,  setFilterSubject]  = useState("");
-  const [filterSemester, setFilterSemester] = useState("");
-  const [filterType,     setFilterType]     = useState("");
+  // filters
+  const [filterUniversity, setFilterUniversity] = useState("");   // UUID
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterSubject,    setFilterSubject]    = useState("");
+  const [filterSemester,   setFilterSemester]   = useState("");
+  const [filterType,       setFilterType]       = useState("");
+
+  // university combobox
+  const [uniSearch,  setUniSearch]  = useState("");   // text typed by user
+  const [uniLabel,   setUniLabel]   = useState("");   // display label for selected uni
+  const [uniOpen,    setUniOpen]    = useState(false);
+  const uniRef = useRef<HTMLDivElement>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load subjects and universities once
+  // close combobox on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (uniRef.current && !uniRef.current.contains(e.target as Node)) {
+        setUniOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // load reference data once
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+
     supabase.from("subjects").select("name").order("name").then(({ data }) => {
       setSubjects(mergeSubjects((data || []).map(s => s.name)));
     });
+
     supabase.from("universities").select("id, name, short_name").order("short_name").then(({ data }) => {
       setUniversities((data as University[]) ?? []);
     });
+
+    (supabase as any)
+      .from("notes")
+      .select("department")
+      .eq("status", "published")
+      .not("department", "is", null)
+      .then(({ data }: { data: { department: string }[] | null }) => {
+        const unique = [...new Set((data ?? []).map(r => r.department))].sort();
+        setDepartments(unique);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -101,9 +140,10 @@ export default function NotesPage() {
 
     if (activeCategory !== "all") q = (q as any).eq("category", activeCategory);
     if (filterUniversity) q = q.eq("university_id", filterUniversity);
-    if (filterSubject)  q = q.eq("subject", filterSubject);
-    if (filterSemester) q = q.eq("semester", filterSemester);
-    if (filterType)     q = q.ilike("file_type", `%${filterType}%`);
+    if (filterDepartment) q = (q as any).eq("department", filterDepartment);
+    if (filterSubject)    q = q.eq("subject", filterSubject);
+    if (filterSemester)   q = q.eq("semester", filterSemester);
+    if (filterType)       q = q.ilike("file_type", `%${filterType}%`);
     if (searchVal.trim()) {
       q = q.or(`title.ilike.%${searchVal.trim()}%,subject.ilike.%${searchVal.trim()}%,course_code.ilike.%${searchVal.trim()}%`);
     }
@@ -113,15 +153,13 @@ export default function NotesPage() {
     setTotal(count ?? 0);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, filterUniversity, filterSubject, filterSemester, filterType]);
+  }, [activeCategory, filterUniversity, filterDepartment, filterSubject, filterSemester, filterType]);
 
-  // Re-fetch when filters change (immediate)
   useEffect(() => {
     fetchNotes(search);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchNotes]);
 
-  // Debounce search input
   const handleSearch = (val: string) => {
     setSearch(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -134,7 +172,33 @@ export default function NotesPage() {
     setTotal(prev => prev - 1);
   };
 
-  const activeFilters = [filterUniversity, filterSubject, filterSemester, filterType].filter(Boolean).length;
+  const clearFilters = () => {
+    setFilterUniversity(""); setUniSearch(""); setUniLabel("");
+    setFilterDepartment(""); setFilterSubject("");
+    setFilterSemester(""); setFilterType("");
+  };
+
+  const selectUniversity = (u: University) => {
+    setFilterUniversity(u.id);
+    setUniLabel(`${u.short_name} — ${u.name}`);
+    setUniSearch("");
+    setUniOpen(false);
+    setFilterDepartment("");
+    setFilterSubject("");
+  };
+
+  const clearUniversity = () => {
+    setFilterUniversity(""); setUniLabel(""); setUniSearch("");
+    setFilterDepartment(""); setFilterSubject("");
+  };
+
+  const filteredUnis = universities.filter(u =>
+    uniSearch.trim() === "" ||
+    u.short_name.toLowerCase().includes(uniSearch.toLowerCase()) ||
+    u.name.toLowerCase().includes(uniSearch.toLowerCase())
+  );
+
+  const activeFilters = [filterUniversity, filterDepartment, filterSubject, filterSemester, filterType].filter(Boolean).length;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -213,83 +277,136 @@ export default function NotesPage() {
         </div>
 
         {showFilters && (
-          <div className="theme-card p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">University</label>
-              <select
-                value={filterUniversity}
-                onChange={e => { setFilterUniversity(e.target.value); setFilterSubject(""); }}
-                className={cn(
-                  "w-full h-9 px-3 rounded-lg text-sm",
-                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
-                  "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-                )}
-              >
-                <option value="">All universities</option>
-                {universities.map(u => (
-                  <option key={u.id} value={u.id}>{u.short_name} — {u.name}</option>
-                ))}
-              </select>
-            </div>
+          <div className="theme-card p-4 space-y-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-            <div>
-              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
-              <select
-                value={filterSubject}
-                onChange={e => setFilterSubject(e.target.value)}
-                className={cn(
-                  "w-full h-9 px-3 rounded-lg text-sm",
-                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
-                  "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-                )}
-              >
-                <option value="">All subjects</option>
-                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+              {/* ── University combobox ── */}
+              <div className="sm:col-span-2 lg:col-span-1">
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5 flex items-center gap-1.5">
+                  <Building2 className="w-3 h-3" /> University
+                </label>
+                <div ref={uniRef} className="relative">
+                  {/* Input row */}
+                  <div className={cn(
+                    "flex items-center h-9 rounded-lg border text-sm overflow-hidden",
+                    "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
+                    uniOpen && "ring-2 ring-[rgb(var(--ring))]"
+                  )}>
+                    <Search className="w-3.5 h-3.5 ml-2.5 flex-shrink-0 text-[rgb(var(--muted-fg))]" />
+                    <input
+                      type="text"
+                      value={uniOpen ? uniSearch : (uniLabel || uniSearch)}
+                      onChange={e => { setUniSearch(e.target.value); setUniOpen(true); }}
+                      onFocus={() => setUniOpen(true)}
+                      placeholder="Search university…"
+                      className="flex-1 min-w-0 px-2 py-1 bg-transparent text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none text-sm"
+                    />
+                    {filterUniversity ? (
+                      <button
+                        onClick={clearUniversity}
+                        className="p-1.5 mr-0.5 rounded hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] flex-shrink-0"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    ) : (
+                      <ChevronDown className={cn("w-3.5 h-3.5 mr-2 flex-shrink-0 text-[rgb(var(--muted-fg))] transition-transform", uniOpen && "rotate-180")} />
+                    )}
+                  </div>
 
-            <div>
-              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Semester</label>
-              <select
-                value={filterSemester}
-                onChange={e => setFilterSemester(e.target.value)}
-                className={cn(
-                  "w-full h-9 px-3 rounded-lg text-sm",
-                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
-                  "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-                )}
-              >
-                <option value="">All semesters</option>
-                {SEMESTERS.map(s => <option key={s} value={s}>{s} Semester</option>)}
-              </select>
-            </div>
+                  {/* Dropdown */}
+                  {uniOpen && (
+                    <div className={cn(
+                      "absolute z-50 top-full mt-1 w-full rounded-xl border border-[rgb(var(--border))]",
+                      "bg-[rgb(var(--card))] shadow-xl overflow-hidden"
+                    )}>
+                      <div className="max-h-52 overflow-y-auto">
+                        {/* All option */}
+                        <button
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => { clearUniversity(); setUniOpen(false); }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 text-sm transition-colors",
+                            !filterUniversity
+                              ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium"
+                              : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
+                          )}
+                        >
+                          All universities
+                        </button>
 
-            <div>
-              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">File type</label>
-              <select
-                value={filterType}
-                onChange={e => setFilterType(e.target.value)}
-                className={cn(
-                  "w-full h-9 px-3 rounded-lg text-sm",
-                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
-                  "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
-                )}
-              >
-                <option value="">All types</option>
-                <option value="pdf">PDF</option>
-                <option value="docx">DOCX</option>
-                <option value="pptx">PPTX</option>
-                <option value="zip">ZIP</option>
-              </select>
+                        {filteredUnis.length === 0 ? (
+                          <p className="px-3 py-4 text-xs text-center text-[rgb(var(--muted-fg))]">No universities found</p>
+                        ) : (
+                          filteredUnis.map(u => (
+                            <button
+                              key={u.id}
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => selectUniversity(u)}
+                              className={cn(
+                                "w-full text-left px-3 py-2 text-sm transition-colors",
+                                filterUniversity === u.id
+                                  ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium"
+                                  : "text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]"
+                              )}
+                            >
+                              <span className="font-medium">{u.short_name}</span>
+                              <span className="text-[rgb(var(--muted-fg))] ml-1.5 text-xs">{u.name}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Department ── */}
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Department</label>
+                <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className={selectCls}>
+                  <option value="">All departments</option>
+                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+
+              {/* ── Subject ── */}
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
+                <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className={selectCls}>
+                  <option value="">All subjects</option>
+                  {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              {/* ── Semester ── */}
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Semester</label>
+                <select value={filterSemester} onChange={e => setFilterSemester(e.target.value)} className={selectCls}>
+                  <option value="">All semesters</option>
+                  {SEMESTERS.map(s => <option key={s} value={s}>{s} Semester</option>)}
+                </select>
+              </div>
+
+              {/* ── File type ── */}
+              <div>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">File type</label>
+                <select value={filterType} onChange={e => setFilterType(e.target.value)} className={selectCls}>
+                  <option value="">All types</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">DOCX</option>
+                  <option value="pptx">PPTX</option>
+                  <option value="zip">ZIP</option>
+                </select>
+              </div>
             </div>
 
             {activeFilters > 0 && (
-              <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
+              <div className="flex justify-end pt-1 border-t border-[rgb(var(--border))]">
                 <button
-                  onClick={() => { setFilterUniversity(""); setFilterSubject(""); setFilterSemester(""); setFilterType(""); }}
+                  onClick={clearFilters}
                   className="flex items-center gap-1.5 text-xs text-[rgb(var(--destructive))] hover:underline"
                 >
-                  <X className="w-3 h-3" /> Clear filters
+                  <X className="w-3 h-3" /> Clear all filters
                 </button>
               </div>
             )}
@@ -375,6 +492,11 @@ function NoteCard({ note, userId, onDelete }: { note: Note; userId: string | nul
             {note.universities?.short_name && (
               <span className="px-2 py-0.5 rounded-full bg-[rgb(var(--primary)/0.08)] text-[rgb(var(--primary))] font-medium">
                 {note.universities.short_name}
+              </span>
+            )}
+            {(note as any).department && (
+              <span className="px-2 py-0.5 rounded-full bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">
+                {(note as any).department}
               </span>
             )}
             {(note as any).year && <span>{(note as any).year}</span>}
