@@ -16,6 +16,12 @@ type Note = Database["public"]["Tables"]["notes"]["Row"] & {
   universities?: { short_name: string } | null;
 };
 
+interface University {
+  id: string;
+  name: string;
+  short_name: string;
+}
+
 const FILE_ICONS: Record<string, React.ElementType> = {
   pdf:  FileText,
   docx: FileText,
@@ -54,26 +60,31 @@ const PAGE_SIZE = 48;
 
 export default function NotesPage() {
   const supabase = createClient();
-  const [notes, setNotes]       = useState<Note[]>([]);
-  const [total, setTotal]       = useState(0);
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [userId, setUserId]     = useState<string | null>(null);
-  const [search, setSearch]     = useState("");
+  const [notes, setNotes]             = useState<Note[]>([]);
+  const [total, setTotal]             = useState(0);
+  const [subjects, setSubjects]       = useState<string[]>([]);
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [userId, setUserId]           = useState<string | null>(null);
+  const [search, setSearch]           = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
 
+  const [filterUniversity, setFilterUniversity] = useState("");
   const [filterSubject,  setFilterSubject]  = useState("");
   const [filterSemester, setFilterSemester] = useState("");
   const [filterType,     setFilterType]     = useState("");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load subjects once
+  // Load subjects and universities once
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
     supabase.from("subjects").select("name").order("name").then(({ data }) => {
       setSubjects(mergeSubjects((data || []).map(s => s.name)));
+    });
+    supabase.from("universities").select("id, name, short_name").order("short_name").then(({ data }) => {
+      setUniversities((data as University[]) ?? []);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -89,6 +100,7 @@ export default function NotesPage() {
       .limit(PAGE_SIZE);
 
     if (activeCategory !== "all") q = (q as any).eq("category", activeCategory);
+    if (filterUniversity) q = q.eq("university_id", filterUniversity);
     if (filterSubject)  q = q.eq("subject", filterSubject);
     if (filterSemester) q = q.eq("semester", filterSemester);
     if (filterType)     q = q.ilike("file_type", `%${filterType}%`);
@@ -101,7 +113,7 @@ export default function NotesPage() {
     setTotal(count ?? 0);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, filterSubject, filterSemester, filterType]);
+  }, [activeCategory, filterUniversity, filterSubject, filterSemester, filterType]);
 
   // Re-fetch when filters change (immediate)
   useEffect(() => {
@@ -122,7 +134,7 @@ export default function NotesPage() {
     setTotal(prev => prev - 1);
   };
 
-  const activeFilters = [filterSubject, filterSemester, filterType].filter(Boolean).length;
+  const activeFilters = [filterUniversity, filterSubject, filterSemester, filterType].filter(Boolean).length;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -201,7 +213,25 @@ export default function NotesPage() {
         </div>
 
         {showFilters && (
-          <div className="theme-card p-4 grid sm:grid-cols-3 gap-4">
+          <div className="theme-card p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">University</label>
+              <select
+                value={filterUniversity}
+                onChange={e => { setFilterUniversity(e.target.value); setFilterSubject(""); }}
+                className={cn(
+                  "w-full h-9 px-3 rounded-lg text-sm",
+                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
+                  "text-[rgb(var(--fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                )}
+              >
+                <option value="">All universities</option>
+                {universities.map(u => (
+                  <option key={u.id} value={u.id}>{u.short_name} — {u.name}</option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
               <select
@@ -254,9 +284,9 @@ export default function NotesPage() {
             </div>
 
             {activeFilters > 0 && (
-              <div className="sm:col-span-3 flex justify-end">
+              <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
                 <button
-                  onClick={() => { setFilterSubject(""); setFilterSemester(""); setFilterType(""); }}
+                  onClick={() => { setFilterUniversity(""); setFilterSubject(""); setFilterSemester(""); setFilterType(""); }}
                   className="flex items-center gap-1.5 text-xs text-[rgb(var(--destructive))] hover:underline"
                 >
                   <X className="w-3 h-3" /> Clear filters

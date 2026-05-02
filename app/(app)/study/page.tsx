@@ -124,6 +124,7 @@ export default function StudyPage() {
   const [expandedLeaderboard, setExpandedLeaderboard] = useState<string | null>(null);
   const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const groupPresenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const joinedGroupIdRef = useRef<string | null>(null);
   const sessionCodeRef = useRef<string | null>(null);
   const groupModeRef = useRef(false);
 
@@ -158,6 +159,7 @@ export default function StudyPage() {
   // Keep refs in sync so presence callbacks can read latest values without re-subscribing
   useEffect(() => { sessionCodeRef.current = sessionCode; }, [sessionCode]);
   useEffect(() => { groupModeRef.current = groupMode; }, [groupMode]);
+  useEffect(() => { joinedGroupIdRef.current = joinedGroupId; }, [joinedGroupId]);
 
   // Presence channel — subscribe once
   useEffect(() => {
@@ -289,6 +291,8 @@ export default function StudyPage() {
   useEffect(() => {
     if (!userId || !fullName) return;
     const ch = supabase.channel("study-groups-presence");
+    groupPresenceRef.current = ch;
+
     ch.on("presence", { event: "sync" }, () => {
       const raw = ch.presenceState<{ userId: string; groupId: string }>();
       const counts: Record<string, number> = {};
@@ -297,18 +301,27 @@ export default function StudyPage() {
       });
       setGroupActiveCounts(counts);
     });
-    ch.subscribe();
-    groupPresenceRef.current = ch;
+
+    ch.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        // If the user is already inside a group when the channel becomes ready, track immediately
+        const gid = joinedGroupIdRef.current;
+        if (gid) await ch.track({ userId, fullName, groupId: gid });
+      }
+    });
+
     return () => { supabase.removeChannel(ch); };
   }, [userId, fullName]);
 
   // Broadcast presence into joined group (or untrack when leaving)
+  // This handles changes AFTER the channel is already subscribed
   useEffect(() => {
-    if (!groupPresenceRef.current || !userId) return;
+    const ch = groupPresenceRef.current;
+    if (!ch || !userId) return;
     if (joinedGroupId) {
-      groupPresenceRef.current.track({ userId, fullName, groupId: joinedGroupId });
+      ch.track({ userId, fullName, groupId: joinedGroupId });
     } else {
-      groupPresenceRef.current.untrack();
+      ch.untrack();
     }
   }, [joinedGroupId, userId, fullName]);
 
