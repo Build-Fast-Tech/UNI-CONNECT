@@ -171,12 +171,7 @@ export default function NoteDetailPage({
     }
   };
 
-  const isPDF  = note?.file_type?.includes("pdf");
-  const isDoc  = note?.file_type?.includes("wordprocessingml") || note?.file_type?.includes("docx");
-  const isPPT  = note?.file_type?.includes("presentationml")  || note?.file_type?.includes("pptx");
-  const gdocsUrl = (isDoc || isPPT) && note
-    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(note.file_url)}`
-    : null;
+  const isPDF = note?.file_type?.includes("pdf");
 
   if (loading) {
     return (
@@ -265,7 +260,7 @@ export default function NoteDetailPage({
             {/* Viewer */}
             <div className={cn(
               "overflow-auto bg-[rgb(var(--muted)/0.3)]",
-              (isPDF && !pdfError) || gdocsUrl ? "min-h-[600px]" : "min-h-64 flex items-center justify-center p-4"
+              isPDF && !pdfError ? "min-h-[600px]" : "min-h-64 flex items-center justify-center p-4"
             )}>
               {isPDF && !pdfError ? (
                 <div className="flex items-center justify-center p-4">
@@ -283,24 +278,18 @@ export default function NoteDetailPage({
                     <Page pageNumber={pageNum} scale={scale} renderTextLayer renderAnnotationLayer />
                   </Document>
                 </div>
-              ) : gdocsUrl ? (
-                <iframe
-                  src={gdocsUrl}
-                  className="w-full h-[600px] border-0 bg-white"
-                  title={note.title}
-                />
               ) : (
                 <div className="flex flex-col items-center gap-3 py-12">
                   <FileText className="w-16 h-16 text-[rgb(var(--muted-fg))]" />
                   <p className="text-sm font-medium">{note.title}</p>
                   <p className="text-xs text-[rgb(var(--muted-fg))]">
-                    {isPDF ? "PDF preview unavailable" : "Preview not available for ZIP files"}
+                    {isPDF ? "PDF preview unavailable" : "In-browser preview isn't available for this file type"}
                   </p>
                   <button
                     onClick={handleDownload}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity mt-2"
                   >
-                    <Download className="w-4 h-4" /> View
+                    <Download className="w-4 h-4" /> Open / Download
                   </button>
                 </div>
               )}
