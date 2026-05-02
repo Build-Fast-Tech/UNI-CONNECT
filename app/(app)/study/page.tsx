@@ -175,9 +175,9 @@ export default function StudyPage() {
 
       setLiveSessions(
         Object.values(raw).flat().filter((s: any) => {
-          // Always show self when they're in a private session or study group
+          // Always show self when timer is running, in a private session, or in a study group
           if (s.userId === userId) {
-            return (s.isPrivate && s.sessionCode) || s.studyGroupId;
+            return s.isRunning || (s.isPrivate && s.sessionCode) || s.studyGroupId;
           }
           // Others running in public pomodoro
           if (s.isRunning && s.mode === "pomodoro" && !s.isPrivate) return true;
