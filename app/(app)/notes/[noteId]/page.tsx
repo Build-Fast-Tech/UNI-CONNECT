@@ -171,7 +171,12 @@ export default function NoteDetailPage({
     }
   };
 
-  const isPDF = note?.file_type?.includes("pdf");
+  const isPDF  = note?.file_type?.includes("pdf");
+  const isDoc  = note?.file_type?.includes("wordprocessingml") || note?.file_type?.includes("docx");
+  const isPPT  = note?.file_type?.includes("presentationml")  || note?.file_type?.includes("pptx");
+  const gdocsUrl = (isDoc || isPPT) && note
+    ? `https://docs.google.com/gview?url=${encodeURIComponent(note.file_url)}&embedded=true`
+    : null;
 
   if (loading) {
     return (
@@ -215,7 +220,7 @@ export default function NoteDetailPage({
             animate={{ opacity: 1, y: 0 }}
             className="theme-card overflow-hidden"
           >
-            {/* Toolbar */}
+            {/* Toolbar — PDF only */}
             {isPDF && !pdfError && (
               <div className="flex items-center justify-between px-4 py-3 border-b border-[rgb(var(--border))]">
                 <div className="flex items-center gap-2">
@@ -257,33 +262,39 @@ export default function NoteDetailPage({
               </div>
             )}
 
-            {/* PDF or fallback */}
-            <div className="min-h-64 flex items-center justify-center overflow-auto bg-[rgb(var(--muted)/0.3)] p-4">
+            {/* Viewer */}
+            <div className={cn(
+              "overflow-auto bg-[rgb(var(--muted)/0.3)]",
+              (isPDF && !pdfError) || gdocsUrl ? "min-h-[600px]" : "min-h-64 flex items-center justify-center p-4"
+            )}>
               {isPDF && !pdfError ? (
-                <Document
-                  file={note.file_url}
-                  onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-                  onLoadError={() => setPdfError(true)}
-                  loading={
-                    <div className="flex flex-col items-center gap-3 py-12">
-                      <div className="w-8 h-8 border-2 border-[rgb(var(--primary))] border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-[rgb(var(--muted-fg))]">Loading PDF…</p>
-                    </div>
-                  }
-                >
-                  <Page
-                    pageNumber={pageNum}
-                    scale={scale}
-                    renderTextLayer
-                    renderAnnotationLayer
-                  />
-                </Document>
+                <div className="flex items-center justify-center p-4">
+                  <Document
+                    file={note.file_url}
+                    onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                    onLoadError={() => setPdfError(true)}
+                    loading={
+                      <div className="flex flex-col items-center gap-3 py-12">
+                        <div className="w-8 h-8 border-2 border-[rgb(var(--primary))] border-t-transparent rounded-full animate-spin" />
+                        <p className="text-sm text-[rgb(var(--muted-fg))]">Loading PDF…</p>
+                      </div>
+                    }
+                  >
+                    <Page pageNumber={pageNum} scale={scale} renderTextLayer renderAnnotationLayer />
+                  </Document>
+                </div>
+              ) : gdocsUrl ? (
+                <iframe
+                  src={gdocsUrl}
+                  className="w-full h-[600px] border-0 bg-white"
+                  title={note.title}
+                />
               ) : (
                 <div className="flex flex-col items-center gap-3 py-12">
                   <FileText className="w-16 h-16 text-[rgb(var(--muted-fg))]" />
                   <p className="text-sm font-medium">{note.title}</p>
                   <p className="text-xs text-[rgb(var(--muted-fg))]">
-                    {isPDF ? "PDF preview unavailable" : "Preview not available for this file type"}
+                    {isPDF ? "PDF preview unavailable" : "Preview not available for ZIP files"}
                   </p>
                   <button
                     onClick={handleDownload}
