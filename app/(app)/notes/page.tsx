@@ -5,7 +5,7 @@ import {
   Search, Upload, BookOpen, Download, ThumbsUp,
   Filter, X, FileText, FileImage, Archive,
   ClipboardList, GraduationCap, PenLine, ScrollText, Trash2,
-  ChevronDown, Building2,
+  ChevronDown, Building2, Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -91,6 +91,7 @@ export default function NotesPage() {
   const [uniOpen,    setUniOpen]    = useState(false);
   const uniRef = useRef<HTMLDivElement>(null);
 
+  const [previewNote, setPreviewNote] = useState<Note | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // close combobox on outside click
@@ -441,15 +442,72 @@ export default function NotesPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {notes.map((note) => (
-            <NoteCard key={note.id} note={note} userId={userId} onDelete={deleteNote} />
+            <NoteCard key={note.id} note={note} userId={userId} onDelete={deleteNote} onPreview={setPreviewNote} />
           ))}
         </div>
       )}
+
+      {/* Preview modal */}
+      {previewNote && (() => {
+        const ft = previewNote.file_type ?? "";
+        const isPdf  = ft.includes("pdf");
+        const isDoc  = ft.includes("wordprocessingml") || ft.includes("docx");
+        const isPpt  = ft.includes("presentationml")  || ft.includes("pptx");
+        const previewUrl = isPdf
+          ? previewNote.file_url
+          : (isDoc || isPpt)
+            ? `https://docs.google.com/gview?url=${encodeURIComponent(previewNote.file_url)}&embedded=true`
+            : null;
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm">
+            {/* Bar */}
+            <div className="flex items-center gap-3 px-4 py-3 bg-[rgb(var(--card))] border-b border-[rgb(var(--border))] flex-shrink-0">
+              <button
+                onClick={() => setPreviewNote(null)}
+                className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <p className="font-semibold text-sm flex-1 truncate">{previewNote.title}</p>
+              <a
+                href={previewNote.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold hover:opacity-90 transition-opacity flex-shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" /> Download
+              </a>
+            </div>
+
+            {/* Content */}
+            {previewUrl ? (
+              <iframe
+                src={previewUrl}
+                className="flex-1 w-full border-0 bg-white"
+                title={previewNote.title}
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-white/60">
+                <Archive className="w-12 h-12 opacity-30" />
+                <p className="text-sm">Preview not available for ZIP files</p>
+                <a
+                  href={previewNote.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity mt-1"
+                >
+                  <Download className="w-4 h-4" /> Download to view
+                </a>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
-function NoteCard({ note, userId, onDelete }: { note: Note; userId: string | null; onDelete: (id: string) => void }) {
+function NoteCard({ note, userId, onDelete, onPreview }: { note: Note; userId: string | null; onDelete: (id: string) => void; onPreview: (n: Note) => void }) {
   const ext = (note.file_type || "pdf").replace("application/", "").replace("vnd.openxmlformats-officedocument.", "").split(".").pop() || "pdf";
   const Icon = FILE_ICONS[ext] || FileText;
   const category = (note as any).category as string | undefined;
@@ -512,9 +570,19 @@ function NoteCard({ note, userId, onDelete }: { note: Note; userId: string | nul
           </div>
         </div>
       </Link>
+      {/* Preview — visible to everyone on hover */}
+      <button
+        onClick={e => { e.preventDefault(); onPreview(note); }}
+        className="absolute top-2 left-2 p-1.5 rounded-lg bg-[rgb(var(--card))] border border-[rgb(var(--border))] hover:bg-[rgb(var(--primary)/0.1)] hover:text-[rgb(var(--primary))] text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
+        title="Preview"
+      >
+        <Eye className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Delete — uploader only */}
       {note.uploader_id === userId && (
         <button
-          onClick={() => onDelete(note.id)}
+          onClick={e => { e.preventDefault(); onDelete(note.id); }}
           className="absolute top-2 right-2 p-1.5 rounded-lg bg-[rgb(var(--card))] border border-[rgb(var(--border))] hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
           title="Delete note"
         >
