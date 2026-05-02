@@ -96,7 +96,9 @@ export default function StudyPage() {
   const { userId, fullName, loaded } = useCurrentUser();
   const supabase = createClient();
 
-  const [mainTab, setMainTab] = useState<"timer" | "private" | "groups">("timer");
+  const [mainTab, setMainTab] = useState<"timer" | "private" | "groups" | "leaderboard">("timer");
+  const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [lbLoading, setLbLoading] = useState(false);
   const [subjects, setSubjects] = useState<UserSubject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<UserSubject | null>(null);
   const [sessionCode, setSessionCode] = useState<string | null>(null);
@@ -387,6 +389,24 @@ export default function StudyPage() {
     setGroupLeaderboards(p => ({ ...p, [groupId]: Object.values(map).sort((a, b) => b.total_minutes - a.total_minutes) }));
   };
 
+  const fetchGlobalLeaderboard = async () => {
+    if (globalLeaderboard.length > 0) return; // already loaded
+    setLbLoading(true);
+    const { data } = await (supabase as any)
+      .from("study_logs")
+      .select("user_id, duration_minutes, profile:profiles!user_id(full_name, avatar_url)");
+    if (data) {
+      const map: Record<string, LeaderboardEntry> = {};
+      for (const row of data as any[]) {
+        const uid: string = row.user_id;
+        if (!map[uid]) map[uid] = { user_id: uid, full_name: row.profile?.full_name ?? "Unknown", avatar_url: row.profile?.avatar_url ?? null, total_minutes: 0 };
+        map[uid].total_minutes += row.duration_minutes;
+      }
+      setGlobalLeaderboard(Object.values(map).sort((a, b) => b.total_minutes - a.total_minutes));
+    }
+    setLbLoading(false);
+  };
+
   const toggleLeaderboard = (groupId: string) => {
     if (expandedLeaderboard === groupId) { setExpandedLeaderboard(null); return; }
     setExpandedLeaderboard(groupId);
@@ -436,11 +456,12 @@ export default function StudyPage() {
         {/* Main Tabs */}
         <div className="flex gap-1 p-1 rounded-2xl bg-[rgb(var(--muted))]">
           {([
-            { key: "timer",   label: "Pomodoro Timer" },
-            { key: "private", label: "Private Study Session" },
-            { key: "groups",  label: "Study Groups" },
+            { key: "timer",       label: "Timer" },
+            { key: "private",     label: "Private" },
+            { key: "groups",      label: "Groups" },
+            { key: "leaderboard", label: "Leaderboard" },
           ] as const).map(tab => (
-            <button key={tab.key} onClick={() => setMainTab(tab.key)}
+            <button key={tab.key} onClick={() => { setMainTab(tab.key); if (tab.key === "leaderboard") fetchGlobalLeaderboard(); }}
               className={cn(
                 "flex-1 py-2 rounded-xl text-sm font-medium transition-all",
                 mainTab === tab.key
@@ -908,6 +929,87 @@ export default function StudyPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Global Leaderboard Tab ── */}
+        {mainTab === "leaderboard" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-base flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-[rgb(var(--primary))]" /> All-Time Leaderboard
+                </h2>
+                <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Total study time across all sessions</p>
+              </div>
+              <button
+                onClick={() => { setGlobalLeaderboard([]); fetchGlobalLeaderboard(); }}
+                className="text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors px-3 py-1.5 rounded-xl bg-[rgb(var(--muted))] hover:bg-[rgb(var(--border))]"
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div className="theme-card overflow-hidden">
+              {lbLoading ? (
+                <div className="p-5 space-y-2">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="h-12 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />
+                  ))}
+                </div>
+              ) : globalLeaderboard.length === 0 ? (
+                <div className="p-12 text-center text-[rgb(var(--muted-fg))]">
+                  <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">No study sessions logged yet.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[rgb(var(--border))]">
+                  {globalLeaderboard.map((entry, rank) => {
+                    const h = Math.floor(entry.total_minutes / 60);
+                    const m = entry.total_minutes % 60;
+                    const isTop3 = rank < 3;
+                    const isSelf = entry.user_id === userId;
+                    const medal = rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : null;
+                    return (
+                      <div key={entry.user_id}
+                        className={cn(
+                          "flex items-center gap-3 px-5 py-3.5 transition-colors",
+                          isSelf && "bg-[rgb(var(--primary)/0.06)]",
+                          isTop3 && !isSelf && "bg-[rgb(var(--muted)/0.4)]"
+                        )}>
+                        <span className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0",
+                          rank === 0 ? "bg-amber-400/20 text-amber-400" :
+                          rank === 1 ? "bg-slate-400/20 text-slate-400" :
+                          rank === 2 ? "bg-orange-600/20 text-orange-500" :
+                          "bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]"
+                        )}>
+                          {medal ?? rank + 1}
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                          {entry.avatar_url
+                            ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                            : entry.full_name.charAt(0)}
+                        </div>
+                        <p className="flex-1 text-sm font-medium truncate">
+                          {entry.full_name}
+                          {isSelf && <span className="ml-1.5 text-[10px] text-[rgb(var(--primary))] font-semibold">(you)</span>}
+                        </p>
+                        <p className={cn(
+                          "text-sm font-bold flex-shrink-0 tabular-nums",
+                          rank === 0 ? "text-amber-400" :
+                          rank === 1 ? "text-slate-400" :
+                          rank === 2 ? "text-orange-500" :
+                          "text-[rgb(var(--primary))]"
+                        )}>
+                          {h > 0 ? `${h}h ` : ""}{m}m
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </motion.div>
