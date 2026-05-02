@@ -473,6 +473,7 @@ export default function StudyPage() {
           ))}
         </div>
 
+        {mainTab !== "leaderboard" && (<>
         {/* Timer Settings Panel */}
         <AnimatePresence>
           {showSettings && (
@@ -745,6 +746,8 @@ export default function StudyPage() {
             </div>
           </div>
         </div>
+
+        </>)}
 
         {/* ── Study Groups Tab ── */}
         {mainTab === "groups" && (
