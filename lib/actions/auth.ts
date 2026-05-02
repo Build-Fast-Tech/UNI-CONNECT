@@ -18,7 +18,7 @@ export async function signUpAction(data: {
     }
 
     const supabase = await createClient();
-    const origin = (await headers()).get("origin") ?? "";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (await headers()).get("origin") ?? "";
 
     const { error } = await supabase.auth.signUp({
       email: data.email,
@@ -28,11 +28,17 @@ export async function signUpAction(data: {
           full_name: data.fullName,
           ...(data.username ? { username: data.username.toLowerCase() } : {}),
         },
-        emailRedirectTo: `${origin}/auth/callback?next=/feed`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/feed`,
       },
     });
 
-    if (error) return { error: error.message };
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes("rate limit") || msg.includes("too many")) {
+        return { error: "Too many sign-up attempts. Please wait a few minutes and try again." };
+      }
+      return { error: error.message };
+    }
     return {};
   } catch (e: unknown) {
     return { error: (e as Error)?.message ?? String(e) };
