@@ -456,7 +456,7 @@ export default function NotesPage() {
         const previewUrl = isPdf
           ? previewNote.file_url
           : (isDoc || isPpt)
-            ? `https://docs.google.com/gview?url=${encodeURIComponent(previewNote.file_url)}&embedded=true`
+            ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewNote.file_url)}`
             : null;
         return (
           <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm">
