@@ -175,7 +175,7 @@ export default function NoteDetailPage({
   const isDoc  = note?.file_type?.includes("wordprocessingml") || note?.file_type?.includes("docx");
   const isPPT  = note?.file_type?.includes("presentationml")  || note?.file_type?.includes("pptx");
   const gdocsUrl = (isDoc || isPPT) && note
-    ? `https://docs.google.com/gview?url=${encodeURIComponent(note.file_url)}&embedded=true`
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(note.file_url)}`
     : null;
 
   if (loading) {
