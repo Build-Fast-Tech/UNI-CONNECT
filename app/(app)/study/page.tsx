@@ -26,6 +26,10 @@ interface LiveSession {
   userId: string; fullName: string; subjectName: string;
   secondsLeft: number; mode: string; sessionCode: string | null;
   groupId: string | null;
+  studyGroupId: string | null;
+  studyGroupName: string | null;
+  isRunning: boolean;
+  isPrivate: boolean;
 }
 interface LeaderboardEntry {
   user_id: string; full_name: string; avatar_url: string | null; total_minutes: number;
@@ -168,14 +172,20 @@ export default function StudyPage() {
     ch.on("presence", { event: "sync" }, () => {
       const raw = ch.presenceState<any>();
       const myCode = sessionCodeRef.current;
-      const myPrivate = groupModeRef.current;
+
       setLiveSessions(
         Object.values(raw).flat().filter((s: any) => {
-          if (s.userId === userId) return false;
-          if (s.mode !== "pomodoro") return false;
-          // Hide other users' private sessions unless you share the same code
-          if (s.isPrivate && s.sessionCode !== myCode) return false;
-          return true;
+          // Always show self when they're in a private session or study group
+          if (s.userId === userId) {
+            return (s.isPrivate && s.sessionCode) || s.studyGroupId;
+          }
+          // Others running in public pomodoro
+          if (s.isRunning && s.mode === "pomodoro" && !s.isPrivate) return true;
+          // Others running in (or present in) the same private session code
+          if (s.isPrivate && s.sessionCode && s.sessionCode === myCode) return true;
+          // Others who have joined any study group
+          if (s.studyGroupId) return true;
+          return false;
         }) as LiveSession[]
       );
     });
@@ -184,23 +194,34 @@ export default function StudyPage() {
     return () => { supabase.removeChannel(ch); };
   }, [userId, fullName]);
 
-  // Re-track when run state, mode, or subject changes — NOT on every secondsLeft tick
+  // Re-track whenever anything that affects presence changes
   useEffect(() => {
     if (!presenceRef.current || !userId) return;
-    if (state.isRunning && selectedSubject) {
+
+    const inPrivateSession = groupMode && !!sessionCode;
+    const inStudyGroup = !!joinedGroupId;
+    const shouldTrack = (state.isRunning && !!selectedSubject) || inPrivateSession || inStudyGroup;
+
+    if (shouldTrack) {
       presenceRef.current.track({
         userId, fullName,
-        subjectName: selectedSubject.name,
+        subjectName: selectedSubject?.name ?? "",
         secondsLeft: state.secondsLeft,
         mode: state.mode,
-        sessionCode,
-        isPrivate: groupMode,
+        isRunning: state.isRunning,
+        sessionCode: inPrivateSession ? sessionCode : null,
+        isPrivate: inPrivateSession,
+        studyGroupId: joinedGroupId,
+        studyGroupName: joinedGroupId
+          ? (studyGroups.find(g => g.id === joinedGroupId)?.name ?? null)
+          : null,
+        groupId: null,
       });
     } else {
       presenceRef.current.untrack();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.isRunning, state.mode, selectedSubject?.id, groupMode]);
+  }, [state.isRunning, state.mode, selectedSubject?.id, groupMode, sessionCode, joinedGroupId]);
 
   // On phase complete
   onComplete(useCallback((completedMode: TimerMode) => {
@@ -665,23 +686,39 @@ export default function StudyPage() {
                 </div>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {liveSessions.map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-[rgb(var(--muted))]">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {s.fullName.charAt(0)}
+                  {liveSessions.map((s, i) => {
+                    const isSelf = s.userId === userId;
+                    const subtitle = s.studyGroupId
+                      ? `In: ${s.studyGroupName || "Study Group"}`
+                      : s.isRunning
+                        ? `${s.subjectName || "Studying"} · ${formatTime(s.secondsLeft)}`
+                        : s.isPrivate
+                          ? "Private session"
+                          : "Online";
+                    return (
+                      <div key={i} className={cn(
+                        "flex items-center gap-2 p-2 rounded-xl",
+                        isSelf ? "bg-[rgb(var(--primary)/0.08)] border border-[rgb(var(--primary)/0.2)]" : "bg-[rgb(var(--muted))]"
+                      )}>
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {s.fullName.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate flex items-center gap-1">
+                            {s.fullName}
+                            {isSelf && <span className="text-[10px] text-[rgb(var(--primary))] font-semibold">(you)</span>}
+                          </p>
+                          <p className="text-[11px] text-[rgb(var(--muted-fg))]">{subtitle}</p>
+                        </div>
+                        {!isSelf && s.sessionCode && !s.studyGroupId && (
+                          <button onClick={() => { setSessionCode(s.sessionCode!); setGroupMode(true); }}
+                            className="text-[10px] px-2 py-0.5 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] flex-shrink-0">
+                            Join
+                          </button>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{s.fullName}</p>
-                        <p className="text-[11px] text-[rgb(var(--muted-fg))]">{s.subjectName} · {formatTime(s.secondsLeft)}</p>
-                      </div>
-                      {s.sessionCode && (
-                        <button onClick={() => { setSessionCode(s.sessionCode); setGroupMode(true); }}
-                          className="text-[10px] px-2 py-0.5 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] flex-shrink-0">
-                          Join
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
