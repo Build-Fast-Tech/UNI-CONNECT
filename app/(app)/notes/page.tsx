@@ -515,11 +515,9 @@ function NoteCard({ note, userId, onDelete, onPreview }: { note: Note; userId: s
   const categoryColor = CATEGORY_COLORS[category || "other"];
 
   return (
-    <div className="relative group">
-      <Link
-        href={`/notes/${note.id}`}
-        className="theme-card p-5 pb-12 flex flex-col gap-3 h-full hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-150 block"
-      >
+    <div className="relative group theme-card overflow-hidden flex flex-col hover:border-[rgb(var(--primary)/0.3)] hover:shadow-lg transition-all duration-150">
+      {/* Clickable card body — navigates to detail */}
+      <Link href={`/notes/${note.id}`} className="p-5 flex flex-col gap-3 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
             <Icon className="w-5 h-5 text-[rgb(var(--primary))]" />
@@ -570,10 +568,11 @@ function NoteCard({ note, userId, onDelete, onPreview }: { note: Note; userId: s
           </div>
         </div>
       </Link>
-      {/* View — always visible at card bottom */}
+
+      {/* View button — separate row, never overlaps the Link */}
       <button
-        onClick={e => { e.preventDefault(); onPreview(note); }}
-        className="absolute bottom-0 left-0 right-0 h-9 rounded-b-2xl text-xs font-semibold text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.07)] hover:bg-[rgb(var(--primary)/0.14)] transition-colors z-10 border-t border-[rgb(var(--primary)/0.15)]"
+        onClick={() => onPreview(note)}
+        className="w-full py-2 text-xs font-semibold text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.06)] hover:bg-[rgb(var(--primary)/0.13)] transition-colors border-t border-[rgb(var(--border))]"
       >
         View
       </button>
@@ -581,7 +580,7 @@ function NoteCard({ note, userId, onDelete, onPreview }: { note: Note; userId: s
       {/* Delete — uploader only */}
       {note.uploader_id === userId && (
         <button
-          onClick={e => { e.preventDefault(); onDelete(note.id); }}
+          onClick={() => onDelete(note.id)}
           className="absolute top-2 right-2 p-1.5 rounded-lg bg-[rgb(var(--card))] border border-[rgb(var(--border))] hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
           title="Delete note"
         >
