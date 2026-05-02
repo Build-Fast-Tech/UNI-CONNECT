@@ -12,7 +12,7 @@ const csp = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://api.resend.com",
   "media-src 'self' blob: data:",
-  "worker-src 'self' blob:",
+  "worker-src 'self' blob: https://unpkg.com",
   "frame-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
