@@ -57,6 +57,7 @@ export default function UploadNotePage() {
   const [description,setDescription]= useState("");
   const [subject,    setSubject]    = useState("");
   const [customSubject, setCustomSubject] = useState("");
+  const [department, setDepartment] = useState("");
   const [courseCode, setCourseCode] = useState("");
   const [semester,   setSemester]   = useState("");
   const [year,       setYear]       = useState<string>(String(CURRENT_YEAR));
@@ -159,6 +160,7 @@ export default function UploadNotePage() {
         title:           title.trim(),
         description:     description.trim() || null,
         subject:         finalSubject,
+        department:      department.trim() || null,
         course_code:     courseCode.trim() || null,
         semester:        semester || null,
         year:            year ? parseInt(year) : null,
@@ -331,8 +333,8 @@ export default function UploadNotePage() {
           />
         </div>
 
-        {/* Subject + Course Code */}
-        <div className="grid sm:grid-cols-2 gap-4">
+        {/* Subject + Department + Course Code */}
+        <div className="grid sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1.5">Subject <span className="text-[rgb(var(--destructive))]">*</span></label>
             <select
@@ -362,6 +364,23 @@ export default function UploadNotePage() {
                 )}
               />
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Department</label>
+            <input
+              type="text"
+              value={department}
+              onChange={e => setDepartment(e.target.value)}
+              placeholder="e.g. Computing"
+              maxLength={80}
+              className={cn(
+                "w-full h-11 px-4 rounded-xl text-sm",
+                "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
+                "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
+                "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+              )}
+            />
           </div>
 
           <div>
