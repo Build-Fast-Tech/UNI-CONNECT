@@ -934,13 +934,19 @@ export default function StudyPage() {
 
         {/* ── Global Leaderboard Tab ── */}
         {mainTab === "leaderboard" && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            <style>{`
+              @keyframes sparkle {
+                0%,100% { opacity:.6; transform:scale(1) rotate(0deg); }
+                50%      { opacity:1; transform:scale(1.4) rotate(20deg); }
+              }
+            `}</style>
+
+            {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-bold text-base flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-[rgb(var(--primary))]" /> All-Time Leaderboard
-                </h2>
-                <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Total study time across all sessions</p>
+                <h2 className="font-bold text-base">All-Time Leaderboard</h2>
+                <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Total study hours — all sessions combined</p>
               </div>
               <button
                 onClick={() => { setGlobalLeaderboard([]); fetchGlobalLeaderboard(); }}
@@ -950,66 +956,137 @@ export default function StudyPage() {
               </button>
             </div>
 
-            <div className="theme-card overflow-hidden">
-              {lbLoading ? (
-                <div className="p-5 space-y-2">
-                  {[1,2,3,4,5].map(i => (
-                    <div key={i} className="h-12 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />
-                  ))}
+            {lbLoading ? (
+              <div className="space-y-2">
+                {[1,2,3,4,5].map(i => <div key={i} className="h-12 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />)}
+              </div>
+            ) : globalLeaderboard.length === 0 ? (
+              <div className="theme-card p-12 text-center text-[rgb(var(--muted-fg))]">
+                <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                <p className="text-sm">No study sessions logged yet.</p>
+              </div>
+            ) : (() => {
+              const fmt = (mins: number) => {
+                const h = Math.floor(mins / 60), m = mins % 60;
+                return h > 0 ? `${h}h ${m}m` : `${m}m`;
+              };
+              const Avatar = ({ entry, size }: { entry: LeaderboardEntry; size: string }) => (
+                <div className={cn("rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0", size)}>
+                  {entry.avatar_url
+                    ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : <span>{entry.full_name.charAt(0)}</span>}
                 </div>
-              ) : globalLeaderboard.length === 0 ? (
-                <div className="p-12 text-center text-[rgb(var(--muted-fg))]">
-                  <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">No study sessions logged yet.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-[rgb(var(--border))]">
-                  {globalLeaderboard.map((entry, rank) => {
-                    const h = Math.floor(entry.total_minutes / 60);
-                    const m = entry.total_minutes % 60;
-                    const isTop3 = rank < 3;
-                    const isSelf = entry.user_id === userId;
-                    const medal = rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : null;
-                    return (
-                      <div key={entry.user_id}
-                        className={cn(
-                          "flex items-center gap-3 px-5 py-3.5 transition-colors",
-                          isSelf && "bg-[rgb(var(--primary)/0.06)]",
-                          isTop3 && !isSelf && "bg-[rgb(var(--muted)/0.4)]"
-                        )}>
-                        <span className={cn(
-                          "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0",
-                          rank === 0 ? "bg-amber-400/20 text-amber-400" :
-                          rank === 1 ? "bg-slate-400/20 text-slate-400" :
-                          rank === 2 ? "bg-orange-600/20 text-orange-500" :
-                          "bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))]"
-                        )}>
-                          {medal ?? rank + 1}
-                        </span>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
-                          {entry.avatar_url
-                            ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
-                            : entry.full_name.charAt(0)}
+              );
+              const [p1, p2, p3] = globalLeaderboard;
+              return (
+                <>
+                  {/* ── Olympic Podium ── */}
+                  <div className="flex items-end justify-center gap-3 pt-4 pb-0">
+
+                    {/* 2nd — Silver */}
+                    {p2 && (
+                      <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center mb-2 gap-1">
+                          <div className="relative">
+                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-300 to-slate-500 p-0.5 shadow-lg shadow-slate-400/30">
+                              <Avatar entry={p2} size="w-full h-full bg-gradient-to-br from-slate-300 to-slate-500" />
+                            </div>
+                            <span className="absolute -top-1 -right-1 text-base leading-none">🥈</span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-slate-300 max-w-[80px] text-center truncate mt-1">{p2.full_name}{p2.user_id===userId&&<span className="text-[rgb(var(--primary))]"> (you)</span>}</p>
+                          <p className="text-xs font-bold text-slate-300 tabular-nums">{fmt(p2.total_minutes)}</p>
                         </div>
-                        <p className="flex-1 text-sm font-medium truncate">
-                          {entry.full_name}
-                          {isSelf && <span className="ml-1.5 text-[10px] text-[rgb(var(--primary))] font-semibold">(you)</span>}
-                        </p>
-                        <p className={cn(
-                          "text-sm font-bold flex-shrink-0 tabular-nums",
-                          rank === 0 ? "text-amber-400" :
-                          rank === 1 ? "text-slate-400" :
-                          rank === 2 ? "text-orange-500" :
-                          "text-[rgb(var(--primary))]"
-                        )}>
-                          {h > 0 ? `${h}h ` : ""}{m}m
-                        </p>
+                        {/* Step */}
+                        <div className="relative w-[88px] h-16 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#94a3b8,#475569)"}}>
+                          <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12"
+                            animate={{x:["-110%","210%"]}} transition={{duration:2.5,repeat:Infinity,repeatDelay:1.5,ease:"linear"}} />
+                          <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-white/40 select-none">2</span>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    )}
+
+                    {/* 1st — Gold (tallest, centre) */}
+                    {p1 && (
+                      <div className="flex flex-col items-center">
+                        <span className="text-2xl mb-1 block" style={{animation:"sparkle 1.8s ease-in-out infinite"}}>👑</span>
+                        <div className="flex flex-col items-center mb-2 gap-1">
+                          <div className="relative">
+                            <div className="w-16 h-16 rounded-full p-0.5 shadow-xl shadow-amber-400/40" style={{background:"linear-gradient(135deg,#fbbf24,#d97706)"}}>
+                              <Avatar entry={p1} size="w-full h-full bg-gradient-to-br from-amber-300 to-amber-600" />
+                            </div>
+                            <span className="absolute -top-1 -right-1 text-lg leading-none">🥇</span>
+                            <span className="absolute -top-3 -left-3 text-xs" style={{animation:"sparkle 1.5s ease-in-out infinite 0.3s"}}>✨</span>
+                            <span className="absolute -bottom-2 -right-4 text-xs" style={{animation:"sparkle 2s ease-in-out infinite 0.8s"}}>✨</span>
+                            <span className="absolute top-1 -right-5 text-[10px]" style={{animation:"sparkle 1.7s ease-in-out infinite 0.5s"}}>⭐</span>
+                          </div>
+                          <p className="text-xs font-bold text-amber-300 max-w-[96px] text-center truncate mt-1">{p1.full_name}{p1.user_id===userId&&<span className="text-[rgb(var(--primary))]"> (you)</span>}</p>
+                          <p className="text-sm font-black text-amber-400 tabular-nums">{fmt(p1.total_minutes)}</p>
+                        </div>
+                        {/* Step — tallest */}
+                        <div className="relative w-[104px] h-24 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#fbbf24,#b45309)"}}>
+                          <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12"
+                            animate={{x:["-110%","210%"]}} transition={{duration:1.8,repeat:Infinity,repeatDelay:0.8,ease:"linear"}} />
+                          <span className="absolute inset-0 flex items-center justify-center text-4xl font-black text-white/40 select-none">1</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3rd — Bronze */}
+                    {p3 && (
+                      <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center mb-2 gap-1">
+                          <div className="relative">
+                            <div className="w-12 h-12 rounded-full p-0.5 shadow-lg shadow-orange-500/30" style={{background:"linear-gradient(135deg,#f97316,#c2410c)"}}>
+                              <Avatar entry={p3} size="w-full h-full bg-gradient-to-br from-orange-400 to-orange-700" />
+                            </div>
+                            <span className="absolute -top-1 -right-1 text-base leading-none">🥉</span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-orange-400 max-w-[80px] text-center truncate mt-1">{p3.full_name}{p3.user_id===userId&&<span className="text-[rgb(var(--primary))]"> (you)</span>}</p>
+                          <p className="text-xs font-bold text-orange-400 tabular-nums">{fmt(p3.total_minutes)}</p>
+                        </div>
+                        {/* Step */}
+                        <div className="relative w-[88px] h-12 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#f97316,#9a3412)"}}>
+                          <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12"
+                            animate={{x:["-110%","210%"]}} transition={{duration:2.2,repeat:Infinity,repeatDelay:2,ease:"linear"}} />
+                          <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-white/40 select-none">3</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── 4th place and beyond ── */}
+                  {globalLeaderboard.length > 3 && (
+                    <div className="theme-card overflow-hidden">
+                      <div className="divide-y divide-[rgb(var(--border))]">
+                        {globalLeaderboard.slice(3).map((entry, idx) => {
+                          const isSelf = entry.user_id === userId;
+                          return (
+                            <div key={entry.user_id} className={cn(
+                              "flex items-center gap-3 px-4 py-3 transition-colors",
+                              isSelf && "bg-[rgb(var(--primary)/0.06)]"
+                            )}>
+                              <span className="w-6 text-center text-xs font-bold text-[rgb(var(--muted-fg))] flex-shrink-0">{idx + 4}</span>
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden">
+                                {entry.avatar_url
+                                  ? <img src={entry.avatar_url} alt="" className="w-full h-full object-cover" />
+                                  : entry.full_name.charAt(0)}
+                              </div>
+                              <p className="flex-1 text-sm font-medium truncate">
+                                {entry.full_name}
+                                {isSelf && <span className="ml-1.5 text-[10px] text-[rgb(var(--primary))] font-semibold">(you)</span>}
+                              </p>
+                              <p className="text-sm font-bold text-[rgb(var(--primary))] flex-shrink-0 tabular-nums">
+                                {fmt(entry.total_minutes)}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </motion.div>
