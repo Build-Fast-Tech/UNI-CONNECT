@@ -42,20 +42,16 @@ export default function PublicProfilePage({
 
       if (profileData) {
         setProfile(profileData);
-        const fetches: Promise<any>[] = [];
-        if (profileData.university_id) {
-          fetches.push(
-            supabase.from("universities").select("*").eq("id", profileData.university_id).single()
-              .then(({ data }) => setUniversity(data))
-          );
-        }
-        if (profileData.branch_id) {
-          fetches.push(
-            supabase.from("branches").select("*").eq("id", profileData.branch_id).single()
-              .then(({ data }) => setBranch(data))
-          );
-        }
-        await Promise.all(fetches);
+        await Promise.all([
+          profileData.university_id
+            ? Promise.resolve(supabase.from("universities").select("*").eq("id", profileData.university_id).single())
+                .then(({ data }) => setUniversity(data))
+            : Promise.resolve(),
+          profileData.branch_id
+            ? Promise.resolve(supabase.from("branches").select("*").eq("id", profileData.branch_id).single())
+                .then(({ data }) => setBranch(data))
+            : Promise.resolve(),
+        ]);
       }
       setLoading(false);
     })();
