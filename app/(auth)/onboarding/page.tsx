@@ -226,7 +226,7 @@ export default function OnboardingPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{uni.name}</p>
                       <p className="text-xs text-[rgb(var(--muted-fg))]">
-                        {uni.short_name} · {uni.city}
+                        {uni.short_name}
                       </p>
                     </div>
                     {selectedUni?.id === uni.id && (

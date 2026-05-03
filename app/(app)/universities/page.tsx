@@ -193,9 +193,6 @@ function UniversityCard({ uni, index, featured = false, rating }: {
         )}
 
         <div className="flex items-center gap-3 text-xs text-[rgb(var(--muted-fg))]">
-          {uni.city && (
-            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{uni.city}</span>
-          )}
           {uni.website && (
             <span className="ml-auto flex items-center gap-1 text-[rgb(var(--primary))]">
               <ExternalLink className="w-3 h-3" />
