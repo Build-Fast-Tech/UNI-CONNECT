@@ -202,7 +202,8 @@ export default function NotesPage() {
     u.name.toLowerCase().includes(uniSearch.toLowerCase())
   );
 
-  const activeFilters = [filterUniversity, filterDepartment, filterSubject, filterSemester, filterType].filter(Boolean).length;
+  // Only count filters that live inside the collapsible panel
+  const activeFilters = [filterSubject, filterSemester, filterType].filter(Boolean).length;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -243,7 +244,92 @@ export default function NotesPage() {
         })}
       </div>
 
-      {/* Search + filter bar */}
+      {/* ── University + Department — always visible ── */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* University searchable combobox */}
+        <div ref={uniRef} className="relative flex-1">
+          <label className="block text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1.5 flex items-center gap-1.5">
+            <Building2 className="w-3 h-3" /> University
+          </label>
+          <div className={cn(
+            "flex items-center h-11 rounded-xl border text-sm overflow-hidden transition-shadow",
+            "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
+            uniOpen ? "ring-2 ring-[rgb(var(--ring))] border-[rgb(var(--ring))]" : "",
+            filterUniversity ? "border-[rgb(var(--primary)/0.5)] bg-[rgb(var(--primary)/0.04)]" : ""
+          )}>
+            <Search className="w-4 h-4 ml-3 flex-shrink-0 text-[rgb(var(--muted-fg))]" />
+            <input
+              type="text"
+              value={uniOpen ? uniSearch : (uniLabel || uniSearch)}
+              onChange={e => { setUniSearch(e.target.value); setUniOpen(true); }}
+              onFocus={() => setUniOpen(true)}
+              placeholder="Search university…"
+              className={cn(
+                "flex-1 min-w-0 px-3 bg-transparent focus:outline-none text-sm",
+                filterUniversity ? "text-[rgb(var(--primary))] font-medium" : "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]"
+              )}
+            />
+            {filterUniversity ? (
+              <button onClick={clearUniversity}
+                className="p-2 mr-1 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] flex-shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <ChevronDown className={cn("w-4 h-4 mr-3 flex-shrink-0 text-[rgb(var(--muted-fg))] transition-transform", uniOpen && "rotate-180")} />
+            )}
+          </div>
+
+          {uniOpen && (
+            <div className="absolute z-50 top-full mt-1 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-2xl overflow-hidden">
+              <div className="max-h-60 overflow-y-auto">
+                <button
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { clearUniversity(); setUniOpen(false); }}
+                  className={cn("w-full text-left px-4 py-2.5 text-sm transition-colors",
+                    !filterUniversity ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium" : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]")}>
+                  All universities
+                </button>
+                {filteredUnis.length === 0
+                  ? <p className="px-4 py-4 text-xs text-center text-[rgb(var(--muted-fg))]">No universities found</p>
+                  : filteredUnis.map(u => (
+                    <button key={u.id}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => selectUniversity(u)}
+                      className={cn("w-full text-left px-4 py-2.5 text-sm transition-colors",
+                        filterUniversity === u.id ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium" : "text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
+                      <span className="font-semibold">{u.short_name}</span>
+                      <span className="text-[rgb(var(--muted-fg))] ml-2 text-xs">{u.name}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Department dropdown */}
+        <div className="sm:w-52 flex-shrink-0">
+          <label className="block text-xs font-semibold text-[rgb(var(--muted-fg))] mb-1.5">Department</label>
+          <div className="relative">
+            <select
+              value={filterDepartment}
+              onChange={e => setFilterDepartment(e.target.value)}
+              className={cn(
+                "w-full h-11 pl-4 pr-9 rounded-xl text-sm border appearance-none transition-all",
+                "bg-[rgb(var(--input))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]",
+                filterDepartment
+                  ? "border-[rgb(var(--primary)/0.5)] bg-[rgb(var(--primary)/0.04)] text-[rgb(var(--primary))] font-medium"
+                  : "border-[rgb(var(--border))] text-[rgb(var(--fg))]"
+              )}
+            >
+              <option value="">All departments</option>
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))] pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Search + Filters button ── */}
       <div className="space-y-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -281,136 +367,42 @@ export default function NotesPage() {
         </div>
 
         {showFilters && (
-          <div className="theme-card p-4 space-y-4">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="theme-card p-4 grid sm:grid-cols-3 gap-4">
+            {/* Subject */}
+            <div>
+              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
+              <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className={selectCls}>
+                <option value="">All subjects</option>
+                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
 
-              {/* ── University combobox ── */}
-              <div className="sm:col-span-2 lg:col-span-1">
-                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5 flex items-center gap-1.5">
-                  <Building2 className="w-3 h-3" /> University
-                </label>
-                <div ref={uniRef} className="relative">
-                  {/* Input row */}
-                  <div className={cn(
-                    "flex items-center h-9 rounded-lg border text-sm overflow-hidden",
-                    "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
-                    uniOpen && "ring-2 ring-[rgb(var(--ring))]"
-                  )}>
-                    <Search className="w-3.5 h-3.5 ml-2.5 flex-shrink-0 text-[rgb(var(--muted-fg))]" />
-                    <input
-                      type="text"
-                      value={uniOpen ? uniSearch : (uniLabel || uniSearch)}
-                      onChange={e => { setUniSearch(e.target.value); setUniOpen(true); }}
-                      onFocus={() => setUniOpen(true)}
-                      placeholder="Search university…"
-                      className="flex-1 min-w-0 px-2 py-1 bg-transparent text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none text-sm"
-                    />
-                    {filterUniversity ? (
-                      <button
-                        onClick={clearUniversity}
-                        className="p-1.5 mr-0.5 rounded hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] flex-shrink-0"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    ) : (
-                      <ChevronDown className={cn("w-3.5 h-3.5 mr-2 flex-shrink-0 text-[rgb(var(--muted-fg))] transition-transform", uniOpen && "rotate-180")} />
-                    )}
-                  </div>
+            {/* Semester */}
+            <div>
+              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Semester</label>
+              <select value={filterSemester} onChange={e => setFilterSemester(e.target.value)} className={selectCls}>
+                <option value="">All semesters</option>
+                {SEMESTERS.map(s => <option key={s} value={s}>{s} Semester</option>)}
+              </select>
+            </div>
 
-                  {/* Dropdown */}
-                  {uniOpen && (
-                    <div className={cn(
-                      "absolute z-50 top-full mt-1 w-full rounded-xl border border-[rgb(var(--border))]",
-                      "bg-[rgb(var(--card))] shadow-xl overflow-hidden"
-                    )}>
-                      <div className="max-h-52 overflow-y-auto">
-                        {/* All option */}
-                        <button
-                          onMouseDown={e => e.preventDefault()}
-                          onClick={() => { clearUniversity(); setUniOpen(false); }}
-                          className={cn(
-                            "w-full text-left px-3 py-2 text-sm transition-colors",
-                            !filterUniversity
-                              ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium"
-                              : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]"
-                          )}
-                        >
-                          All universities
-                        </button>
-
-                        {filteredUnis.length === 0 ? (
-                          <p className="px-3 py-4 text-xs text-center text-[rgb(var(--muted-fg))]">No universities found</p>
-                        ) : (
-                          filteredUnis.map(u => (
-                            <button
-                              key={u.id}
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={() => selectUniversity(u)}
-                              className={cn(
-                                "w-full text-left px-3 py-2 text-sm transition-colors",
-                                filterUniversity === u.id
-                                  ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium"
-                                  : "text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]"
-                              )}
-                            >
-                              <span className="font-medium">{u.short_name}</span>
-                              <span className="text-[rgb(var(--muted-fg))] ml-1.5 text-xs">{u.name}</span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Department ── */}
-              <div>
-                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Department</label>
-                <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className={selectCls}>
-                  <option value="">All departments</option>
-                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-
-              {/* ── Subject ── */}
-              <div>
-                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Subject</label>
-                <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)} className={selectCls}>
-                  <option value="">All subjects</option>
-                  {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
-              {/* ── Semester ── */}
-              <div>
-                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">Semester</label>
-                <select value={filterSemester} onChange={e => setFilterSemester(e.target.value)} className={selectCls}>
-                  <option value="">All semesters</option>
-                  {SEMESTERS.map(s => <option key={s} value={s}>{s} Semester</option>)}
-                </select>
-              </div>
-
-              {/* ── File type ── */}
-              <div>
-                <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">File type</label>
-                <select value={filterType} onChange={e => setFilterType(e.target.value)} className={selectCls}>
-                  <option value="">All types</option>
-                  <option value="pdf">PDF</option>
-                  <option value="docx">DOCX</option>
-                  <option value="pptx">PPTX</option>
-                  <option value="zip">ZIP</option>
-                </select>
-              </div>
+            {/* File type */}
+            <div>
+              <label className="block text-xs font-medium text-[rgb(var(--muted-fg))] mb-1.5">File type</label>
+              <select value={filterType} onChange={e => setFilterType(e.target.value)} className={selectCls}>
+                <option value="">All types</option>
+                <option value="pdf">PDF</option>
+                <option value="docx">DOCX</option>
+                <option value="pptx">PPTX</option>
+                <option value="zip">ZIP</option>
+              </select>
             </div>
 
             {activeFilters > 0 && (
-              <div className="flex justify-end pt-1 border-t border-[rgb(var(--border))]">
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1.5 text-xs text-[rgb(var(--destructive))] hover:underline"
-                >
-                  <X className="w-3 h-3" /> Clear all filters
+              <div className="sm:col-span-3 flex justify-end pt-1 border-t border-[rgb(var(--border))]">
+                <button onClick={clearFilters}
+                  className="flex items-center gap-1.5 text-xs text-[rgb(var(--destructive))] hover:underline">
+                  <X className="w-3 h-3" /> Clear filters
                 </button>
               </div>
             )}
