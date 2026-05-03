@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import { useChatShell } from "@/components/chat/ChatShell";
+import { CameraModal } from "@/components/chat/CameraModal";
 
 const EmojiPicker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
 
@@ -381,6 +382,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const stickerFileRef  = useRef<HTMLInputElement>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const attachMenuRef   = useRef<HTMLDivElement>(null);
+  const [showCamera,    setShowCamera]    = useState(false);
 
   // Voice recording
   const [isRecording,   setIsRecording]   = useState(false);
@@ -530,6 +532,19 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
     setAudioBlob(null); setAudioPreviewUrl(null); setRecordSecs(0);
     setVoiceSending(false);
+  };
+
+  const sendCameraPhoto = async (blob: Blob) => {
+    if (!userId) return;
+    const path = `media/${userId}/${Date.now()}_camera.jpg`;
+    const { data, error } = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+    if (error) { setSendError("Failed to upload photo."); throw error; }
+    const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(data.path);
+    await (supabase as any).from("messages").insert({
+      channel_id: channelId, sender_id: userId, content: "📷 Photo",
+      gif_url: publicUrl, reply_to_id: replyToMessage?.id ?? null,
+    });
+    setReplyToMessage(null);
   };
 
   // ─── GIF ──────────────────────────────────────────────────────────────────────
@@ -1601,7 +1616,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             {[
               { label: "Document",        icon: FileText,   color: "#7F66FF", action: () => docFileRef.current?.click() },
               { label: "Photos & videos", icon: ImageIcon,  color: "#EB3D44", action: () => fileInputRef.current?.click() },
-              { label: "Camera",          icon: Camera,     color: "#AA66EE", action: () => { const i = fileInputRef.current; if (i) { i.setAttribute("capture","environment"); i.click(); setTimeout(() => i.removeAttribute("capture"), 500); } } },
+              { label: "Camera",          icon: Camera,     color: "#AA66EE", action: () => setShowCamera(true) },
               { label: "Audio",           icon: Music,      color: "#EF6034", action: () => audioFileRef.current?.click() },
               { label: "Poll",            icon: BarChart2,  color: "#0288D1", action: () => { setShowPollCreator(true); setShowGifPicker(false); setShowStickerPicker(false); } },
               { label: "Sticker",         icon: Sticker,    color: "#00A884", action: () => { setShowStickerPicker(p => !p); setShowGifPicker(false); } },
@@ -1712,6 +1727,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         </form>
       </div>
+
+      {/* Camera modal */}
+      {showCamera && (
+        <CameraModal
+          onClose={() => setShowCamera(false)}
+          onSend={sendCameraPhoto}
+        />
+      )}
     </>
   );
 }
