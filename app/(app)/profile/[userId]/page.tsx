@@ -14,6 +14,7 @@ import type { Database } from "@/types/database";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type University = Database["public"]["Tables"]["universities"]["Row"];
+type Branch = Database["public"]["Tables"]["branches"]["Row"];
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Graduate"];
 
@@ -26,6 +27,7 @@ export default function PublicProfilePage({
   const supabase = createClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [university, setUniversity] = useState<University | null>(null);
+  const [branch, setBranch] = useState<Branch | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
 
@@ -40,14 +42,20 @@ export default function PublicProfilePage({
 
       if (profileData) {
         setProfile(profileData);
+        const fetches: Promise<any>[] = [];
         if (profileData.university_id) {
-          const { data: uni } = await supabase
-            .from("universities")
-            .select("*")
-            .eq("id", profileData.university_id)
-            .single();
-          setUniversity(uni);
+          fetches.push(
+            supabase.from("universities").select("*").eq("id", profileData.university_id).single()
+              .then(({ data }) => setUniversity(data))
+          );
         }
+        if (profileData.branch_id) {
+          fetches.push(
+            supabase.from("branches").select("*").eq("id", profileData.branch_id).single()
+              .then(({ data }) => setBranch(data))
+          );
+        }
+        await Promise.all(fetches);
       }
       setLoading(false);
     })();
@@ -128,15 +136,23 @@ export default function PublicProfilePage({
               )}
             </div>
 
-            {university && (
-              <Link
-                href={`/universities/${university.slug}`}
-                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] transition-colors"
-              >
-                <GraduationCap className="w-3 h-3" />
-                {university.short_name}
-              </Link>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {university && (
+                <Link
+                  href={`/universities/${university.slug}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] transition-colors"
+                >
+                  <GraduationCap className="w-3 h-3" />
+                  {university.short_name}
+                </Link>
+              )}
+              {branch && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">
+                  <MapPin className="w-3 h-3" />
+                  {branch.name}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -157,10 +173,10 @@ export default function PublicProfilePage({
               {YEARS[(profile.year_of_study - 1)] || `Year ${profile.year_of_study}`}
             </span>
           )}
-          {university?.city && (
+          {branch && (
             <span className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted-fg))]">
               <MapPin className="w-3.5 h-3.5" />
-              {university.city}
+              {branch.name}
             </span>
           )}
           {profile.is_verified && (

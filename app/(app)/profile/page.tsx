@@ -14,6 +14,7 @@ import type { Database } from "@/types/database";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type University = Database["public"]["Tables"]["universities"]["Row"];
+type Branch = Database["public"]["Tables"]["branches"]["Row"];
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Graduate"];
 
@@ -21,6 +22,7 @@ export default function MyProfilePage() {
   const supabase = createClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [university, setUniversity] = useState<University | null>(null);
+  const [branch, setBranch] = useState<Branch | null>(null);
   const [loadingDone, setLoadingDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,14 +54,20 @@ export default function MyProfilePage() {
         setPortfolio(data.portfolio_url || "");
         setAvatarPreview(data.avatar_url || "");
 
+        const fetches: Promise<any>[] = [];
         if (data.university_id) {
-          const { data: uni } = await supabase
-            .from("universities")
-            .select("*")
-            .eq("id", data.university_id)
-            .single();
-          setUniversity(uni);
+          fetches.push(
+            supabase.from("universities").select("*").eq("id", data.university_id).single()
+              .then(({ data: uni }) => setUniversity(uni))
+          );
         }
+        if (data.branch_id) {
+          fetches.push(
+            supabase.from("branches").select("*").eq("id", data.branch_id).single()
+              .then(({ data: br }) => setBranch(br))
+          );
+        }
+        await Promise.all(fetches);
       }
       setLoadingDone(true);
     })();
@@ -222,16 +230,24 @@ export default function MyProfilePage() {
               )}
             </div>
 
-            {/* University tag */}
-            {university && (
-              <Link
-                href={`/universities/${university.slug}`}
-                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] transition-colors"
-              >
-                <GraduationCap className="w-3 h-3" />
-                {university.short_name}
-              </Link>
-            )}
+            {/* University + branch tags */}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {university && (
+                <Link
+                  href={`/universities/${university.slug}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.2)] transition-colors"
+                >
+                  <GraduationCap className="w-3 h-3" />
+                  {university.short_name}
+                </Link>
+              )}
+              {branch && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">
+                  <MapPin className="w-3 h-3" />
+                  {branch.name}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
