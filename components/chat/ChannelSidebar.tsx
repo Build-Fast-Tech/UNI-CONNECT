@@ -59,18 +59,17 @@ function ChannelRow({
 }) {
   const isDm = channel.kind === "dm";
   return (
-    <div className={cn("group relative", pinned && "bg-[rgb(var(--primary)/0.04)] rounded-xl")}>
+    <div className={cn("group relative", pinned && "bg-[rgb(var(--primary)/0.04)] rounded-lg")}>
       <Link
         href={`/chat/${channel.id}`}
         onClick={onLinkClick}
         className={cn(
-          "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-200",
+          "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-200",
           active
             ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]"
             : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]",
         )}
       >
-        {/* Icon with online/offline dot for DMs */}
         <span className="flex-shrink-0 relative">
           {icon}
           <StatusDot online={!!isOnline} isDm={isDm} />
@@ -78,30 +77,29 @@ function ChannelRow({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
-            <span className="truncate">{channel.name}</span>
-            {pinned && <Pin className="w-3 h-3 flex-shrink-0 fill-current opacity-70" />}
+            <span className="truncate font-medium">{channel.name}</span>
+            {pinned && <Pin className="w-2.5 h-2.5 flex-shrink-0 fill-current opacity-70" />}
           </div>
           {channel.lastMessage && (
-            <p className="text-[11px] opacity-70 truncate leading-tight">{channel.lastMessage}</p>
+            <p className="text-[10px] opacity-60 truncate leading-tight">{channel.lastMessage}</p>
           )}
         </div>
         {channel.lastAt && (
-          <span className="text-[10px] opacity-60 flex-shrink-0">{formatRelativeTime(channel.lastAt)}</span>
+          <span className="text-[9px] opacity-50 flex-shrink-0">{formatRelativeTime(channel.lastAt)}</span>
         )}
       </Link>
 
       <button
         onClick={e => { e.preventDefault(); e.stopPropagation(); onPinToggle(channel.id); }}
         title={pinned ? "Unpin" : "Pin"}
-        aria-label={pinned ? "Unpin chat" : "Pin chat"}
         className={cn(
-          "absolute right-1 top-1.5 p-1 rounded-md transition-opacity",
+          "absolute right-0.5 top-1 p-0.5 rounded transition-opacity",
           pinned
             ? "opacity-90 text-[rgb(var(--primary))] hover:bg-[rgb(var(--primary)/0.12)]"
             : "opacity-0 group-hover:opacity-80 text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]",
         )}
       >
-        {pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+        {pinned ? <PinOff className="w-2.5 h-2.5" /> : <Pin className="w-2.5 h-2.5" />}
       </button>
     </div>
   );
@@ -178,18 +176,18 @@ function UserSearch({ onLinkClick, myId }: { onLinkClick?: () => void; myId: str
   };
 
   return (
-    <div className="px-2 mb-2 relative" ref={wrapRef}>
+    <div className="px-1.5 mb-1.5 relative" ref={wrapRef}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[rgb(var(--muted-fg))]" />
         <input
           type="text"
           value={query}
           onChange={e => handleChange(e.target.value)}
           onFocus={() => { if (results.length > 0) setOpen(true); }}
           placeholder="Search by username"
-          className="w-full h-8 pl-8 pr-3 rounded-lg text-xs bg-[rgb(var(--muted))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--ring))]"
+          className="w-full h-7 pl-7 pr-3 rounded-md text-[11px] bg-[rgb(var(--muted))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--ring))]"
         />
-        {searching && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 animate-spin text-[rgb(var(--muted-fg))]" />}
+        {searching && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 animate-spin text-[rgb(var(--muted-fg))]" />}
       </div>
       {open && results.length > 0 && (
         <div className="absolute left-2 right-2 top-full mt-1 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 overflow-hidden">
@@ -238,27 +236,27 @@ function ChannelList({
   const unisSorted = [...uniChannels].sort(sortFn);
 
   const iconFor = (ch: Channel): React.ReactNode => {
-    if (ch.kind === "global") return <Globe className="w-4 h-4" />;
-    if (ch.kind === "university" || ch.kind === "branch") return <Building2 className="w-4 h-4" />;
+    if (ch.kind === "global") return <Globe className="w-3.5 h-3.5" />;
+    if (ch.kind === "university" || ch.kind === "branch") return <Building2 className="w-3.5 h-3.5" />;
     return (
       <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-[8px] font-bold text-white">
-        {ch.avatarChar ?? <User className="w-3 h-3" />}
+        {ch.avatarChar ?? <User className="w-2.5 h-2.5" />}
       </div>
     );
   };
 
   return (
     <>
-      <div className="px-4 pt-4 pb-2 flex-shrink-0 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">Channels</p>
+      <div className="px-3 pt-3 pb-1.5 flex-shrink-0 flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))]">Channels</p>
         {showCloseButton && (
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors" aria-label="Close channels">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-0.5 rounded-md hover:bg-[rgb(var(--muted))] transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-1.5 pb-3 space-y-0.5">
         {globalChannel && (
           <ChannelRow
             channel={globalChannel} icon={iconFor(globalChannel)}
@@ -268,8 +266,8 @@ function ChannelList({
         )}
 
         {unisSorted.length > 0 && (
-          <div className="pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-3 mb-1">My University</p>
+          <div className="pt-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-2.5 mb-1">My University</p>
             {unisSorted.map(ch => (
               <ChannelRow key={ch.id} channel={ch} icon={iconFor(ch)}
                 active={activeId === ch.id} pinned={pins.has(ch.id)}
@@ -278,16 +276,12 @@ function ChannelList({
           </div>
         )}
 
-        <div className="pt-4">
-          <div className="flex items-center justify-between px-3 mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">Direct Messages</p>
-          </div>
-
-          {/* Search by username */}
+        <div className="pt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[rgb(var(--muted-fg))] px-2.5 mb-1.5">Direct Messages</p>
           <UserSearch onLinkClick={onLinkClick} myId={myId} />
 
           {dmsSorted.length === 0 && (
-            <p className="text-xs text-[rgb(var(--muted-fg))] px-3 py-1.5">No conversations yet</p>
+            <p className="text-[10px] text-[rgb(var(--muted-fg))] px-2.5 py-1">No conversations yet</p>
           )}
 
           {dmsSorted.map(ch => (
@@ -472,7 +466,7 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
 
   return (
     <>
-      <div className="hidden md:flex w-64 flex-shrink-0 border-r border-[rgb(var(--border))] flex-col overflow-hidden bg-[rgb(var(--card))]">
+      <div className="hidden md:flex w-52 flex-shrink-0 border-r border-[rgb(var(--border))] flex-col overflow-hidden bg-[rgb(var(--card))]">
         <ChannelList {...listProps} />
       </div>
 
@@ -482,7 +476,7 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
             <motion.div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={onClose}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} />
             <motion.div
-              className="fixed top-0 left-0 bottom-0 w-72 z-50 md:hidden flex flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
+              className="fixed top-0 left-0 bottom-0 w-60 z-50 md:hidden flex flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
               initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
             >
