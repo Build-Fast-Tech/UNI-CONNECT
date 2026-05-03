@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Send, Paperclip, Globe, Building2, MessageCircle, Smile, Menu, Trash2, Reply, X as XIcon, Plus, Sticker, Loader2 } from "lucide-react";
+import {
+  Send, Paperclip, Globe, Building2, MessageCircle, Smile,
+  Menu, Trash2, Reply, X as XIcon, Plus, Sticker, Loader2,
+  Search, BarChart2, Copy, ChevronDown,
+} from "lucide-react";
 import { filterProfanity } from "@/lib/utils/profanity";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
@@ -10,6 +14,8 @@ import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import { useChatShell } from "@/components/chat/ChatShell";
 
 const EmojiPicker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Profile {
   full_name: string;
@@ -19,6 +25,12 @@ interface Profile {
   universities: { short_name: string } | null;
 }
 
+interface ReplyPreview {
+  id: string;
+  content: string;
+  sender: { full_name: string } | null;
+}
+
 interface Message {
   id: string;
   content: string;
@@ -26,8 +38,10 @@ interface Message {
   sender_id: string;
   sender: Profile | null;
   reply_to_id?: string | null;
+  replied_msg?: ReplyPreview | null;
   gif_url?: string | null;
   sticker_id?: string | null;
+  poll_data?: { question: string; options: string[] } | null;
 }
 
 interface Channel {
@@ -36,8 +50,15 @@ interface Channel {
   name: string | null;
 }
 
-interface GifResult  { id: string; url: string; preview: string; }
+interface GifResult { id: string; url: string; preview: string; }
 interface CustomPack { id: string; name: string; stickers: string[]; }
+
+// reactions: { messageId -> { emoji -> userId[] } }
+type ReactionsMap = Record<string, Record<string, string[]>>;
+// poll votes: { messageId -> optionIndex }
+type PollVotesMap = Record<string, number>;
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STICKER_TABS = [
   { id: "trending", label: "🔥 Hot" },
@@ -48,8 +69,11 @@ const STICKER_TABS = [
   { id: "custom",   label: "⭐ Mine" },
 ];
 
-// GIFs and stickers are served via /api/gifs (Tenor, server-side, no CORS)
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
 const CUSTOM_PACKS_KEY = (uid: string) => `uc_sticker_packs_${uid}`;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function loadCustomPacks(uid: string): CustomPack[] {
   try {
@@ -60,6 +84,29 @@ function loadCustomPacks(uid: string): CustomPack[] {
 function saveCustomPacks(uid: string, packs: CustomPack[]) {
   try { localStorage.setItem(CUSTOM_PACKS_KEY(uid), JSON.stringify(packs)); } catch {}
 }
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function dateSeparatorLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+}
+
+function showDateSeparator(messages: Message[], i: number): boolean {
+  if (i === 0) return true;
+  const prev = new Date(messages[i - 1].created_at);
+  const cur  = new Date(messages[i].created_at);
+  return prev.toDateString() !== cur.toDateString();
+}
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
 
 function Avatar({ name, url, size = "sm" }: { name?: string; url?: string | null; size?: "sm" | "md" }) {
   const dim = size === "sm" ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm";
@@ -73,11 +120,198 @@ function Avatar({ name, url, size = "sm" }: { name?: string; url?: string | null
   );
 }
 
+// ─── Context menu ─────────────────────────────────────────────────────────────
+
+interface ContextMenuProps {
+  x: number;
+  y: number;
+  isOwn: boolean;
+  onReply: () => void;
+  onDelete: () => void;
+  onCopy: () => void;
+  onClose: () => void;
+}
+
+function ContextMenu({ x, y, isOwn, onReply, onDelete, onCopy, onClose }: ContextMenuProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  // Clamp to viewport
+  const style: React.CSSProperties = {
+    position: "fixed",
+    top: Math.min(y, window.innerHeight - 200),
+    left: Math.min(x, window.innerWidth - 160),
+    zIndex: 9999,
+  };
+
+  return (
+    <div
+      ref={ref}
+      style={style}
+      className="w-40 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl overflow-hidden py-1"
+    >
+      <button
+        onClick={() => { onReply(); onClose(); }}
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[rgb(var(--muted))] transition-colors text-left"
+      >
+        <Reply className="w-4 h-4 text-[rgb(var(--muted-fg))]" /> Reply
+      </button>
+      <button
+        onClick={() => { onCopy(); onClose(); }}
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[rgb(var(--muted))] transition-colors text-left"
+      >
+        <Copy className="w-4 h-4 text-[rgb(var(--muted-fg))]" /> Copy
+      </button>
+      {isOwn && (
+        <button
+          onClick={() => { onDelete(); onClose(); }}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-red-500/10 text-red-500 transition-colors text-left"
+        >
+          <Trash2 className="w-4 h-4" /> Delete
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Poll creator modal ───────────────────────────────────────────────────────
+
+interface PollCreatorProps {
+  onClose: () => void;
+  onSubmit: (question: string, options: string[]) => void;
+}
+
+function PollCreator({ onClose, onSubmit }: PollCreatorProps) {
+  const [question, setQuestion] = useState("");
+  const [options, setOptions] = useState(["", ""]);
+
+  const addOption = () => { if (options.length < 6) setOptions(o => [...o, ""]); };
+  const removeOption = (i: number) => { if (options.length > 2) setOptions(o => o.filter((_, idx) => idx !== i)); };
+  const updateOption = (i: number, val: string) => setOptions(o => o.map((v, idx) => idx === i ? val : v));
+
+  const canSubmit = question.trim() && options.filter(o => o.trim()).length >= 2;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full sm:max-w-md bg-[rgb(var(--card))] rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 flex flex-col gap-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold">Create Poll</h3>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+        <input
+          value={question}
+          onChange={e => setQuestion(e.target.value)}
+          placeholder="Poll question…"
+          className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[rgb(var(--primary))] placeholder:text-[rgb(var(--muted-fg))]"
+        />
+        <div className="flex flex-col gap-2">
+          {options.map((opt, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                value={opt}
+                onChange={e => updateOption(i, e.target.value)}
+                placeholder={`Option ${i + 1}`}
+                className="flex-1 bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] placeholder:text-[rgb(var(--muted-fg))]"
+              />
+              {options.length > 2 && (
+                <button onClick={() => removeOption(i)} className="p-1.5 text-[rgb(var(--muted-fg))] hover:text-red-500">
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+          {options.length < 6 && (
+            <button onClick={addOption} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-[rgb(var(--border))] text-xs text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.5)] hover:text-[rgb(var(--primary))] transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Add option
+            </button>
+          )}
+        </div>
+        <button
+          disabled={!canSubmit}
+          onClick={() => { if (canSubmit) onSubmit(question.trim(), options.filter(o => o.trim())); }}
+          className="w-full py-3 rounded-2xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-bold disabled:opacity-40 transition-opacity"
+        >
+          Create Poll
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Poll card ────────────────────────────────────────────────────────────────
+
+interface PollCardProps {
+  messageId: string;
+  pollData: { question: string; options: string[] };
+  votes: Record<string, number[]>; // optionIndex -> [userId, ...]  — but we store a flat map
+  myVote: number | undefined;
+  onVote: (messageId: string, optionIndex: number) => void;
+  isOwn: boolean;
+}
+
+function PollCard({ messageId, pollData, votes, myVote, onVote, isOwn }: PollCardProps) {
+  const totalVotes = Object.values(votes).reduce((s, arr) => s + arr.length, 0);
+
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <p className="text-sm font-bold leading-snug">{pollData.question}</p>
+      <div className="flex flex-col gap-1.5">
+        {pollData.options.map((opt, i) => {
+          const count = (votes[i] ?? []).length;
+          const pct   = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+          const voted = myVote === i;
+          return (
+            <button
+              key={i}
+              onClick={() => onVote(messageId, i)}
+              className={cn(
+                "relative w-full rounded-xl px-3 py-2 text-left text-xs font-medium overflow-hidden border transition-all",
+                voted
+                  ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]"
+                  : "border-[rgb(var(--border))] bg-[rgb(var(--muted)/0.5)] hover:bg-[rgb(var(--muted))]"
+              )}
+            >
+              {/* progress bar */}
+              <span
+                className={cn("absolute inset-y-0 left-0 rounded-xl transition-all duration-500", voted ? "bg-[rgb(var(--primary)/0.2)]" : "bg-[rgb(var(--muted))]")}
+                style={{ width: `${pct}%` }}
+              />
+              <span className="relative flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  {voted && <span className="text-[rgb(var(--primary))]">✓</span>}
+                  {opt}
+                </span>
+                <span className="opacity-60">{pct}%</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[10px] opacity-50">{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</p>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function ChatChannelPage({ params }: { params: Promise<{ channelId: string }> }) {
   const { channelId } = use(params);
-  const supabase = createClient();
+  const supabase  = createClient();
   const chatShell = useChatShell();
 
+  // ── Core state ──────────────────────────────────────────────────────────────
   const [messages, setMessages]         = useState<Message[]>([]);
   const [channel, setChannel]           = useState<Channel | null>(null);
   const [input, setInput]               = useState("");
@@ -91,59 +325,84 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [sendError, setSendError]       = useState("");
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
 
-  // @mention
+  // ── Search ──────────────────────────────────────────────────────────────────
+  const [showSearch, setShowSearch]   = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // ── Reactions ───────────────────────────────────────────────────────────────
+  const [reactions, setReactions]         = useState<ReactionsMap>({});
+  const [hoveredMsgId, setHoveredMsgId]   = useState<string | null>(null);
+  const hoverTimeoutRef                   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Polls ───────────────────────────────────────────────────────────────────
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  // pollVotes: { messageId -> optionIndex } for the current user
+  const [myPollVotes, setMyPollVotes]         = useState<PollVotesMap>({});
+  // allPollVotes: { messageId -> { optionIndex -> userId[] } }
+  const [allPollVotes, setAllPollVotes]       = useState<Record<string, Record<string, string[]>>>({});
+
+  // ── Context menu ─────────────────────────────────────────────────────────────
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; msg: Message } | null>(null);
+
+  // ── @mention ─────────────────────────────────────────────────────────────────
   const [mentionQuery,   setMentionQuery]   = useState<string | null>(null);
   const [mentionResults, setMentionResults] = useState<Array<{ id: string; full_name: string; username: string | null; avatar_url: string | null }>>([]);
   const [mentionIndex,   setMentionIndex]   = useState(0);
 
-  // GIF picker
-  const [showGifPicker, setShowGifPicker] = useState(false);
-  const [gifSearch,     setGifSearch]     = useState("");
-  const [gifResults,    setGifResults]    = useState<GifResult[]>([]);
-  const [gifLoading,    setGifLoading]    = useState(false);
-  const [gifSetupRequired, setGifSetupRequired] = useState(false);
+  // ── GIF picker ───────────────────────────────────────────────────────────────
+  const [showGifPicker,     setShowGifPicker]     = useState(false);
+  const [gifSearch,         setGifSearch]         = useState("");
+  const [gifResults,        setGifResults]        = useState<GifResult[]>([]);
+  const [gifLoading,        setGifLoading]        = useState(false);
+  const [gifSetupRequired,  setGifSetupRequired]  = useState(false);
 
-  // Sticker picker
-  const [showStickerPicker,  setShowStickerPicker]  = useState(false);
-  const [activeStickerTab,   setActiveStickerTab]   = useState("trending");
-  const [stickerResults,     setStickerResults]     = useState<GifResult[]>([]);
-  const [stickerLoading,     setStickerLoading]     = useState(false);
-  const [customPacks,        setCustomPacks]        = useState<CustomPack[]>([]);
-  const [activeCustomPack,   setActiveCustomPack]   = useState(0);
+  // ── Sticker picker ───────────────────────────────────────────────────────────
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [activeStickerTab,  setActiveStickerTab]  = useState("trending");
+  const [stickerResults,    setStickerResults]    = useState<GifResult[]>([]);
+  const [stickerLoading,    setStickerLoading]    = useState(false);
+  const [customPacks,       setCustomPacks]       = useState<CustomPack[]>([]);
+  const [activeCustomPack,  setActiveCustomPack]  = useState(0);
 
-  // Add custom pack modal
-  const [showAddPack,    setShowAddPack]    = useState(false);
-  const [newPackName,    setNewPackName]    = useState("");
-  const [newPackFiles,   setNewPackFiles]   = useState<File[]>([]);
-  const [newPackPreviews, setNewPackPreviews] = useState<string[]>([]);
-  const [packUploading,  setPackUploading]  = useState(false);
+  // ── Add custom pack modal ────────────────────────────────────────────────────
+  const [showAddPack,      setShowAddPack]      = useState(false);
+  const [newPackName,      setNewPackName]      = useState("");
+  const [newPackFiles,     setNewPackFiles]     = useState<File[]>([]);
+  const [newPackPreviews,  setNewPackPreviews]  = useState<string[]>([]);
+  const [packUploading,    setPackUploading]    = useState(false);
 
-  // Media upload
+  // ── Media upload ─────────────────────────────────────────────────────────────
   const [mediaPreview,   setMediaPreview]   = useState<{ file: File; url: string } | null>(null);
   const [mediaUploading, setMediaUploading] = useState(false);
-  const fileInputRef     = useRef<HTMLInputElement>(null);
-  const stickerFileRef   = useRef<HTMLInputElement>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const stickerFileRef  = useRef<HTMLInputElement>(null);
 
-  // Emoji — preload data in the background on mount so picker opens instantly
+  // ── Emoji ─────────────────────────────────────────────────────────────────────
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [emojiData, setEmojiData] = useState<any>(null);
-
-  useEffect(() => {
-    import("@emoji-mart/data").then(mod => setEmojiData(mod.default));
-  }, []);
+  useEffect(() => { import("@emoji-mart/data").then(mod => setEmojiData(mod.default)); }, []);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  const bottomRef       = useRef<HTMLDivElement>(null);
-  const textareaRef     = useRef<HTMLTextAreaElement>(null);
-  const typingTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const presenceRef     = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const subRef          = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const typingTimers    = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const profileCache    = useRef<Map<string, Profile>>(new Map());
-  const gifSearchRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── Refs ──────────────────────────────────────────────────────────────────────
+  const bottomRef      = useRef<HTMLDivElement>(null);
+  const textareaRef    = useRef<HTMLTextAreaElement>(null);
+  const typingTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presenceRef    = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subRef         = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const reactSubRef    = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const pollSubRef     = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingTimers   = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const profileCache   = useRef<Map<string, Profile>>(new Map());
+  const gifSearchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingStateRef = useRef(false);
 
-  // ─── Mention sound ────────────────────────────────────────────────────────
+  // ─── Derived: filtered messages ──────────────────────────────────────────────
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    : messages;
+
+  // ─── Mention sound ────────────────────────────────────────────────────────────
   const playMentionSound = () => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -160,7 +419,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     } catch {}
   };
 
-  // ─── @Mention search ──────────────────────────────────────────────────────
+  // ─── @Mention search ──────────────────────────────────────────────────────────
   const searchMentions = useCallback(async (query: string) => {
     if (query.length < 1) { setMentionResults([]); return; }
     const { data } = await supabase.from("profiles").select("id, full_name, username, avatar_url")
@@ -169,7 +428,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setMentionIndex(0);
   }, [supabase]);
 
-  // ─── Close pickers on outside click ───────────────────────────────────────
+  // ─── Close pickers on outside click ──────────────────────────────────────────
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
@@ -180,7 +439,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ─── Emoji ────────────────────────────────────────────────────────────────
+  // ─── Emoji ────────────────────────────────────────────────────────────────────
   const insertEmoji = (emoji: { native: string }) => {
     setInput(prev => prev + emoji.native);
     textareaRef.current?.focus();
@@ -188,13 +447,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   };
   const toggleEmojiPicker = () => setShowEmojiPicker(p => !p);
 
-  // ─── GIF ──────────────────────────────────────────────────────────────────
+  // ─── GIF ──────────────────────────────────────────────────────────────────────
   const fetchGifs = useCallback(async (query: string) => {
     setGifLoading(true);
     try {
-      const params = new URLSearchParams({ type: "gif", limit: "9" });
-      if (query.trim()) params.set("q", query.trim());
-      const res  = await fetch(`/api/gifs?${params}`);
+      const p = new URLSearchParams({ type: "gif", limit: "9" });
+      if (query.trim()) p.set("q", query.trim());
+      const res  = await fetch(`/api/gifs?${p}`);
       const data = await res.json();
       setGifSetupRequired(!!data.setup_required);
       setGifResults(data.results ?? []);
@@ -208,60 +467,52 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     gifSearchRef.current = setTimeout(() => fetchGifs(val), 400);
   };
 
-  // Load trending GIFs when picker opens
   useEffect(() => {
     if (showGifPicker && gifResults.length === 0) fetchGifs("");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showGifPicker]);
 
-  // ─── Stickers ─────────────────────────────────────────────────────────────
+  // ─── Stickers ─────────────────────────────────────────────────────────────────
   const fetchStickers = useCallback(async (tab: string) => {
     if (tab === "custom") return;
     setStickerLoading(true);
     try {
       const query = tab === "trending" ? "cute" : tab;
-      const params = new URLSearchParams({ type: "sticker", q: query, limit: "16" });
-      const res  = await fetch(`/api/gifs?${params}`);
+      const p = new URLSearchParams({ type: "sticker", q: query, limit: "16" });
+      const res  = await fetch(`/api/gifs?${p}`);
       const data = await res.json();
       setStickerResults(data.results ?? []);
     } catch { setStickerResults([]); }
     setStickerLoading(false);
   }, []);
 
-  // Load stickers when picker opens or tab changes
   useEffect(() => {
     if (showStickerPicker) fetchStickers(activeStickerTab);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showStickerPicker, activeStickerTab]);
 
-  // Load custom packs from localStorage when user is known
   useEffect(() => {
     if (userId) setCustomPacks(loadCustomPacks(userId));
   }, [userId]);
 
-  // ─── Custom sticker pack ──────────────────────────────────────────────────
+  // ─── Custom sticker pack ──────────────────────────────────────────────────────
   const handlePackFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).slice(0, 20);
     setNewPackFiles(files);
-    const previews = files.map(f => URL.createObjectURL(f));
-    setNewPackPreviews(previews);
+    setNewPackPreviews(files.map(f => URL.createObjectURL(f)));
   };
 
   const handleSavePack = async () => {
     if (!userId || !newPackName.trim() || newPackFiles.length === 0) return;
     setPackUploading(true);
-
     const uploaded: string[] = [];
     for (const file of newPackFiles) {
       const path = `stickers/${userId}/${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
-      const { data, error } = await supabase.storage.from("chat-media").upload(path, file, {
-        contentType: file.type, upsert: false,
-      });
+      const { data, error } = await supabase.storage.from("chat-media").upload(path, file, { contentType: file.type, upsert: false });
       if (data) {
         const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(data.path);
         uploaded.push(publicUrl);
       } else {
-        // Fall back to base64 if storage unavailable
         const b64 = await new Promise<string>(resolve => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -270,17 +521,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         uploaded.push(b64);
       }
     }
-
-    const newPack: CustomPack = {
-      id: `pack_${Date.now()}`,
-      name: newPackName.trim(),
-      stickers: uploaded,
-    };
+    const newPack: CustomPack = { id: `pack_${Date.now()}`, name: newPackName.trim(), stickers: uploaded };
     const updated = [...customPacks, newPack];
     setCustomPacks(updated);
     saveCustomPacks(userId, updated);
-
-    // Reset
     setNewPackName(""); setNewPackFiles([]); setNewPackPreviews([]);
     if (stickerFileRef.current) stickerFileRef.current.value = "";
     setShowAddPack(false);
@@ -297,13 +541,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setActiveCustomPack(0);
   };
 
-  // ─── Media upload ─────────────────────────────────────────────────────────
+  // ─── Media upload ─────────────────────────────────────────────────────────────
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setSendError("Max file size is 10 MB"); return; }
-    const url = URL.createObjectURL(file);
-    setMediaPreview({ file, url });
+    setMediaPreview({ file, url: URL.createObjectURL(file) });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -312,9 +555,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setMediaUploading(true);
     const { file } = mediaPreview;
     const path = `media/${userId}/${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
-    const { data, error } = await supabase.storage.from("chat-media").upload(path, file, {
-      contentType: file.type, upsert: false,
-    });
+    const { data, error } = await supabase.storage.from("chat-media").upload(path, file, { contentType: file.type, upsert: false });
     if (error) {
       setSendError("Failed to upload file. Make sure the 'chat-media' storage bucket exists in Supabase.");
       setMediaUploading(false);
@@ -338,7 +579,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setMediaPreview(null);
   };
 
-  // ─── Send GIF ─────────────────────────────────────────────────────────────
+  // ─── Send GIF ─────────────────────────────────────────────────────────────────
   const sendGif = async (url: string) => {
     if (!userId || sending) return;
     setSending(true); setShowGifPicker(false);
@@ -349,7 +590,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setReplyToMessage(null); setSending(false);
   };
 
-  // ─── Send sticker ─────────────────────────────────────────────────────────
+  // ─── Send sticker ─────────────────────────────────────────────────────────────
   const sendSticker = async (stickerUrl: string) => {
     if (!userId || sending) return;
     setSending(true); setShowStickerPicker(false);
@@ -360,7 +601,115 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setReplyToMessage(null); setSending(false);
   };
 
-  // ─── Auto-resize textarea ──────────────────────────────────────────────────
+  // ─── Send poll ────────────────────────────────────────────────────────────────
+  const sendPoll = async (question: string, options: string[]) => {
+    if (!userId || sending) return;
+    setSending(true); setShowPollCreator(false);
+    await (supabase as any).from("messages").insert({
+      channel_id: channelId, sender_id: userId, content: `📊 Poll: ${question}`,
+      poll_data: { question, options },
+      reply_to_id: replyToMessage?.id ?? null,
+    });
+    setReplyToMessage(null); setSending(false);
+  };
+
+  // ─── Poll vote ────────────────────────────────────────────────────────────────
+  const handlePollVote = async (messageId: string, optionIndex: number) => {
+    if (!userId) return;
+    const existing = myPollVotes[messageId];
+
+    if (existing === optionIndex) {
+      // Toggle off — delete
+      await (supabase as any).from("poll_votes").delete()
+        .eq("message_id", messageId).eq("user_id", userId);
+      setMyPollVotes(prev => { const n = { ...prev }; delete n[messageId]; return n; });
+      setAllPollVotes(prev => {
+        const n = { ...prev };
+        if (n[messageId]?.[optionIndex]) {
+          n[messageId][optionIndex] = n[messageId][optionIndex].filter(u => u !== userId);
+        }
+        return n;
+      });
+    } else {
+      // Upsert
+      await (supabase as any).from("poll_votes").upsert({ message_id: messageId, user_id: userId, option_index: optionIndex }, { onConflict: "message_id,user_id" });
+      setMyPollVotes(prev => ({ ...prev, [messageId]: optionIndex }));
+      setAllPollVotes(prev => {
+        const n = { ...prev, [messageId]: { ...(prev[messageId] ?? {}) } };
+        // Remove from old option
+        if (existing !== undefined && n[messageId][existing]) {
+          n[messageId][existing] = n[messageId][existing].filter(u => u !== userId);
+        }
+        n[messageId][optionIndex] = [...(n[messageId][optionIndex] ?? []), userId];
+        return n;
+      });
+    }
+  };
+
+  // ─── Reactions ────────────────────────────────────────────────────────────────
+  const handleReact = async (messageId: string, emoji: string) => {
+    if (!userId) return;
+    const existing = reactions[messageId]?.[emoji] ?? [];
+    const hasReacted = existing.includes(userId);
+
+    if (hasReacted) {
+      await (supabase as any).from("message_reactions").delete()
+        .eq("message_id", messageId).eq("user_id", userId).eq("emoji", emoji);
+      setReactions(prev => {
+        const n = { ...prev, [messageId]: { ...prev[messageId] } };
+        n[messageId][emoji] = (n[messageId][emoji] ?? []).filter(u => u !== userId);
+        if (n[messageId][emoji].length === 0) delete n[messageId][emoji];
+        return n;
+      });
+    } else {
+      await (supabase as any).from("message_reactions").insert({ message_id: messageId, user_id: userId, emoji });
+      setReactions(prev => ({
+        ...prev,
+        [messageId]: {
+          ...prev[messageId],
+          [emoji]: [...(prev[messageId]?.[emoji] ?? []), userId],
+        },
+      }));
+    }
+    setHoveredMsgId(null);
+  };
+
+  // ─── Load reactions for displayed messages ────────────────────────────────────
+  const loadReactions = useCallback(async (msgIds: string[]) => {
+    if (msgIds.length === 0) return;
+    const { data } = await (supabase as any).from("message_reactions")
+      .select("message_id, user_id, emoji")
+      .in("message_id", msgIds);
+    if (!data) return;
+    const map: ReactionsMap = {};
+    for (const row of data as { message_id: string; user_id: string; emoji: string }[]) {
+      if (!map[row.message_id]) map[row.message_id] = {};
+      if (!map[row.message_id][row.emoji]) map[row.message_id][row.emoji] = [];
+      map[row.message_id][row.emoji].push(row.user_id);
+    }
+    setReactions(map);
+  }, [supabase]);
+
+  // ─── Load poll votes ──────────────────────────────────────────────────────────
+  const loadPollVotes = useCallback(async (msgIds: string[]) => {
+    if (msgIds.length === 0) return;
+    const { data } = await (supabase as any).from("poll_votes")
+      .select("message_id, user_id, option_index")
+      .in("message_id", msgIds);
+    if (!data) return;
+    const myVotes: PollVotesMap = {};
+    const allVotes: Record<string, Record<string, string[]>> = {};
+    for (const row of data as { message_id: string; user_id: string; option_index: number }[]) {
+      if (!allVotes[row.message_id]) allVotes[row.message_id] = {};
+      if (!allVotes[row.message_id][row.option_index]) allVotes[row.message_id][row.option_index] = [];
+      allVotes[row.message_id][row.option_index].push(row.user_id);
+      if (row.user_id === userId) myVotes[row.message_id] = row.option_index;
+    }
+    setAllPollVotes(allVotes);
+    setMyPollVotes(myVotes);
+  }, [supabase, userId]);
+
+  // ─── Auto-resize textarea ──────────────────────────────────────────────────────
   const resizeTextarea = () => {
     const el = textareaRef.current;
     if (!el) return;
@@ -378,7 +727,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     }
   };
 
-  // ─── Initial load ─────────────────────────────────────────────────────────
+  // ─── Initial load ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -389,8 +738,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).single(),
         supabase.from("channels").select("id, type, name").eq("id", channelId).single(),
         (supabase as any).from("messages").select(`
-          id, content, created_at, sender_id,
-          sender:profiles!sender_id(full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name))
+          id, content, created_at, sender_id, gif_url, sticker_id, poll_data, reply_to_id,
+          sender:profiles!sender_id(full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name)),
+          replied_msg:messages!reply_to_id(id, content, sender:profiles!sender_id(full_name))
         `).eq("channel_id", channelId).eq("is_deleted", false).order("created_at", { ascending: true }).limit(60),
       ]);
 
@@ -399,7 +749,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       if (msgs) {
         const typed = msgs as unknown as Message[];
         setMessages(typed);
-        typed.forEach(m => { if (m.sender_id && m.sender && !profileCache.current.has(m.sender_id)) profileCache.current.set(m.sender_id, m.sender); });
+        typed.forEach(m => {
+          if (m.sender_id && m.sender && !profileCache.current.has(m.sender_id))
+            profileCache.current.set(m.sender_id, m.sender);
+        });
+        const ids = typed.map(m => m.id);
+        const pollIds = typed.filter(m => m.poll_data).map(m => m.id);
+        await Promise.all([loadReactions(ids), loadPollVotes(pollIds)]);
       }
       setLoading(false);
     };
@@ -409,19 +765,27 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
   useEffect(() => { if (!loading) scrollToBottom(false); }, [loading]);
 
-  // ─── Realtime: new messages ────────────────────────────────────────────────
+  // Scroll to first search match
+  useEffect(() => {
+    if (searchQuery && filteredMessages.length > 0) {
+      scrollToMessage(filteredMessages[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
+
+  // ─── Realtime: messages ───────────────────────────────────────────────────────
   useEffect(() => {
     const sub = supabase.channel(`chat:${channelId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `channel_id=eq.${channelId}` },
         async (payload) => {
-          const row = payload.new as { id: string; content: string; created_at: string; sender_id: string; is_deleted?: boolean; gif_url?: string; sticker_id?: string; };
+          const row = payload.new as { id: string; content: string; created_at: string; sender_id: string; is_deleted?: boolean; gif_url?: string; sticker_id?: string; poll_data?: any; reply_to_id?: string };
           if (row.is_deleted) return;
           let sender = profileCache.current.get(row.sender_id) ?? null;
           if (!sender) {
             const { data } = await supabase.from("profiles").select("full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name)").eq("id", row.sender_id).single();
             if (data) { sender = data as unknown as Profile; profileCache.current.set(row.sender_id, sender); }
           }
-          const newMsg: Message = { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, sender, gif_url: row.gif_url, sticker_id: row.sticker_id };
+          const newMsg: Message = { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, sender, gif_url: row.gif_url, sticker_id: row.sticker_id, poll_data: row.poll_data, reply_to_id: row.reply_to_id };
           if (myName && row.sender_id !== userId && row.content?.toLowerCase().includes(`@${myName.split(" ")[0].toLowerCase()}`)) playMentionSound();
           setMessages(prev => { if (prev.some(m => m.id === row.id)) return prev; return [...prev, newMsg]; });
           setTimeout(() => scrollToBottom(), 80);
@@ -448,7 +812,57 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
-  // ─── Presence ─────────────────────────────────────────────────────────────
+  // ─── Realtime: reactions ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const ids = messages.map(m => m.id);
+    const reactSub = supabase.channel(`reactions:${channelId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "message_reactions" },
+        (payload) => {
+          const row = payload.new as { message_id: string; user_id: string; emoji: string };
+          if (!ids.includes(row.message_id)) return;
+          setReactions(prev => ({
+            ...prev,
+            [row.message_id]: {
+              ...prev[row.message_id],
+              [row.emoji]: [...(prev[row.message_id]?.[row.emoji] ?? []), row.user_id],
+            },
+          }));
+        }
+      )
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "message_reactions" },
+        (payload) => {
+          const row = payload.old as { message_id: string; user_id: string; emoji: string };
+          setReactions(prev => {
+            if (!prev[row.message_id]) return prev;
+            const n = { ...prev, [row.message_id]: { ...prev[row.message_id] } };
+            n[row.message_id][row.emoji] = (n[row.message_id][row.emoji] ?? []).filter(u => u !== row.user_id);
+            if (n[row.message_id][row.emoji].length === 0) delete n[row.message_id][row.emoji];
+            return n;
+          });
+        }
+      )
+      .subscribe();
+    reactSubRef.current = reactSub;
+    return () => { supabase.removeChannel(reactSub); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length > 0, channelId]);
+
+  // ─── Realtime: poll votes ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const pollMsgIds = messages.filter(m => m.poll_data).map(m => m.id);
+    if (pollMsgIds.length === 0) return;
+    const pollSub = supabase.channel(`polls:${channelId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" },
+        async () => { await loadPollVotes(pollMsgIds); }
+      )
+      .subscribe();
+    pollSubRef.current = pollSub;
+    return () => { supabase.removeChannel(pollSub); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.filter(m => m.poll_data).length, channelId]);
+
+  // ─── Presence ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!userId || !myName) return;
     const presenceChan = supabase.channel(`presence:${channelId}`, { config: { presence: { key: userId } } });
@@ -463,15 +877,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId, userId, myName]);
 
-  // ─── Typing broadcast ─────────────────────────────────────────────────────
-  const typingStateRef = useRef(false);
+  // ─── Typing broadcast ─────────────────────────────────────────────────────────
   const broadcastTyping = (isTyping: boolean) => {
     if (!userId || !myName || !subRef.current) return;
     typingStateRef.current = isTyping;
     subRef.current.send({ type: "broadcast", event: "typing", payload: { userId, name: myName, typing: isTyping } });
   };
 
-  // ─── @Mention insert ──────────────────────────────────────────────────────
+  // ─── @Mention insert ──────────────────────────────────────────────────────────
   const insertMention = (name: string) => {
     const at = input.lastIndexOf("@");
     if (at === -1) return;
@@ -480,7 +893,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     textareaRef.current?.focus(); resizeTextarea();
   };
 
-  // ─── Input change ─────────────────────────────────────────────────────────
+  // ─── Input change ─────────────────────────────────────────────────────────────
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setInput(val); resizeTextarea();
@@ -498,7 +911,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     }
   };
 
-  // ─── Send text ────────────────────────────────────────────────────────────
+  // ─── Send text ────────────────────────────────────────────────────────────────
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const content = input.trim();
@@ -515,7 +928,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     if (error) { setSendError(error.message); }
     else if (inserted) {
       const selfProfile = profileCache.current.get(userId) ?? { full_name: myName, avatar_url: myAvatar, username: null, branch: null, universities: null };
-      setMessages(prev => { if (prev.some(m => m.id === inserted.id)) return prev; return [...prev, { id: inserted.id, content: inserted.content ?? content, created_at: inserted.created_at, sender_id: inserted.sender_id, sender: selfProfile as Profile }]; });
+      setMessages(prev => {
+        if (prev.some(m => m.id === inserted.id)) return prev;
+        return [...prev, { id: inserted.id, content: inserted.content ?? content, created_at: inserted.created_at, sender_id: inserted.sender_id, sender: selfProfile as Profile }];
+      });
       setTimeout(() => scrollToBottom(), 50);
     }
     setSending(false); textareaRef.current?.focus();
@@ -536,9 +952,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const showHeader = (i: number) => {
+  // Is this message the first in a visual group (new sender or >5 min gap)
+  const showGroupHeader = (i: number, msgs: Message[]) => {
     if (i === 0) return true;
-    const prev = messages[i - 1]; const cur = messages[i];
+    const prev = msgs[i - 1]; const cur = msgs[i];
     if (prev.sender_id !== cur.sender_id) return true;
     return new Date(cur.created_at).getTime() - new Date(prev.created_at).getTime() > 5 * 60 * 1000;
   };
@@ -547,136 +964,332 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     ? <Globe className="w-4 h-4 text-[rgb(var(--primary))]" />
     : <Building2 className="w-4 h-4 text-[rgb(var(--primary))]" />;
 
+  // ─── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Header */}
+      {/* Poll creator modal */}
+      {showPollCreator && (
+        <PollCreator onClose={() => setShowPollCreator(false)} onSubmit={sendPoll} />
+      )}
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          isOwn={ctxMenu.msg.sender_id === userId}
+          onReply={() => setReplyToMessage(ctxMenu.msg)}
+          onDelete={() => handleDelete(ctxMenu.msg.id)}
+          onCopy={() => navigator.clipboard?.writeText(ctxMenu.msg.content)}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="h-14 flex items-center gap-3 px-4 border-b border-[rgb(var(--border))] bg-[rgb(var(--card)/0.6)] backdrop-blur-sm flex-shrink-0">
         {chatShell && (
-          <button onClick={chatShell.openChannels} className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors flex-shrink-0" aria-label="Open channels">
+          <button
+            onClick={chatShell.openChannels}
+            className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-[rgb(var(--muted))] transition-colors flex-shrink-0"
+            aria-label="Open channels"
+          >
             <Menu className="w-5 h-5" />
           </button>
         )}
         {channelIcon}
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold leading-tight truncate">{channel?.name ?? "Loading…"}</h2>
-          <p className="text-xs text-[rgb(var(--muted-fg))]">{onlineCount > 0 ? `${onlineCount} online` : ""}</p>
-        </div>
+
+        {showSearch ? (
+          /* Search bar replaces title */
+          <div className="flex-1 flex items-center gap-2 bg-[rgb(var(--muted))] rounded-xl px-3 py-1.5">
+            <Search className="w-4 h-4 text-[rgb(var(--muted-fg))] flex-shrink-0" />
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search messages…"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-[rgb(var(--muted-fg))]"
+            />
+            {searchQuery && (
+              <span className="text-[10px] text-[rgb(var(--muted-fg))]">
+                {filteredMessages.length} result{filteredMessages.length !== 1 ? "s" : ""}
+              </span>
+            )}
+            <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm font-semibold leading-tight truncate">{channel?.name ?? "Loading…"}</h2>
+              <p className="text-xs text-[rgb(var(--muted-fg))]">{onlineCount > 0 ? `${onlineCount} online` : ""}</p>
+            </div>
+            <button
+              onClick={() => setShowSearch(true)}
+              className="p-2 rounded-xl hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors flex-shrink-0"
+              title="Search messages"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </>
+        )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      {/* ── Messages ────────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
         {loading && (
-          <div className="space-y-4 animate-pulse">
+          <div className="space-y-4 animate-pulse px-2">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-[rgb(var(--muted))]" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-24 rounded bg-[rgb(var(--muted))]" />
-                  <div className="h-3 w-48 rounded bg-[rgb(var(--muted))]" />
-                </div>
+              <div key={i} className={cn("flex gap-3", i % 2 === 0 ? "justify-start" : "justify-end")}>
+                {i % 2 === 0 && <div className="w-8 h-8 rounded-full bg-[rgb(var(--muted))]" />}
+                <div className={cn("rounded-2xl h-10 bg-[rgb(var(--muted))]", i % 2 === 0 ? "w-48" : "w-36")} />
               </div>
             ))}
           </div>
         )}
+
         {!loading && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-[rgb(var(--muted-fg))]">
             <MessageCircle className="w-10 h-10 opacity-30" />
             <p className="text-sm">Be the first to say something!</p>
           </div>
         )}
-        {messages.map((msg, i) => (
-          <div key={msg.id} id={`msg-${msg.id}`} className={cn("flex gap-3 group transition-colors", showHeader(i) ? "mt-4 first:mt-0" : "mt-0.5")}>
-            {showHeader(i) ? (
-              <UserHoverCard userId={msg.sender_id} name={msg.sender?.full_name ?? "Unknown"} avatarUrl={msg.sender?.avatar_url} uniShort={(msg.sender?.universities as any)?.short_name} myId={userId}>
-                <button className="flex-shrink-0"><Avatar name={msg.sender?.full_name} url={msg.sender?.avatar_url} /></button>
-              </UserHoverCard>
-            ) : (
-              <div className="w-8 flex-shrink-0 flex items-center justify-center">
-                <span className="text-[10px] text-[rgb(var(--muted-fg))] opacity-0 group-hover:opacity-100 transition-opacity">
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              {showHeader(i) && (
-                <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mb-0.5">
-                  <UserHoverCard userId={msg.sender_id} name={msg.sender?.full_name ?? "Unknown"} avatarUrl={msg.sender?.avatar_url} uniShort={(msg.sender?.universities as any)?.short_name} myId={userId}>
-                    <span className={cn("text-sm font-semibold leading-tight cursor-pointer hover:underline", msg.sender_id === userId ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--fg))]")}>
-                      {msg.sender_id === userId ? "You" : (msg.sender?.full_name ?? "Unknown")}
-                    </span>
-                  </UserHoverCard>
-                  {msg.sender?.universities && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] leading-tight">{(msg.sender.universities as any).short_name}</span>}
-                  {msg.sender?.branch && <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] leading-tight">{(msg.sender.branch as any).name}</span>}
-                  <span className="text-xs text-[rgb(var(--muted-fg))]">{formatRelativeTime(msg.created_at)}</span>
+
+        {filteredMessages.map((msg, i) => {
+          const isOwn        = msg.sender_id === userId;
+          const groupHeader  = showGroupHeader(i, filteredMessages);
+          const isHighlighted = searchQuery.trim() && msg.content.toLowerCase().includes(searchQuery.toLowerCase());
+          const msgReactions  = reactions[msg.id] ?? {};
+          const hasReactions  = Object.keys(msgReactions).length > 0;
+
+          return (
+            <div key={msg.id}>
+              {/* Date separator */}
+              {showDateSeparator(filteredMessages, i) && (
+                <div className="flex items-center gap-3 my-3">
+                  <div className="flex-1 h-px bg-[rgb(var(--border))]" />
+                  <span className="text-[10px] font-semibold text-[rgb(var(--muted-fg))] px-2 py-0.5 rounded-full bg-[rgb(var(--muted))]">
+                    {dateSeparatorLabel(msg.created_at)}
+                  </span>
+                  <div className="flex-1 h-px bg-[rgb(var(--border))]" />
                 </div>
               )}
-              {msg.reply_to_id && (
-                <button onClick={() => scrollToMessage(msg.reply_to_id!)} className="mb-1 pl-3 border-l-2 border-[rgb(var(--primary)/0.4)] text-[10px] text-[rgb(var(--muted-fg))] truncate hover:text-[rgb(var(--primary))] transition-colors block text-left">
-                  ↩ Click to view original message
-                </button>
-              )}
-              {/* Message body */}
-              {msg.sticker_id ? (
-                msg.sticker_id.startsWith("http") || msg.sticker_id.startsWith("data:") ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={msg.sticker_id} alt="sticker" loading="lazy" className="w-28 h-28 object-contain rounded-xl" />
-                ) : (
-                  <span className="text-5xl">{msg.sticker_id}</span>
-                )
-              ) : msg.gif_url ? (
-                msg.content === "📎 Photo" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.gif_url!, "_blank")} />
-                ) : msg.content === "🎥 Video" ? (
-                  <video src={msg.gif_url} controls className="max-w-xs max-h-64 rounded-xl" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={msg.gif_url} alt="GIF" loading="lazy" className="max-w-[240px] max-h-[180px] rounded-xl object-cover" />
-                )
-              ) : (
-                <p className="text-sm text-[rgb(var(--fg))] leading-relaxed whitespace-pre-wrap break-words">
-                  {msg.content.split(/(@\S+)/g).map((part, pi) =>
-                    part.startsWith("@") ? (
-                      <span key={pi} className={cn("font-semibold px-1 rounded", myName && part.slice(1).toLowerCase() === myName.split(" ")[0].toLowerCase() ? "bg-[rgb(var(--primary)/0.2)] text-[rgb(var(--primary))]" : "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]")}>
-                        {part}
-                      </span>
-                    ) : part
+
+              {/* Message row */}
+              <div
+                id={`msg-${msg.id}`}
+                className={cn(
+                  "flex items-end gap-2 transition-colors",
+                  isOwn ? "flex-row-reverse" : "flex-row",
+                  groupHeader ? "mt-3" : "mt-0.5",
+                  isHighlighted && "bg-yellow-400/10 rounded-2xl px-1"
+                )}
+                onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, msg }); }}
+              >
+                {/* Avatar (others only, first in group) */}
+                {!isOwn && (
+                  <div className="w-8 flex-shrink-0 self-end mb-1">
+                    {groupHeader ? (
+                      <UserHoverCard userId={msg.sender_id} name={msg.sender?.full_name ?? "Unknown"} avatarUrl={msg.sender?.avatar_url} uniShort={(msg.sender?.universities as any)?.short_name} myId={userId}>
+                        <button><Avatar name={msg.sender?.full_name} url={msg.sender?.avatar_url} /></button>
+                      </UserHoverCard>
+                    ) : (
+                      <div className="w-8" />
+                    )}
+                  </div>
+                )}
+
+                {/* Bubble + reactions column */}
+                <div className={cn("flex flex-col gap-1", isOwn ? "items-end" : "items-start", "max-w-[72%] sm:max-w-[60%]")}>
+
+                  {/* Sender name (others only, first in group) */}
+                  {!isOwn && groupHeader && (
+                    <div className="flex items-center gap-1.5 px-1">
+                      <UserHoverCard userId={msg.sender_id} name={msg.sender?.full_name ?? "Unknown"} avatarUrl={msg.sender?.avatar_url} uniShort={(msg.sender?.universities as any)?.short_name} myId={userId}>
+                        <span className="text-xs font-semibold text-[rgb(var(--primary))] cursor-pointer hover:underline">
+                          {msg.sender?.full_name ?? "Unknown"}
+                        </span>
+                      </UserHoverCard>
+                      {msg.sender?.universities && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))] leading-tight">
+                          {(msg.sender.universities as any).short_name}
+                        </span>
+                      )}
+                    </div>
                   )}
-                </p>
-              )}
+
+                  {/* Reaction bar (hover) */}
+                  <div
+                    className="relative"
+                    onMouseEnter={() => {
+                      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                      setHoveredMsgId(msg.id);
+                    }}
+                    onMouseLeave={() => {
+                      hoverTimeoutRef.current = setTimeout(() => setHoveredMsgId(null), 300);
+                    }}
+                  >
+                    {hoveredMsgId === msg.id && (
+                      <div className={cn(
+                        "absolute -top-10 z-20 flex items-center gap-0.5 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-full shadow-lg px-2 py-1",
+                        isOwn ? "right-0" : "left-0"
+                      )}>
+                        {QUICK_REACTIONS.map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleReact(msg.id, emoji)}
+                            className="text-lg leading-none hover:scale-125 transition-transform px-0.5"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* The bubble */}
+                    <div
+                      className={cn(
+                        "relative px-3 py-2 rounded-2xl shadow-sm",
+                        isOwn
+                          ? "bg-[rgb(var(--primary)/0.85)] text-[rgb(var(--primary-fg))] rounded-tr-sm"
+                          : "bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] rounded-tl-sm"
+                      )}
+                    >
+                      {/* Reply preview inside bubble */}
+                      {msg.reply_to_id && (
+                        <button
+                          onClick={() => scrollToMessage(msg.reply_to_id!)}
+                          className={cn(
+                            "flex flex-col mb-2 pl-2 border-l-2 text-left w-full",
+                            isOwn ? "border-white/50" : "border-[rgb(var(--primary))]"
+                          )}
+                        >
+                          <span className={cn("text-[10px] font-semibold leading-tight", isOwn ? "opacity-80" : "text-[rgb(var(--primary))]")}>
+                            {msg.replied_msg?.sender?.full_name ?? "Message"}
+                          </span>
+                          <span className={cn("text-[11px] truncate max-w-[180px]", isOwn ? "opacity-70" : "opacity-60")}>
+                            {msg.replied_msg?.content
+                              ? msg.replied_msg.content.slice(0, 60) + (msg.replied_msg.content.length > 60 ? "…" : "")
+                              : "Original message"}
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Poll card */}
+                      {msg.poll_data ? (
+                        <PollCard
+                          messageId={msg.id}
+                          pollData={msg.poll_data}
+                          votes={allPollVotes[msg.id] ?? {}}
+                          myVote={myPollVotes[msg.id]}
+                          onVote={handlePollVote}
+                          isOwn={isOwn}
+                        />
+                      ) : msg.sticker_id ? (
+                        msg.sticker_id.startsWith("http") || msg.sticker_id.startsWith("data:") ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={msg.sticker_id} alt="sticker" loading="lazy" className="w-28 h-28 object-contain rounded-xl" />
+                        ) : (
+                          <span className="text-5xl">{msg.sticker_id}</span>
+                        )
+                      ) : msg.gif_url ? (
+                        msg.content === "📎 Photo" ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.gif_url!, "_blank")} />
+                        ) : msg.content === "🎥 Video" ? (
+                          <video src={msg.gif_url} controls className="max-w-xs max-h-64 rounded-xl" />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={msg.gif_url} alt="GIF" loading="lazy" className="max-w-[240px] max-h-[180px] rounded-xl object-cover" />
+                        )
+                      ) : (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {msg.content.split(/(@\S+)/g).map((part, pi) =>
+                            part.startsWith("@") ? (
+                              <span
+                                key={pi}
+                                className={cn(
+                                  "font-semibold px-1 rounded",
+                                  myName && part.slice(1).toLowerCase() === myName.split(" ")[0].toLowerCase()
+                                    ? isOwn ? "bg-white/20" : "bg-[rgb(var(--primary)/0.2)] text-[rgb(var(--primary))]"
+                                    : isOwn ? "opacity-80" : "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]"
+                                )}
+                              >
+                                {part}
+                              </span>
+                            ) : part
+                          )}
+                        </p>
+                      )}
+
+                      {/* Timestamp + checkmark */}
+                      <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-end")}>
+                        <span className="text-[10px] opacity-60">{formatTime(msg.created_at)}</span>
+                        {isOwn && <span className="text-[10px] opacity-60">✓</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reaction pills below bubble */}
+                  {hasReactions && (
+                    <div className={cn("flex flex-wrap gap-1 px-1", isOwn ? "justify-end" : "justify-start")}>
+                      {Object.entries(msgReactions)
+                        .filter(([, users]) => users.length > 0)
+                        .map(([emoji, users]) => {
+                          const iMine = userId ? users.includes(userId) : false;
+                          return (
+                            <button
+                              key={emoji}
+                              onClick={() => handleReact(msg.id, emoji)}
+                              className={cn(
+                                "flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs border transition-all",
+                                iMine
+                                  ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]"
+                                  : "border-[rgb(var(--border))] bg-[rgb(var(--muted))] text-[rgb(var(--fg))]"
+                              )}
+                            >
+                              <span>{emoji}</span>
+                              <span className="font-semibold">{users.length}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex items-start gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all self-start mt-0.5">
-              <button onClick={() => setReplyToMessage(msg)} className="p-1.5 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]" title="Reply"><Reply className="w-3.5 h-3.5" /></button>
-              {msg.sender_id === userId && <button onClick={() => handleDelete(msg.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-[rgb(var(--muted-fg))]" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>}
-            </div>
-          </div>
-        ))}
+          );
+        })}
+
         {typingNames.length > 0 && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-[rgb(var(--muted-fg))]">
-            <div className="flex gap-0.5 items-end">
-              {[0, 150, 300].map(delay => <span key={delay} className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--muted-fg))] animate-bounce" style={{ animationDelay: `${delay}ms` }} />)}
+          <div className="flex items-center gap-2 pl-12 mt-2 text-xs text-[rgb(var(--muted-fg))]">
+            <div className="flex gap-0.5 items-end bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl rounded-tl-sm px-3 py-2">
+              {[0, 150, 300].map(delay => (
+                <span key={delay} className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--muted-fg))] animate-bounce" style={{ animationDelay: `${delay}ms` }} />
+              ))}
             </div>
             <span>{formatTypingNames(typingNames)}</span>
           </div>
         )}
-        <div ref={bottomRef} className="h-1" />
+
+        <div ref={bottomRef} className="h-2" />
       </div>
 
-      {/* ── Input area ────────────────────────────────────────────────────────── */}
+      {/* ── Input area ──────────────────────────────────────────────────────── */}
       <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))] relative">
 
         {/* Hidden file inputs */}
         <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
         <input ref={stickerFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePackFileSelect} />
 
-        {/* ── Emoji picker ──────────────────────────────────────────────────── */}
+        {/* Emoji picker */}
         {showEmojiPicker && emojiData && (
           <div ref={emojiPickerRef} className="absolute bottom-full right-3 mb-2 z-50">
             <EmojiPicker data={emojiData} onEmojiSelect={insertEmoji} theme="auto" previewPosition="none" skinTonePosition="none" />
           </div>
         )}
 
-        {/* ── GIF picker ────────────────────────────────────────────────────── */}
+        {/* GIF picker */}
         {showGifPicker && (
           <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl z-40 overflow-hidden">
             <div className="flex items-center gap-2 p-3 border-b border-[rgb(var(--border))]">
@@ -720,20 +1333,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         )}
 
-        {/* ── Sticker picker ────────────────────────────────────────────────── */}
+        {/* Sticker picker */}
         {showStickerPicker && (
           <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl z-40 overflow-hidden">
-
-            {/* Add custom pack modal (overlay inside sticker picker) */}
             {showAddPack && (
               <div className="absolute inset-0 bg-[rgb(var(--card))] z-10 rounded-2xl flex flex-col">
-                {/* Header */}
                 <div className="flex items-center justify-between px-4 pt-4 pb-3 flex-shrink-0">
                   <p className="font-semibold text-sm">New Sticker Pack</p>
                   <button onClick={() => { setShowAddPack(false); setNewPackFiles([]); setNewPackPreviews([]); setNewPackName(""); }} className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"><XIcon className="w-4 h-4" /></button>
                 </div>
-
-                {/* Scrollable middle */}
                 <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-3 min-h-0">
                   <input
                     value={newPackName}
@@ -757,8 +1365,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                     </div>
                   )}
                 </div>
-
-                {/* Save button — always visible at bottom */}
                 <div className="px-4 py-3 flex-shrink-0 border-t border-[rgb(var(--border))]">
                   <button
                     onClick={handleSavePack}
@@ -771,7 +1377,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               </div>
             )}
 
-            {/* Sticker tab bar */}
             <div className="flex items-center gap-0.5 px-2 pt-2 border-b border-[rgb(var(--border))] overflow-x-auto scrollbar-none">
               {STICKER_TABS.map(tab => (
                 <button key={tab.id} onClick={() => setActiveStickerTab(tab.id)}
@@ -784,7 +1389,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             </div>
 
             <div className="p-3">
-              {/* Custom tab */}
               {activeStickerTab === "custom" ? (
                 <div>
                   {customPacks.length === 0 ? (
@@ -796,7 +1400,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                     </div>
                   ) : (
                     <>
-                      {/* Pack selector */}
                       <div className="flex items-center gap-1 mb-3 overflow-x-auto scrollbar-none">
                         {customPacks.map((pack, i) => (
                           <button key={pack.id} onClick={() => setActiveCustomPack(i)}
@@ -807,7 +1410,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                         ))}
                         <button onClick={() => setShowAddPack(true)} className="flex-shrink-0 p-1 rounded-lg text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--primary))]" title="Add pack"><Plus className="w-3.5 h-3.5" /></button>
                       </div>
-                      {/* Custom stickers grid */}
                       {customPacks[activeCustomPack] && (
                         <>
                           <div className="grid grid-cols-5 gap-1.5">
@@ -827,7 +1429,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                   )}
                 </div>
               ) : (
-                /* Giphy stickers grid */
                 stickerLoading ? (
                   <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-[rgb(var(--muted-fg))]" /></div>
                 ) : stickerResults.length === 0 ? (
@@ -847,7 +1448,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         )}
 
-        {/* ── @Mention dropdown ─────────────────────────────────────────────── */}
+        {/* @Mention dropdown */}
         {mentionQuery !== null && mentionResults.length > 0 && (
           <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl overflow-hidden shadow-xl z-40">
             {mentionResults.map((u, i) => (
@@ -865,7 +1466,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         )}
 
-        {/* ── Media preview ─────────────────────────────────────────────────── */}
+        {/* Media preview */}
         {mediaPreview && (
           <div className="mb-2 p-2 bg-[rgb(var(--muted))] rounded-xl flex items-center gap-3">
             {mediaPreview.file.type.startsWith("video/") ? (
@@ -886,9 +1487,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         )}
 
-        {/* ── Reply preview ─────────────────────────────────────────────────── */}
+        {/* Reply preview */}
         {replyToMessage && (
-          <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-[rgb(var(--muted))] rounded-xl text-xs">
+          <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-[rgb(var(--muted))] rounded-xl text-xs border-l-2 border-[rgb(var(--primary))]">
             <Reply className="w-3.5 h-3.5 text-[rgb(var(--primary))] flex-shrink-0" />
             <span className="text-[rgb(var(--muted-fg))] truncate flex-1">
               Replying to <strong>{replyToMessage.sender?.full_name ?? "Unknown"}</strong>: {replyToMessage.content.slice(0, 60)}
@@ -900,7 +1501,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         {sendError && <p className="text-xs text-[rgb(var(--destructive))] mb-2 px-1">{sendError}</p>}
 
         <form onSubmit={handleSend}>
-          <div className={cn("flex items-end gap-2 rounded-2xl border px-3 py-2.5 transition-all duration-200", "bg-[rgb(var(--input))] border-[rgb(var(--border))]", "focus-within:border-[rgb(var(--primary)/0.4)] focus-within:ring-1 focus-within:ring-[rgb(var(--ring)/0.3)]")}>
+          <div className={cn(
+            "flex items-end gap-2 rounded-2xl border px-3 py-2.5 transition-all duration-200",
+            "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
+            "focus-within:border-[rgb(var(--primary)/0.4)] focus-within:ring-1 focus-within:ring-[rgb(var(--ring)/0.3)]"
+          )}>
             {/* Media upload */}
             <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-shrink-0 mb-0.5 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors" title="Send photo or video">
               <Paperclip className="w-4 h-4" />
@@ -916,6 +1521,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               className="flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] resize-none focus:outline-none leading-relaxed"
               style={{ minHeight: "1.5rem", maxHeight: "8rem" }}
             />
+
+            {/* Poll */}
+            <button
+              type="button"
+              onClick={() => { setShowPollCreator(true); setShowGifPicker(false); setShowStickerPicker(false); setShowEmojiPicker(false); }}
+              className="flex-shrink-0 mb-0.5 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
+              title="Create poll"
+            >
+              <BarChart2 className="w-4 h-4" />
+            </button>
 
             {/* GIF */}
             <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowStickerPicker(false); setShowEmojiPicker(false); }}
