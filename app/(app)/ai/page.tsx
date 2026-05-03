@@ -139,7 +139,7 @@ function AIChat() {
         setLimitReached(true);
         setMessages(prev => prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: "Daily limit reached (50 messages). Come back tomorrow!", streaming: false }
+            ? { ...m, content: "Daily limit reached (3 messages). Come back tomorrow!", streaming: false }
             : m
         ));
         setLoading(false);
@@ -337,7 +337,7 @@ function AIChat() {
       <div className="px-4 sm:px-6 py-3 border-t border-[rgb(var(--border))] flex-shrink-0">
         {limitReached ? (
           <div className="text-center text-sm text-[rgb(var(--muted-fg))] py-2">
-            Daily limit of 50 messages reached. Resets at midnight.
+            Daily limit of 3 messages reached. Resets at midnight.
           </div>
         ) : (
           <div className={cn(
@@ -376,7 +376,7 @@ function AIChat() {
             ? usage.unlimited
               ? "Unlimited messages"
               : `${usage.used}/${usage.limit} used · ${usage.remaining} remaining`
-            : "50 messages/day"}
+            : "3 messages/day"}
           {" "}· Enter to send
         </p>
       </div>
