@@ -171,7 +171,6 @@ export default function CVsPage() {
           .from("cvs")
           .select(`*, profile:profiles!user_id(full_name, avatar_url, department, year_of_study, university:universities!university_id(id, name, short_name))`)
           .in("visibility", userRole === "employer" || userRole === "admin" ? ["public", "employers_only"] : ["public"])
-          .neq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(120),
         supabase.from("universities").select("id, name, short_name").order("short_name"),
