@@ -6,10 +6,32 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "uc_perms_asked";
 
+type PermResult = "idle" | "granted" | "blocked" | "unavailable";
+
 interface PermState {
-  camera: "idle" | "granted" | "denied";
-  mic: "idle" | "granted" | "denied";
-  notifications: "idle" | "granted" | "denied";
+  camera: PermResult;
+  mic: PermResult;
+  notifications: PermResult;
+}
+
+// Returns "blocked" only when the user explicitly denied in the browser dialog.
+// Returns "unavailable" for missing hardware, non-HTTPS, or other errors.
+function classifyError(err: unknown): "blocked" | "unavailable" {
+  if (err instanceof DOMException) {
+    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") return "blocked";
+  }
+  return "unavailable";
+}
+
+async function askMedia(constraints: MediaStreamConstraints): Promise<PermResult> {
+  if (!navigator.mediaDevices?.getUserMedia) return "unavailable";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    stream.getTracks().forEach(t => t.stop());
+    return "granted";
+  } catch (err) {
+    return classifyError(err);
+  }
 }
 
 export function PermissionsModal() {
@@ -32,35 +54,33 @@ export function PermissionsModal() {
   };
 
   const requestCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(t => t.stop());
-      setPerms(p => ({ ...p, camera: "granted" }));
-    } catch {
-      setPerms(p => ({ ...p, camera: "denied" }));
-    }
+    const result = await askMedia({ video: true });
+    setPerms(p => ({ ...p, camera: result }));
   };
 
   const requestMic = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
-      setPerms(p => ({ ...p, mic: "granted" }));
-    } catch {
-      setPerms(p => ({ ...p, mic: "denied" }));
-    }
+    const result = await askMedia({ audio: true });
+    setPerms(p => ({ ...p, mic: result }));
   };
 
   const requestNotifications = async () => {
+    if (!("Notification" in window)) {
+      setPerms(p => ({ ...p, notifications: "unavailable" }));
+      return;
+    }
     try {
       const result = await Notification.requestPermission();
-      setPerms(p => ({ ...p, notifications: result === "granted" ? "granted" : "denied" }));
+      setPerms(p => ({
+        ...p,
+        notifications: result === "granted" ? "granted" : result === "denied" ? "blocked" : "unavailable",
+      }));
     } catch {
-      setPerms(p => ({ ...p, notifications: "denied" }));
+      setPerms(p => ({ ...p, notifications: "unavailable" }));
     }
   };
 
-  const allDone = perms.camera !== "idle" && perms.mic !== "idle" && perms.notifications !== "idle";
+  const allAnswered = perms.camera !== "idle" && perms.mic !== "idle" && perms.notifications !== "idle";
+  const allGranted  = perms.camera === "granted" && perms.mic === "granted" && perms.notifications === "granted";
 
   if (!visible) return null;
 
@@ -91,6 +111,38 @@ export function PermissionsModal() {
     },
   ];
 
+  function StatusBadge({ state, onRetry }: { state: PermResult; onRetry: () => void }) {
+    if (state === "idle") {
+      return (
+        <button
+          onClick={onRetry}
+          className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold transition-opacity hover:opacity-90"
+        >
+          Allow
+        </button>
+      );
+    }
+    if (state === "granted") {
+      return <span className="flex-shrink-0 text-xs font-semibold text-green-500">✓ Allowed</span>;
+    }
+    if (state === "blocked") {
+      return (
+        <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+          <span className="text-[11px] font-semibold text-red-400">Blocked</span>
+          <span className="text-[10px] text-[rgb(var(--muted-fg))] text-right leading-tight">
+            Allow in browser<br />site settings
+          </span>
+        </div>
+      );
+    }
+    // unavailable
+    return (
+      <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+        <span className="text-[11px] font-semibold text-[rgb(var(--muted-fg))]">Not available</span>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="w-full max-w-sm bg-[rgb(var(--card))] rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 flex flex-col gap-5">
@@ -111,33 +163,19 @@ export function PermissionsModal() {
         </div>
 
         {/* Permission rows */}
-        <div className="flex flex-col gap-3">
-          {items.map(({ key, icon: Icon, bg, label, desc, onAllow }) => {
-            const state = perms[key];
-            return (
-              <div key={key} className="flex items-center gap-3">
-                <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0", bg)}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold leading-tight">{label}</p>
-                  <p className="text-[11px] text-[rgb(var(--muted-fg))] leading-snug">{desc}</p>
-                </div>
-                {state === "idle" ? (
-                  <button
-                    onClick={onAllow}
-                    className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold transition-opacity hover:opacity-90"
-                  >
-                    Allow
-                  </button>
-                ) : state === "granted" ? (
-                  <span className="flex-shrink-0 text-xs font-semibold text-green-500">✓ Allowed</span>
-                ) : (
-                  <span className="flex-shrink-0 text-xs font-semibold text-[rgb(var(--muted-fg))]">Denied</span>
-                )}
+        <div className="flex flex-col gap-4">
+          {items.map(({ key, icon: Icon, bg, label, desc, onAllow }) => (
+            <div key={key} className="flex items-center gap-3">
+              <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0", bg)}>
+                <Icon className="w-5 h-5 text-white" />
               </div>
-            );
-          })}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold leading-tight">{label}</p>
+                <p className="text-[11px] text-[rgb(var(--muted-fg))] leading-snug">{desc}</p>
+              </div>
+              <StatusBadge state={perms[key]} onRetry={onAllow} />
+            </div>
+          ))}
         </div>
 
         {/* Done button */}
@@ -145,12 +183,14 @@ export function PermissionsModal() {
           onClick={dismiss}
           className={cn(
             "w-full py-3 rounded-2xl text-sm font-bold transition-all",
-            allDone
+            allGranted
               ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]"
-              : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
+              : allAnswered
+                ? "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]"
+                : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
           )}
         >
-          {allDone ? "Done" : "Skip for now"}
+          {allGranted ? "Done" : "Skip for now"}
         </button>
       </div>
     </div>
