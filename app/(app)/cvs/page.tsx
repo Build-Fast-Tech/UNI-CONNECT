@@ -221,8 +221,8 @@ export default function CVsPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
         className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold mb-1">CVs</h1>
-          <p className="text-[rgb(var(--muted-fg))]">Upload your CV and browse student profiles.</p>
+          <h1 className="text-3xl font-bold mb-1">CV Center</h1>
+          <p className="text-[rgb(var(--muted-fg))]">Browse student CVs from across Pakistani universities.</p>
         </div>
         {role === "student" && (
           <Link
@@ -235,73 +235,7 @@ export default function CVsPage() {
         )}
       </motion.div>
 
-      {/* ── My CVs ── */}
-      {role === "student" && myCvs.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">
-              My CVs <span className="text-sm font-normal text-[rgb(var(--muted-fg))]">{myCvs.length}</span>
-            </h2>
-            <Link href="/cvs/upload"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[rgb(var(--border))] text-sm hover:bg-[rgb(var(--muted))] transition-colors">
-              <Plus className="w-3.5 h-3.5" /> Add another
-            </Link>
-          </div>
-
-          {myCvs.map((cv, i) => {
-            const vis = VIS_LABELS[cv.visibility] ?? VIS_LABELS.private;
-            return (
-              <motion.div key={cv.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                className="theme-card p-5 flex items-center gap-4 flex-wrap sm:flex-nowrap">
-                <div className="w-11 h-11 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
-                  <FileUser className="w-5 h-5 text-[rgb(var(--primary))]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{cv.headline || "My Resume"}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", vis.color)}>{vis.label}</span>
-                    <span className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1">
-                      <Eye className="w-3 h-3" /> {cv.views} views
-                    </span>
-                    {cv.availability && AVAILABILITY_LABELS[cv.availability] && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">{AVAILABILITY_LABELS[cv.availability]}</span>
-                    )}
-                    <span className="text-xs text-[rgb(var(--muted-fg))]">
-                      {new Date(cv.created_at).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}
-                    </span>
-                  </div>
-                  {cv.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {cv.skills.slice(0, 5).map(s => (
-                        <span key={s} className="text-[10px] px-2 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">{s}</span>
-                      ))}
-                      {cv.skills.length > 5 && <span className="text-[10px] px-2 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">+{cv.skills.length - 5}</span>}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {cv.file_url && (
-                    <a href={cv.file_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity">
-                      <Download className="w-4 h-4" />
-                    </a>
-                  )}
-                  <Link href={`/cvs/upload?id=${cv.id}`}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-[rgb(var(--border))] hover:bg-[rgb(var(--muted))] transition-colors">
-                    <Pencil className="w-3.5 h-3.5" /> Edit
-                  </Link>
-                  <button onClick={() => deleteCv(cv.id)} disabled={deleting === cv.id}
-                    className="p-2 rounded-xl text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* ── Browse all CVs ── */}
+      {/* ── Browse all CVs (shown first) ── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
           <h2 className="text-lg font-bold shrink-0">
@@ -371,6 +305,72 @@ export default function CVsPage() {
           </div>
         )}
       </motion.div>
+
+      {/* ── My CVs (below the center) ── */}
+      {role === "student" && myCvs.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold">
+              My CVs <span className="text-sm font-normal text-[rgb(var(--muted-fg))]">{myCvs.length}</span>
+            </h2>
+            <Link href="/cvs/upload"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[rgb(var(--border))] text-sm hover:bg-[rgb(var(--muted))] transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Add another
+            </Link>
+          </div>
+
+          {myCvs.map((cv, i) => {
+            const vis = VIS_LABELS[cv.visibility] ?? VIS_LABELS.private;
+            return (
+              <motion.div key={cv.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                className="theme-card p-5 flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                <div className="w-11 h-11 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
+                  <FileUser className="w-5 h-5 text-[rgb(var(--primary))]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{cv.headline || "My Resume"}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", vis.color)}>{vis.label}</span>
+                    <span className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1">
+                      <Eye className="w-3 h-3" /> {cv.views} views
+                    </span>
+                    {cv.availability && AVAILABILITY_LABELS[cv.availability] && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">{AVAILABILITY_LABELS[cv.availability]}</span>
+                    )}
+                    <span className="text-xs text-[rgb(var(--muted-fg))]">
+                      {new Date(cv.created_at).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                  {cv.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {cv.skills.slice(0, 5).map(s => (
+                        <span key={s} className="text-[10px] px-2 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">{s}</span>
+                      ))}
+                      {cv.skills.length > 5 && <span className="text-[10px] px-2 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]">+{cv.skills.length - 5}</span>}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {cv.file_url && (
+                    <a href={cv.file_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity">
+                      <Download className="w-4 h-4" />
+                    </a>
+                  )}
+                  <Link href={`/cvs/upload?id=${cv.id}`}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-[rgb(var(--border))] hover:bg-[rgb(var(--muted))] transition-colors">
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </Link>
+                  <button onClick={() => deleteCv(cv.id)} disabled={deleting === cv.id}
+                    className="p-2 rounded-xl text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
     </div>
   );
 }
