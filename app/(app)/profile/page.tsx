@@ -54,20 +54,16 @@ export default function MyProfilePage() {
         setPortfolio(data.portfolio_url || "");
         setAvatarPreview(data.avatar_url || "");
 
-        const fetches: Promise<any>[] = [];
-        if (data.university_id) {
-          fetches.push(
-            supabase.from("universities").select("*").eq("id", data.university_id).single()
-              .then(({ data: uni }) => setUniversity(uni))
-          );
-        }
-        if (data.branch_id) {
-          fetches.push(
-            supabase.from("branches").select("*").eq("id", data.branch_id).single()
-              .then(({ data: br }) => setBranch(br))
-          );
-        }
-        await Promise.all(fetches);
+        await Promise.all([
+          data.university_id
+            ? Promise.resolve(supabase.from("universities").select("*").eq("id", data.university_id).single())
+                .then(({ data: uni }) => setUniversity(uni))
+            : Promise.resolve(),
+          data.branch_id
+            ? Promise.resolve(supabase.from("branches").select("*").eq("id", data.branch_id).single())
+                .then(({ data: br }) => setBranch(br))
+            : Promise.resolve(),
+        ]);
       }
       setLoadingDone(true);
     })();
