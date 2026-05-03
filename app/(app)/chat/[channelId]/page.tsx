@@ -382,6 +382,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const attachMenuRef   = useRef<HTMLDivElement>(null);
 
+  // Voice recording
+  const [isRecording,   setIsRecording]   = useState(false);
+  const [recordSecs,    setRecordSecs]    = useState(0);
+  const [audioBlob,     setAudioBlob]     = useState<Blob | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const [voiceSending,  setVoiceSending]  = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chunksRef        = useRef<Blob[]>([]);
+
   // ── Emoji ─────────────────────────────────────────────────────────────────────
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -460,6 +470,67 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  // ─── Voice recording ──────────────────────────────────────────────────────────
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg" });
+      chunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
+        setAudioBlob(blob);
+        setAudioPreviewUrl(URL.createObjectURL(blob));
+        setIsRecording(false);
+        if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      };
+      mr.start(100);
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+      setRecordSecs(0);
+      recordTimerRef.current = setInterval(() => setRecordSecs(s => s + 1), 1000);
+    } catch {
+      setSendError("Microphone access denied.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    chunksRef.current = [];
+    setIsRecording(false); setRecordSecs(0);
+    setAudioBlob(null);
+    if (audioPreviewUrl) { URL.revokeObjectURL(audioPreviewUrl); setAudioPreviewUrl(null); }
+  };
+
+  const sendVoiceNote = async () => {
+    if (!audioBlob || !userId || voiceSending) return;
+    setVoiceSending(true);
+    const ext = audioBlob.type.includes("webm") ? "webm" : "ogg";
+    const path = `voice/${userId}/${Date.now()}.${ext}`;
+    const { data, error } = await supabase.storage.from("chat-media").upload(path, audioBlob, { contentType: audioBlob.type, upsert: false });
+    if (error) { setSendError("Failed to upload voice note."); setVoiceSending(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(data.path);
+    await (supabase as any).from("messages").insert({
+      channel_id: channelId, sender_id: userId, content: "🎤 Voice note",
+      gif_url: publicUrl, reply_to_id: replyToMessage?.id ?? null,
+    });
+    setReplyToMessage(null);
+    if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+    setAudioBlob(null); setAudioPreviewUrl(null); setRecordSecs(0);
+    setVoiceSending(false);
+  };
 
   // ─── GIF ──────────────────────────────────────────────────────────────────────
   const fetchGifs = useCallback(async (query: string) => {
@@ -1207,7 +1278,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                           <span className="text-5xl">{msg.sticker_id}</span>
                         )
                       ) : msg.gif_url ? (
-                        msg.content === "📎 Photo" ? (
+                        msg.content === "🎤 Voice note" ? (
+                          <div className="flex items-center gap-2 py-1">
+                            <Mic className="w-4 h-4 opacity-70 flex-shrink-0" />
+                            <audio src={msg.gif_url} controls className="h-8" style={{ maxWidth: "220px" }} />
+                          </div>
+                        ) : msg.content === "📎 Photo" ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.gif_url!, "_blank")} />
                         ) : msg.content === "🎥 Video" ? (
@@ -1543,6 +1619,22 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           </div>
         )}
 
+        {/* ── Voice note preview ─────────────────────────────────────────────── */}
+        {audioPreviewUrl && !isRecording && (
+          <div className="flex items-center gap-3 mb-2 px-3 py-2 bg-[rgb(var(--muted))] rounded-xl">
+            <audio src={audioPreviewUrl} controls className="h-8 flex-1 min-w-0" style={{ maxWidth: "100%" }} />
+            <span className="text-xs text-[rgb(var(--muted-fg))] flex-shrink-0">{recordSecs}s</span>
+            <button onClick={sendVoiceNote} disabled={voiceSending}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold disabled:opacity-50 flex-shrink-0">
+              {voiceSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {voiceSending ? "Sending…" : "Send"}
+            </button>
+            <button onClick={cancelRecording} className="p-1.5 rounded-lg hover:bg-[rgb(var(--border))] text-[rgb(var(--muted-fg))] flex-shrink-0">
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSend}>
           <div className="flex items-end gap-2">
             {/* + attach button */}
@@ -1557,45 +1649,66 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               <Plus className={cn("w-5 h-5 transition-transform duration-200", showAttachMenu && "rotate-45")} />
             </button>
 
-            {/* Input bubble */}
-            <div className={cn(
-              "flex-1 flex items-end gap-2 rounded-2xl border px-3 py-2 transition-all duration-200",
-              "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
-              "focus-within:border-[rgb(var(--primary)/0.4)]"
-            )}>
-              {/* Emoji */}
-              <button type="button"
-                onClick={() => { toggleEmojiPicker(); setShowGifPicker(false); setShowStickerPicker(false); setShowAttachMenu(false); }}
-                className={cn("flex-shrink-0 mb-0.5 transition-colors", showEmojiPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))]")}>
-                <Smile className="w-5 h-5" />
+            {/* Input bubble — hidden while recording */}
+            {isRecording ? (
+              <div className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-red-500/10 border border-red-500/30">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                <span className="text-sm font-mono text-red-400 flex-1">
+                  {String(Math.floor(recordSecs / 60)).padStart(2, "0")}:{String(recordSecs % 60).padStart(2, "0")}
+                </span>
+                <span className="text-xs text-red-400/70">Recording…</span>
+                <button type="button" onClick={cancelRecording}
+                  className="text-xs text-[rgb(var(--muted-fg))] hover:text-red-400 transition-colors px-2">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className={cn(
+                "flex-1 flex items-end gap-2 rounded-2xl border px-3 py-2 transition-all duration-200",
+                "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
+                "focus-within:border-[rgb(var(--primary)/0.4)]"
+              )}>
+                {/* Emoji */}
+                <button type="button"
+                  onClick={() => { toggleEmojiPicker(); setShowGifPicker(false); setShowStickerPicker(false); setShowAttachMenu(false); }}
+                  className={cn("flex-shrink-0 mb-0.5 transition-colors", showEmojiPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))]")}>
+                  <Smile className="w-5 h-5" />
+                </button>
+
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Message ${channel?.name ?? "…"}`}
+                  rows={1}
+                  className="flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] resize-none focus:outline-none leading-relaxed"
+                  style={{ minHeight: "1.5rem", maxHeight: "8rem" }}
+                />
+
+                {/* Sticker */}
+                <button type="button"
+                  onClick={() => { setShowStickerPicker(p => !p); setShowGifPicker(false); setShowEmojiPicker(false); setShowAttachMenu(false); }}
+                  className={cn("flex-shrink-0 mb-0.5 transition-colors", showStickerPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))]")}>
+                  <Sticker className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Send / Stop-recording / Mic */}
+            {isRecording ? (
+              <button type="button" onClick={stopRecording}
+                className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center flex-shrink-0 hover:bg-red-600 transition-colors">
+                <Send className="w-4 h-4" />
               </button>
-
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={`Message ${channel?.name ?? "…"}`}
-                rows={1}
-                className="flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] resize-none focus:outline-none leading-relaxed"
-                style={{ minHeight: "1.5rem", maxHeight: "8rem" }}
-              />
-
-              {/* Sticker */}
-              <button type="button"
-                onClick={() => { setShowStickerPicker(p => !p); setShowGifPicker(false); setShowEmojiPicker(false); setShowAttachMenu(false); }}
-                className={cn("flex-shrink-0 mb-0.5 transition-colors", showStickerPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))]")}>
-                <Sticker className="w-5 h-5" />
+            ) : (
+              <button type={input.trim() ? "submit" : "button"}
+                onClick={!input.trim() ? startRecording : undefined}
+                disabled={sending || !!audioPreviewUrl}
+                className="w-10 h-10 rounded-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-50">
+                {input.trim() ? <Send className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </button>
-            </div>
-
-            {/* Send / Mic */}
-            <button type={input.trim() ? "submit" : "button"} disabled={sending}
-              className="w-10 h-10 rounded-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-50">
-              {input.trim()
-                ? <Send className="w-4 h-4" />
-                : <Mic className="w-4 h-4" />}
-            </button>
+            )}
           </div>
         </form>
       </div>
