@@ -255,7 +255,7 @@ function PollCreator({ onClose, onSubmit }: PollCreatorProps) {
 interface PollCardProps {
   messageId: string;
   pollData: { question: string; options: string[] };
-  votes: Record<string, number[]>; // optionIndex -> [userId, ...]  — but we store a flat map
+  votes: Record<string, string[]>; // optionIndex (as string key) -> userId[]
   myVote: number | undefined;
   onVote: (messageId: string, optionIndex: number) => void;
   isOwn: boolean;
