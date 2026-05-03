@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     const { data: canSend } = await supabase.rpc("can_send_ai_message", { uid: user.id });
     if (canSend === false) {
-      return new Response("Daily limit reached (50 messages/day)", { status: 429 });
+      return new Response("Daily limit reached (3 messages/day)", { status: 429 });
     }
 
     let body: {

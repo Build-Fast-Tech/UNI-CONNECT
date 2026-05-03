@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-const DAILY_LIMIT = 50;
+const DAILY_LIMIT = 3;
 
 export async function GET() {
   const supabase = await createClient();
