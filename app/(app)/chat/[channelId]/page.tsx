@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
-  Send, Paperclip, Globe, Building2, MessageCircle, Smile,
+  Send, Globe, Building2, MessageCircle, Smile,
   Menu, Trash2, Reply, X as XIcon, Plus, Sticker, Loader2,
   Search, BarChart2, Copy, ChevronDown,
+  FileText, ImageIcon, Camera, Music, Mic,
 } from "lucide-react";
 import { filterProfanity } from "@/lib/utils/profanity";
 import { createClient } from "@/lib/supabase/client";
@@ -375,7 +376,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [mediaPreview,   setMediaPreview]   = useState<{ file: File; url: string } | null>(null);
   const [mediaUploading, setMediaUploading] = useState(false);
   const fileInputRef    = useRef<HTMLInputElement>(null);
+  const docFileRef      = useRef<HTMLInputElement>(null);
+  const audioFileRef    = useRef<HTMLInputElement>(null);
   const stickerFileRef  = useRef<HTMLInputElement>(null);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const attachMenuRef   = useRef<HTMLDivElement>(null);
 
   // ── Emoji ─────────────────────────────────────────────────────────────────────
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -445,7 +450,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     textareaRef.current?.focus();
     resizeTextarea();
   };
-  const toggleEmojiPicker = () => setShowEmojiPicker(p => !p);
+  const toggleEmojiPicker = () => { setShowEmojiPicker(p => !p); setShowAttachMenu(false); };
+
+  // ─── Attach-menu outside click ────────────────────────────────────────────────
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) setShowAttachMenu(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
   // ─── GIF ──────────────────────────────────────────────────────────────────────
   const fetchGifs = useCallback(async (query: string) => {
@@ -1279,7 +1293,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))] relative">
 
         {/* Hidden file inputs */}
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
+        <input ref={fileInputRef}   type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
         <input ref={stickerFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePackFileSelect} />
 
         {/* Emoji picker */}
@@ -1500,70 +1514,89 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
         {sendError && <p className="text-xs text-[rgb(var(--destructive))] mb-2 px-1">{sendError}</p>}
 
+        {/* Hidden file inputs */}
+        <input ref={docFileRef}   type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={handleFileSelect} />
+        <input ref={audioFileRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
+
+        {/* ── WhatsApp-style attachment menu ─────────────────────────────────── */}
+        {showAttachMenu && (
+          <div ref={attachMenuRef}
+            className="absolute bottom-full left-2 mb-3 z-50 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl overflow-hidden w-52 py-1">
+            {[
+              { label: "Document",        icon: FileText,   color: "#7F66FF", action: () => docFileRef.current?.click() },
+              { label: "Photos & videos", icon: ImageIcon,  color: "#EB3D44", action: () => fileInputRef.current?.click() },
+              { label: "Camera",          icon: Camera,     color: "#AA66EE", action: () => { const i = fileInputRef.current; if (i) { i.setAttribute("capture","environment"); i.click(); setTimeout(() => i.removeAttribute("capture"), 500); } } },
+              { label: "Audio",           icon: Music,      color: "#EF6034", action: () => audioFileRef.current?.click() },
+              { label: "Poll",            icon: BarChart2,  color: "#0288D1", action: () => { setShowPollCreator(true); setShowGifPicker(false); setShowStickerPicker(false); } },
+              { label: "Sticker",         icon: Sticker,    color: "#00A884", action: () => { setShowStickerPicker(p => !p); setShowGifPicker(false); } },
+              { label: "GIF",             icon: Smile,      color: "#FF6B35", action: () => { setShowGifPicker(p => !p); setShowStickerPicker(false); } },
+            ].map(({ label, icon: Icon, color, action }) => (
+              <button key={label} type="button"
+                onClick={() => { action(); setShowAttachMenu(false); }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-[rgb(var(--muted))] transition-colors text-left">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color }}>
+                  <Icon className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-sm font-medium text-[rgb(var(--fg))]">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <form onSubmit={handleSend}>
-          <div className={cn(
-            "flex items-end gap-2 rounded-2xl border px-3 py-2.5 transition-all duration-200",
-            "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
-            "focus-within:border-[rgb(var(--primary)/0.4)] focus-within:ring-1 focus-within:ring-[rgb(var(--ring)/0.3)]"
-          )}>
-            {/* Media upload */}
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-shrink-0 mb-0.5 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors" title="Send photo or video">
-              <Paperclip className="w-4 h-4" />
+          <div className="flex items-end gap-2">
+            {/* + attach button */}
+            <button type="button"
+              onClick={() => { setShowAttachMenu(p => !p); setShowEmojiPicker(false); setShowGifPicker(false); setShowStickerPicker(false); }}
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
+                showAttachMenu
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))]"
+                  : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--border))]"
+              )}>
+              <Plus className={cn("w-5 h-5 transition-transform duration-200", showAttachMenu && "rotate-45")} />
             </button>
 
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder={`Message ${channel?.name ?? "…"}`}
-              rows={1}
-              className="flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] resize-none focus:outline-none leading-relaxed"
-              style={{ minHeight: "1.5rem", maxHeight: "8rem" }}
-            />
+            {/* Input bubble */}
+            <div className={cn(
+              "flex-1 flex items-end gap-2 rounded-2xl border px-3 py-2 transition-all duration-200",
+              "bg-[rgb(var(--input))] border-[rgb(var(--border))]",
+              "focus-within:border-[rgb(var(--primary)/0.4)]"
+            )}>
+              {/* Emoji */}
+              <button type="button"
+                onClick={() => { toggleEmojiPicker(); setShowGifPicker(false); setShowStickerPicker(false); setShowAttachMenu(false); }}
+                className={cn("flex-shrink-0 mb-0.5 transition-colors", showEmojiPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))]")}>
+                <Smile className="w-5 h-5" />
+              </button>
 
-            {/* Poll */}
-            <button
-              type="button"
-              onClick={() => { setShowPollCreator(true); setShowGifPicker(false); setShowStickerPicker(false); setShowEmojiPicker(false); }}
-              className="flex-shrink-0 mb-0.5 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors"
-              title="Create poll"
-            >
-              <BarChart2 className="w-4 h-4" />
-            </button>
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder={`Message ${channel?.name ?? "…"}`}
+                rows={1}
+                className="flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] resize-none focus:outline-none leading-relaxed"
+                style={{ minHeight: "1.5rem", maxHeight: "8rem" }}
+              />
 
-            {/* GIF */}
-            <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowStickerPicker(false); setShowEmojiPicker(false); }}
-              className={cn("flex-shrink-0 mb-0.5 px-1.5 py-0.5 rounded-lg text-xs font-bold transition-colors",
-                showGifPicker ? "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.1)]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}>
-              GIF
-            </button>
+              {/* Sticker */}
+              <button type="button"
+                onClick={() => { setShowStickerPicker(p => !p); setShowGifPicker(false); setShowEmojiPicker(false); setShowAttachMenu(false); }}
+                className={cn("flex-shrink-0 mb-0.5 transition-colors", showStickerPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))]")}>
+                <Sticker className="w-5 h-5" />
+              </button>
+            </div>
 
-            {/* Stickers */}
-            <button type="button" onClick={() => { setShowStickerPicker(p => !p); setShowGifPicker(false); setShowEmojiPicker(false); }}
-              className={cn("flex-shrink-0 mb-0.5 transition-colors",
-                showStickerPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}
-              title="Stickers">
-              <Sticker className="w-4 h-4" />
-            </button>
-
-            {/* Emoji */}
-            <button type="button" onClick={() => { toggleEmojiPicker(); setShowGifPicker(false); setShowStickerPicker(false); }}
-              className={cn("flex-shrink-0 mb-0.5 transition-colors", showEmojiPicker ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]")}>
-              <Smile className="w-4 h-4" />
-            </button>
-
-            {/* Send */}
-            <button type="submit" disabled={!input.trim() || sending}
-              className={cn("flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
-                input.trim() ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90" : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed")}>
-              <Send className="w-3.5 h-3.5" />
+            {/* Send / Mic */}
+            <button type={input.trim() ? "submit" : "button"} disabled={sending}
+              className="w-10 h-10 rounded-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-50">
+              {input.trim()
+                ? <Send className="w-4 h-4" />
+                : <Mic className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] text-[rgb(var(--muted-fg))] mt-1.5 px-1">
-            Press <kbd className="px-1 py-0.5 rounded bg-[rgb(var(--muted))] font-mono text-[9px]">Enter</kbd> to send,{" "}
-            <kbd className="px-1 py-0.5 rounded bg-[rgb(var(--muted))] font-mono text-[9px]">Shift+Enter</kbd> for new line
-          </p>
         </form>
       </div>
     </>
