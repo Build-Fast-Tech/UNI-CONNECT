@@ -642,19 +642,42 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   };
 
   // ─── Media upload ─────────────────────────────────────────────────────────────
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setSendError("Max file size is 10 MB"); return; }
-    setMediaPreview({ file, url: URL.createObjectURL(file) });
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  const makeFileHandler = (kind: "photo" | "audio" | "doc") =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+
+      // Enforce type per kind
+      if (kind === "photo" && !file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+        setSendError("Only image or video files allowed here."); return;
+      }
+      if (kind === "audio" && !file.type.startsWith("audio/")) {
+        setSendError("Only audio files allowed here."); return;
+      }
+      if (kind === "doc" && (file.type.startsWith("image/") || file.type.startsWith("audio/") || file.type.startsWith("video/"))) {
+        setSendError("Use Photos or Audio attachment for media files."); return;
+      }
+
+      if (file.size > 20 * 1024 * 1024) { setSendError("Max file size is 20 MB"); return; }
+      setMediaPreview({ file, url: URL.createObjectURL(file) });
+    };
+
+  const handlePhotoSelect = makeFileHandler("photo");
+  const handleAudioSelect = makeFileHandler("audio");
+  const handleDocSelect   = makeFileHandler("doc");
 
   const sendMedia = async () => {
     if (!mediaPreview || !userId || mediaUploading) return;
     setMediaUploading(true);
     const { file } = mediaPreview;
-    const path = `media/${userId}/${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+
+    // Upload to the correct subfolder based on file type
+    let folder = "media";
+    if (file.type.startsWith("audio/")) folder = "audio";
+    else if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) folder = "docs";
+
+    const path = `${folder}/${userId}/${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
     const { data, error } = await supabase.storage.from("chat-media").upload(path, file, { contentType: file.type, upsert: false });
     if (error) {
       setSendError("Failed to upload file. Make sure the 'chat-media' storage bucket exists in Supabase.");
@@ -662,10 +685,19 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       return;
     }
     const { data: { publicUrl } } = supabase.storage.from("chat-media").getPublicUrl(data.path);
-    const isVideo = file.type.startsWith("video/");
+
+    let content = "📎 File";
+    if (file.type.startsWith("image/"))  content = "📷 Photo";
+    else if (file.type.startsWith("video/")) content = "🎥 Video";
+    else if (file.type.startsWith("audio/")) content = "🎵 Audio";
+    else if (file.name.match(/\.pdf$/i)) content = "📄 PDF";
+    else if (file.name.match(/\.(doc|docx)$/i)) content = "📝 Document";
+    else if (file.name.match(/\.(ppt|pptx)$/i)) content = "📊 Presentation";
+    else if (file.name.match(/\.(xls|xlsx)$/i)) content = "📊 Spreadsheet";
+
     await (supabase as any).from("messages").insert({
       channel_id: channelId, sender_id: userId,
-      content: isVideo ? "🎥 Video" : "📎 Photo",
+      content,
       gif_url: publicUrl,
       reply_to_id: replyToMessage?.id ?? null,
     });
@@ -1384,7 +1416,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       <div className="p-3 flex-shrink-0 border-t border-[rgb(var(--border))] relative">
 
         {/* Hidden file inputs */}
-        <input ref={fileInputRef}   type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
+        <input ref={fileInputRef}   type="file" accept="image/*,video/*" className="hidden" onChange={handlePhotoSelect} />
         <input ref={stickerFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePackFileSelect} />
 
         {/* Emoji picker */}
@@ -1606,8 +1638,8 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         {sendError && <p className="text-xs text-[rgb(var(--destructive))] mb-2 px-1">{sendError}</p>}
 
         {/* Hidden file inputs */}
-        <input ref={docFileRef}   type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={handleFileSelect} />
-        <input ref={audioFileRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
+        <input ref={docFileRef}   type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={handleDocSelect} />
+        <input ref={audioFileRef} type="file" accept="audio/*" className="hidden" onChange={handleAudioSelect} />
 
         {/* ── WhatsApp-style attachment menu ─────────────────────────────────── */}
         {showAttachMenu && (
