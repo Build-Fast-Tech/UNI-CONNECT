@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import {
   FileUser, Plus, Download, Eye, GraduationCap, MapPin, Briefcase,
@@ -9,6 +10,8 @@ import {
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+const PdfPreviewModal = dynamic(() => import("@/app/(app)/notes/PdfPreviewModal"), { ssr: false });
 
 interface CV {
   id: string;
@@ -154,6 +157,7 @@ export default function CVsPage() {
   const [search, setSearch]       = useState("");
   const [uniFilter, setUniFilter] = useState("");
   const [deleting, setDeleting]   = useState<string | null>(null);
+  const [previewCv, setPreviewCv] = useState<CV | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -300,7 +304,7 @@ export default function CVsPage() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPublic.map((cv, i) => <CvCard key={cv.id} cv={cv} index={i} />)}
+            {filteredPublic.map((cv, i) => <CvCard key={cv.id} cv={cv} index={i} onView={setPreviewCv} />)}
           </div>
         )}
       </motion.div>
@@ -351,10 +355,11 @@ export default function CVsPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {cv.file_url && (
-                    <a href={cv.file_url} target="_blank" rel="noopener noreferrer"
+                    <button
+                      onClick={() => setPreviewCv(cv)}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity">
-                      <Download className="w-4 h-4" />
-                    </a>
+                      <Eye className="w-4 h-4" /> View
+                    </button>
                   )}
                   <Link href={`/cvs/upload?id=${cv.id}`}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-[rgb(var(--border))] hover:bg-[rgb(var(--muted))] transition-colors">
@@ -370,13 +375,21 @@ export default function CVsPage() {
           })}
         </motion.div>
       )}
+
+      {/* PDF preview modal */}
+      {previewCv?.file_url && (
+        <PdfPreviewModal
+          note={{ title: previewCv.headline || previewCv.profile?.full_name || "CV", file_url: previewCv.file_url, file_type: "application/pdf" }}
+          onClose={() => setPreviewCv(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ── CV card ───────────────────────────────────────────────────────────────────
 
-function CvCard({ cv, index }: { cv: CV; index: number }) {
+function CvCard({ cv, index, onView }: { cv: CV; index: number; onView: (cv: CV) => void }) {
   const supabase = createClient();
   const profile  = cv.profile;
   const initials = profile?.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) ?? "?";
@@ -426,15 +439,15 @@ function CvCard({ cv, index }: { cv: CV; index: number }) {
               <Eye className="w-3 h-3" />{cv.views}
             </span>
             {cv.file_url && (
-              <a
-                href={cv.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={async () => { await supabase.from("cvs").update({ views: cv.views + 1 }).eq("id", cv.id); }}
-                className="flex items-center gap-1 text-xs text-[rgb(var(--primary))] hover:underline"
+              <button
+                onClick={async () => {
+                  await supabase.from("cvs").update({ views: cv.views + 1 }).eq("id", cv.id);
+                  onView(cv);
+                }}
+                className="flex items-center gap-1 text-xs text-[rgb(var(--primary))] hover:underline font-medium"
               >
-                <Download className="w-3.5 h-3.5" /> Download
-              </a>
+                <Eye className="w-3.5 h-3.5" /> View
+              </button>
             )}
           </div>
         </div>
