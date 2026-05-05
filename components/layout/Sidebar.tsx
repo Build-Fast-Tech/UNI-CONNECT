@@ -8,7 +8,7 @@ import {
   Home, MessageSquare, Briefcase, BookOpen, Bot, Users,
   CalendarDays, GraduationCap, FileUser, ChevronDown, ChevronRight,
   Settings, X, ShieldCheck, User, MessageSquarePlus, Info,
-  Timer, BarChart3, TrendingUp, Building, Inbox, Code2,
+  Timer, BarChart3, TrendingUp, Building, Inbox, Code2, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -41,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: "/notes",        icon: BookOpen,      label: "Library" },
+  { href: "/entry-test",  icon: ClipboardList, label: "Entry Test Prep", isNew: true },
   { href: "/study",        icon: Timer,         label: "Study Center" },
   {
     href: "#",             icon: BarChart3,     label: "GPA & Analytics",
