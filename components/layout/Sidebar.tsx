@@ -138,9 +138,7 @@ function SidebarContent({
                   <item.icon className="w-5 h-5 flex-shrink-0" />
                   <span className="flex-1 text-left">{item.label}</span>
                   {item.showBadge && unreadCount > 0 && (
-                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
                   )}
                   {isOpen
                     ? <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-60" />
@@ -206,10 +204,8 @@ function SidebarContent({
               )}
               <item.icon className={cn("w-5 h-5 flex-shrink-0 relative z-10", active && "text-[rgb(var(--primary))]")} />
               <span className="relative z-10 flex-1">{item.label}</span>
-              {badge !== null && (
-                <span className="relative z-10 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {badge > 99 ? "99+" : badge}
-                </span>
+              {badge !== null && badge > 0 && (
+                <span className="relative z-10 w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
               )}
               {item.isNew && !badge && (
                 <span className="relative z-10 px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase flex-shrink-0">
