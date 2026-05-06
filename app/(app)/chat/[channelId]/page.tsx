@@ -917,7 +917,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
             const { data } = await supabase.from("profiles").select("full_name, avatar_url, username, branch:branches!branch_id(name), universities!university_id(short_name)").eq("id", row.sender_id).single();
             if (data) { sender = data as unknown as Profile; profileCache.current.set(row.sender_id, sender); }
           }
-          const newMsg: Message = { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, sender, gif_url: row.gif_url, sticker_id: row.sticker_id, poll_data: row.poll_data, reply_to_id: row.reply_to_id };
+          // Fetch the replied-to message if present (realtime payload has no joins)
+          let replied_msg: ReplyPreview | null = null;
+          if (row.reply_to_id) {
+            const { data: rm } = await (supabase as any).from("messages")
+              .select("id, content, sender:profiles!sender_id(full_name)")
+              .eq("id", row.reply_to_id)
+              .single();
+            if (rm) replied_msg = rm as ReplyPreview;
+          }
+          const newMsg: Message = { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, sender, gif_url: row.gif_url, sticker_id: row.sticker_id, poll_data: row.poll_data, reply_to_id: row.reply_to_id, replied_msg };
           if (myName && row.sender_id !== userId && row.content?.toLowerCase().includes(`@${myName.split(" ")[0].toLowerCase()}`)) playMentionSound();
           setMessages(prev => { if (prev.some(m => m.id === row.id)) return prev; return [...prev, newMsg]; });
           setTimeout(() => scrollToBottom(), 80);
