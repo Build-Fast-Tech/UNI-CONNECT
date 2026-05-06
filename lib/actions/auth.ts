@@ -18,7 +18,16 @@ export async function signUpAction(data: {
     }
 
     const supabase = await createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (await headers()).get("origin") ?? "";
+    // Prefer the explicit env var; fall back to the request origin.
+    // Never use localhost in production — Supabase will reject the redirect.
+    const origin = (await headers()).get("origin") ?? "";
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (origin.startsWith("http://localhost") ? "" : origin);
+
+    const redirectTo = siteUrl
+      ? `${siteUrl}/auth/callback?next=/onboarding`
+      : undefined; // let Supabase use its configured Site URL as fallback
 
     const { error } = await supabase.auth.signUp({
       email: data.email,
@@ -28,7 +37,7 @@ export async function signUpAction(data: {
           full_name: data.fullName,
           ...(data.username ? { username: data.username.toLowerCase() } : {}),
         },
-        emailRedirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
+        ...(redirectTo ? { emailRedirectTo: redirectTo } : {}),
       },
     });
 
