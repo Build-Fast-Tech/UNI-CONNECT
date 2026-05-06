@@ -28,7 +28,7 @@ export async function signUpAction(data: {
           full_name: data.fullName,
           ...(data.username ? { username: data.username.toLowerCase() } : {}),
         },
-        emailRedirectTo: `${siteUrl}/auth/callback?next=/feed`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
       },
     });
 
