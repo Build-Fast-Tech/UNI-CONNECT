@@ -18,7 +18,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("uniconnect-theme") as ThemeId | null;
+    // Drop the legacy v1 key (used "midnight" as default) so users land on Linen.
+    localStorage.removeItem("uniconnect-theme");
+    document.cookie = "uniconnect-theme=; path=/; max-age=0";
+    const stored = localStorage.getItem("uniconnect-theme-v2") as ThemeId | null;
     if (stored) setThemeState(stored);
     setMounted(true);
   }, []);
@@ -26,9 +29,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("uniconnect-theme", theme);
+    localStorage.setItem("uniconnect-theme-v2", theme);
     // Also set cookie for SSR
-    document.cookie = `uniconnect-theme=${theme}; path=/; max-age=31536000`;
+    document.cookie = `uniconnect-theme-v2=${theme}; path=/; max-age=31536000`;
   }, [theme, mounted]);
 
   const setTheme = (t: ThemeId) => setThemeState(t);
