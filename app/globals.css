@@ -1,8 +1,26 @@
 @import "tailwindcss";
 
 /* ─── Theme Variables ─────────────────────────────────────────── */
-:root[data-theme="midnight"],
-:root {
+:root,
+:root[data-theme="linen"] {
+  --bg: 248 245 238;
+  --fg: 26 26 26;
+  --muted: 237 231 218;
+  --muted-fg: 92 88 80;
+  --primary: 107 122 90;
+  --primary-fg: 248 245 238;
+  --accent: 199 184 230;
+  --accent-fg: 26 26 26;
+  --border: 26 26 26 / 0.10;
+  --card: 253 250 244;
+  --card-border: 26 26 26 / 0.08;
+  --input: 240 234 222;
+  --ring: 107 122 90;
+  --destructive: 192 60 60;
+  --success: 87 128 76;
+}
+
+:root[data-theme="midnight"] {
   --bg: 10 10 15;
   --fg: 250 250 250;
   --muted: 35 35 45;
@@ -237,3 +255,212 @@ body {
 
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   GEN-Z ANIMATION PACK  (additive — works with all themes)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Shimmer skeleton sweep */
+@keyframes shimmer-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--muted)) 0%,
+    rgb(var(--muted) / 0.5) 40%,
+    rgb(var(--muted)) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+
+/* AI streaming caret */
+@keyframes caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.ai-caret {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1em;
+  vertical-align: text-bottom;
+  background: rgb(var(--primary));
+  margin-left: 2px;
+  border-radius: 1px;
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+/* Aurora gradient mesh — drifting blobs for hero / CTA backgrounds */
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(8%, -6%, 0) scale(1.08); }
+  66%      { transform: translate3d(-6%, 7%, 0) scale(0.95); }
+}
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-10%, 8%, 0) scale(1.12); }
+}
+.aurora-blob-a { animation: aurora-drift-a 18s ease-in-out infinite; }
+.aurora-blob-b { animation: aurora-drift-b 22s ease-in-out infinite; }
+
+/* Float (subtle bob for empty-state illustrations + hero badges) */
+@keyframes soft-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.soft-float { animation: soft-float 4.5s ease-in-out infinite; }
+
+/* Tilt-glow: card hover layer */
+.tilt-glow {
+  position: relative;
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 320ms ease;
+}
+.tilt-glow:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 20px 50px -25px rgb(var(--primary) / 0.35),
+    0 4px 12px -6px rgb(0 0 0 / 0.15);
+}
+
+/* Magnetic cursor dot (landing only) */
+.magnetic-cursor {
+  position: fixed;
+  top: 0; left: 0;
+  width: 28px; height: 28px;
+  border-radius: 9999px;
+  border: 1.5px solid rgb(var(--primary) / 0.6);
+  background: rgb(var(--primary) / 0.08);
+  pointer-events: none;
+  z-index: 100;
+  mix-blend-mode: difference;
+  transform: translate3d(-100px, -100px, 0);
+  transition: width 220ms ease, height 220ms ease,
+              background-color 220ms ease, border-color 220ms ease;
+  will-change: transform, width, height;
+}
+.magnetic-cursor[data-hover="true"] {
+  width: 56px; height: 56px;
+  background: rgb(var(--primary) / 0.18);
+}
+@media (hover: none) { .magnetic-cursor { display: none; } }
+
+/* Scroll progress bar */
+.scroll-progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 100%;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg,
+    rgb(var(--primary)),
+    rgb(var(--accent)));
+  z-index: 60;
+  pointer-events: none;
+}
+
+/* Page-transition base (used by PageTransition wrapper) */
+@keyframes page-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-fade-up { animation: page-fade-up 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Stagger reveal — apply to a list, child indices auto-delayed */
+.stagger-reveal > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: page-fade-up 480ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.stagger-reveal > *:nth-child(1)  { animation-delay:  20ms; }
+.stagger-reveal > *:nth-child(2)  { animation-delay:  60ms; }
+.stagger-reveal > *:nth-child(3)  { animation-delay: 100ms; }
+.stagger-reveal > *:nth-child(4)  { animation-delay: 140ms; }
+.stagger-reveal > *:nth-child(5)  { animation-delay: 180ms; }
+.stagger-reveal > *:nth-child(6)  { animation-delay: 220ms; }
+.stagger-reveal > *:nth-child(7)  { animation-delay: 260ms; }
+.stagger-reveal > *:nth-child(8)  { animation-delay: 300ms; }
+.stagger-reveal > *:nth-child(9)  { animation-delay: 340ms; }
+.stagger-reveal > *:nth-child(10) { animation-delay: 380ms; }
+.stagger-reveal > *:nth-child(n+11) { animation-delay: 420ms; }
+
+/* Underline-grow link */
+.link-grow {
+  position: relative;
+  display: inline-block;
+}
+.link-grow::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -2px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.link-grow:hover::after { transform: scaleX(1); }
+
+/* Button ripple shimmer (on press) */
+@keyframes btn-ripple {
+  0%   { opacity: 0.4; transform: scale(0); }
+  100% { opacity: 0;   transform: scale(2.4); }
+}
+
+/* TextReveal word slide-up */
+@keyframes word-rise {
+  from { opacity: 0; transform: translate3d(0, 0.6em, 0) rotate(2deg); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0)     rotate(0); }
+}
+.text-reveal-word {
+  display: inline-block;
+  opacity: 0;
+  animation: word-rise 720ms cubic-bezier(0.22, 0.9, 0.32, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Marquee speed-up on hover */
+.animate-marquee-hover:hover { animation-duration: 12s !important; }
+
+/* ─── Linen theme: film-grain noise overlay (auto-applied) ──── */
+:root[data-theme="linen"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
+}
+
+/* Linen theme: cards get a hairline shadow instead of glow */
+:root[data-theme="linen"] .glow {
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.04),
+    0 8px 24px -16px rgb(0 0 0 / 0.18);
+}
+
+/* Linen: softer scrollbar */
+:root[data-theme="linen"] ::-webkit-scrollbar-thumb {
+  background: rgb(var(--fg) / 0.18);
+}
+:root[data-theme="linen"] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--fg) / 0.32);
+}
+
+/* Reduced motion safety for new animations */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer, .ai-caret, .aurora-blob-a, .aurora-blob-b,
+  .soft-float, .tilt-glow, .text-reveal-word,
+  .page-fade-up, .stagger-reveal > *, .magnetic-cursor {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

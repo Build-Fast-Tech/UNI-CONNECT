@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { MarketingNav } from "@/components/layout/MarketingNav";
 import { Footer } from "@/components/layout/Footer";
+import { MagneticCursor } from "@/components/animations/MagneticCursor";
+import { ScrollProgress } from "@/components/animations/ScrollProgress";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -32,6 +34,8 @@ export default function MarketingLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <ScrollProgress />
+      <MagneticCursor />
       <MarketingNav />
       <main className="flex-1">{children}</main>
       <Footer />

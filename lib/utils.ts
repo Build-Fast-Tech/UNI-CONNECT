@@ -26,6 +26,7 @@ export const THEMES = [
   { id: "midnight",   label: "Midnight",   color: "#818CF8" },
   { id: "daylight",   label: "Daylight",   color: "#F59E0B" },
   { id: "monochrome", label: "Monochrome", color: "#6B7280" },
+  { id: "linen",      label: "Linen",      color: "#6B7A5A" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];

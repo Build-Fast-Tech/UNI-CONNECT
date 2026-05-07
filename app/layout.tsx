@@ -111,7 +111,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      data-theme="midnight"
+      data-theme="linen"
       className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} h-full antialiased`}
       suppressHydrationWarning
     >
