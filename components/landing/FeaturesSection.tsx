@@ -147,8 +147,9 @@ export function FeaturesSection() {
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: i * 0.1 }}
             whileHover={{ scale: 1.01, y: -2 }}
+            data-magnet
             className={[
-              "theme-card p-6 hover:border-[rgb(var(--primary)/0.3)] transition-all duration-300 cursor-default",
+              "theme-card tilt-glow p-6 hover:border-[rgb(var(--primary)/0.3)] transition-all duration-300 cursor-default",
               feature.wide ? "md:col-span-2" : "",
             ].join(" ")}
           >

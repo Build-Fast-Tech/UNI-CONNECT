@@ -4,6 +4,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TextReveal } from "@/components/animations/TextReveal";
+import { AuroraMesh } from "@/components/animations/AuroraMesh";
 
 const AVATAR_COLORS = ["#6366F1", "#10B981", "#F97316", "#DC2626", "#8B5CF6", "#EC4899"];
 
@@ -48,6 +50,8 @@ const FEATURE_TAGS = [
 export function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center pt-20 pb-16 overflow-hidden">
+      {/* Drifting aurora mesh — picks up theme primary/accent automatically */}
+      <AuroraMesh />
       {/* Animated background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -84,22 +88,16 @@ export function HeroSection() {
             Built exclusively for Pakistani university students
           </motion.div>
 
-          {/* Headline */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+          {/* Headline — split per word, staggered rise */}
+          <h1
+            className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight"
+            style={{ fontFamily: "var(--font-instrument-serif, serif)" }}
           >
-            <h1
-              className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight"
-              style={{ fontFamily: "var(--font-instrument-serif, serif)" }}
-            >
-              One campus.{" "}
-              <span className="gradient-text">
-                Every campus.
-              </span>
-            </h1>
-          </motion.div>
+            <TextReveal text="One campus." stagger={70} delay={120} />{" "}
+            <span className="gradient-text">
+              <TextReveal text="Every campus." stagger={70} delay={300} />
+            </span>
+          </h1>
 
           {/* Subhead */}
           <motion.p
