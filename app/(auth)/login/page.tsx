@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/Field";
 import { signInAction } from "@/lib/actions/auth";
-import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,96 +28,93 @@ export default function LoginPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="w-full max-w-md"
+      transition={{ duration: 0.5, ease: [0.22, 0.68, 0.32, 1] }}
+      className="w-full max-w-[440px]"
     >
-      <div className="theme-card p-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
-          <p className="text-sm text-[rgb(var(--muted-fg))]">
-            Log in to your UniConnect account
-          </p>
+      <header className="mb-10">
+        <p className="eyebrow mb-5">Returning student</p>
+        <h1 className="font-display text-[44px] sm:text-[52px] leading-[0.95] tracking-[-0.02em] text-[rgb(var(--fg))]">
+          Welcome back.
+        </h1>
+        <p className="mt-4 text-[15px] text-[rgb(var(--fg-2))] leading-relaxed">
+          Pick up where you left off — your library, your chats, your AI.
+        </p>
+      </header>
+
+      <form onSubmit={handleLogin} className="space-y-5">
+        <Field
+          label="Email"
+          name="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@university.edu.pk"
+          required
+          prefix={<Mail className="w-4 h-4" />}
+        />
+
+        <Field
+          label="Password"
+          name="password"
+          type={showPass ? "text" : "password"}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 10 characters"
+          required
+          prefix={<Lock className="w-4 h-4" />}
+          suffix={
+            <button
+              type="button"
+              onClick={() => setShowPass((s) => !s)}
+              className="hover:text-[rgb(var(--fg))] transition-colors"
+              aria-label={showPass ? "Hide password" : "Show password"}
+            >
+              {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          }
+        />
+
+        <div className="flex items-center justify-between -mt-1">
+          <span />
+          <Link
+            href="/forgot-password"
+            className="text-xs text-[rgb(var(--fg-2))] link-grow"
+          >
+            Forgot password?
+          </Link>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@university.edu.pk"
-                required
-                className={cn(
-                  "w-full h-11 pl-10 pr-4 rounded-xl text-sm",
-                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
-                  "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
-                  "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]",
-                  "transition-shadow"
-                )}
-              />
-            </div>
-          </div>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.08)] border border-[rgb(var(--destructive)/0.20)] px-3.5 py-2.5 rounded-xl"
+          >
+            {error}
+          </motion.div>
+        )}
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Password</label>
-              <Link href="/forgot-password" className="text-xs text-[rgb(var(--primary))] hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgb(var(--muted-fg))]" />
-              <input
-                type={showPass ? "text" : "password"}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••••"
-                required
-                className={cn(
-                  "w-full h-11 pl-10 pr-11 rounded-xl text-sm",
-                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
-                  "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
-                  "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]",
-                  "transition-shadow"
-                )}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
-              >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          shape="pill"
+          loading={loading}
+          className="w-full group"
+        >
+          Sign in
+          <ArrowUpRight className="w-4 h-4 transition-transform duration-[var(--dur-quick)] group-hover:rotate-45" />
+        </Button>
+      </form>
 
-          {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.1)] px-3 py-2 rounded-lg"
-            >
-              {error}
-            </motion.p>
-          )}
-
-          <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full">
-            Log in
-          </Button>
-        </form>
-
-        <p className="text-center text-sm text-[rgb(var(--muted-fg))] mt-6">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-[rgb(var(--primary))] font-medium hover:underline">
-            Sign up free
-          </Link>
-        </p>
-      </div>
+      <p className="text-center text-sm text-[rgb(var(--fg-2))] mt-10 pt-8 border-t border-[rgb(var(--line))]">
+        New here?{" "}
+        <Link href="/signup" className="text-[rgb(var(--fg))] font-medium link-grow">
+          Create a free account
+        </Link>
+      </p>
     </motion.div>
   );
 }
