@@ -1,5 +1,7 @@
-import { MarketingNav }        from "@/components/layout/MarketingNav";
-import { Footer }              from "@/components/layout/Footer";
+import { MarketingNav }       from "@/components/layout/MarketingNav";
+import { Footer }             from "@/components/layout/Footer";
+import { MagneticCursor }     from "@/components/animations/MagneticCursor";
+import { ScrollProgress }     from "@/components/animations/ScrollProgress";
 import { HeroSection }        from "@/components/landing/HeroSection";
 import { UniversityTicker }   from "@/components/landing/UniversityTicker";
 import { FeaturesSection }    from "@/components/landing/FeaturesSection";
@@ -12,8 +14,10 @@ import { CTASection }         from "@/components/landing/CTASection";
 export default function HomePage() {
   return (
     <>
+      <ScrollProgress />
+      <MagneticCursor />
       <MarketingNav />
-      <main className="flex-1">
+      <main className="flex-1 relative">
         <HeroSection />
         <UniversityTicker />
         <FeaturesSection />
