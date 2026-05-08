@@ -1,7 +1,9 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+type NativeInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "prefix">;
+
+interface FieldProps extends NativeInputProps {
   label?: string;
   hint?: string;
   error?: string | null;
