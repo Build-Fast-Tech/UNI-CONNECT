@@ -36,12 +36,16 @@ interface LeaderboardEntry {
 }
 
 const MODE_CONFIG: Record<TimerMode, { label: string; color: string; bg: string; seconds: number }> = {
-  pomodoro:    { label: "Pomodoro",    color: "#6366f1", bg: "rgba(99,102,241,0.15)",  seconds: 25*60 },
-  short_break: { label: "Short Break", color: "#10b981", bg: "rgba(16,185,129,0.15)",  seconds: 5*60  },
-  long_break:  { label: "Long Break",  color: "#3b82f6", bg: "rgba(59,130,246,0.15)", seconds: 15*60 },
+  pomodoro:    { label: "Pomodoro",    color: "rgb(var(--hue-a))", bg: "rgb(var(--hue-a) / 0.15)", seconds: 25*60 },
+  short_break: { label: "Short Break", color: "rgb(var(--hue-b))", bg: "rgb(var(--hue-b) / 0.15)", seconds: 5*60  },
+  long_break:  { label: "Long Break",  color: "rgb(var(--hue-f))", bg: "rgb(var(--hue-f) / 0.15)", seconds: 15*60 },
 };
 
-const PRESET_COLORS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#10b981","#06b6d4","#3b82f6"];
+const PRESET_COLORS = [
+  "rgb(var(--hue-a))","rgb(var(--hue-e))","rgb(var(--hue-d))","rgb(var(--destructive))",
+  "rgb(var(--hue-c))","rgb(var(--warning))","rgb(var(--positive))","rgb(var(--hue-b))",
+  "rgb(var(--hue-f))","rgb(var(--primary))",
+];
 const PRESET_SUBJECTS = ["Mathematics","Physics","Chemistry","Computer Science","Linear Algebra","Data Structures","Calculus","Statistics","Economics","History"];
 
 const CONFIG_KEY = "uc_timer_config";
@@ -494,9 +498,9 @@ export default function StudyPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   {[
-                    { key: "pomodoro" as const, label: "Pomodoro", color: "#6366f1", max: 60 },
-                    { key: "short_break" as const, label: "Short Break", color: "#10b981", max: 30 },
-                    { key: "long_break" as const, label: "Long Break", color: "#3b82f6", max: 60 },
+                    { key: "pomodoro" as const, label: "Pomodoro", color: "rgb(var(--hue-a))", max: 60 },
+                    { key: "short_break" as const, label: "Short Break", color: "rgb(var(--hue-b))", max: 30 },
+                    { key: "long_break" as const, label: "Long Break", color: "rgb(var(--hue-f))", max: 60 },
                   ].map(({ key, label, color, max }) => (
                     <div key={key} className="text-center">
                       <label className="block text-xs text-[rgb(var(--muted-fg))] mb-2 font-medium">{label}</label>
@@ -1000,7 +1004,7 @@ export default function StudyPage() {
                           <p className="text-xs font-bold text-slate-300 tabular-nums">{fmt(p2.total_minutes)}</p>
                         </div>
                         {/* Step */}
-                        <div className="relative w-[88px] h-16 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#94a3b8,#475569)"}}>
+                        <div className="relative w-[88px] h-16 rounded-t-2xl overflow-hidden bg-gradient-to-br from-slate-300 to-slate-600">
                           <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12"
                             animate={{x:["-110%","210%"]}} transition={{duration:2.5,repeat:Infinity,repeatDelay:1.5,ease:"linear"}} />
                           <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-white/40 select-none">2</span>
@@ -1014,7 +1018,7 @@ export default function StudyPage() {
                         <span className="text-2xl mb-1 block" style={{animation:"sparkle 1.8s ease-in-out infinite"}}>👑</span>
                         <div className="flex flex-col items-center mb-2 gap-1">
                           <div className="relative">
-                            <div className="w-16 h-16 rounded-full p-0.5 shadow-xl shadow-amber-400/40" style={{background:"linear-gradient(135deg,#fbbf24,#d97706)"}}>
+                            <div className="w-16 h-16 rounded-full p-0.5 shadow-xl shadow-amber-400/40 bg-gradient-to-br from-amber-400 to-amber-700">
                               <Avatar entry={p1} size="w-full h-full bg-gradient-to-br from-amber-300 to-amber-600" />
                             </div>
                             <span className="absolute -top-1 -right-1 text-lg leading-none">🥇</span>
@@ -1026,7 +1030,7 @@ export default function StudyPage() {
                           <p className="text-sm font-black text-amber-400 tabular-nums">{fmt(p1.total_minutes)}</p>
                         </div>
                         {/* Step — tallest */}
-                        <div className="relative w-[104px] h-24 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#fbbf24,#b45309)"}}>
+                        <div className="relative w-[104px] h-24 rounded-t-2xl overflow-hidden bg-gradient-to-br from-amber-400 to-amber-700">
                           <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12"
                             animate={{x:["-110%","210%"]}} transition={{duration:1.8,repeat:Infinity,repeatDelay:0.8,ease:"linear"}} />
                           <span className="absolute inset-0 flex items-center justify-center text-4xl font-black text-white/40 select-none">1</span>
@@ -1039,7 +1043,7 @@ export default function StudyPage() {
                       <div className="flex flex-col items-center">
                         <div className="flex flex-col items-center mb-2 gap-1">
                           <div className="relative">
-                            <div className="w-12 h-12 rounded-full p-0.5 shadow-lg shadow-orange-500/30" style={{background:"linear-gradient(135deg,#f97316,#c2410c)"}}>
+                            <div className="w-12 h-12 rounded-full p-0.5 shadow-lg shadow-orange-500/30 bg-gradient-to-br from-orange-500 to-orange-700">
                               <Avatar entry={p3} size="w-full h-full bg-gradient-to-br from-orange-400 to-orange-700" />
                             </div>
                             <span className="absolute -top-1 -right-1 text-base leading-none">🥉</span>
@@ -1048,7 +1052,7 @@ export default function StudyPage() {
                           <p className="text-xs font-bold text-orange-400 tabular-nums">{fmt(p3.total_minutes)}</p>
                         </div>
                         {/* Step */}
-                        <div className="relative w-[88px] h-12 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#f97316,#9a3412)"}}>
+                        <div className="relative w-[88px] h-12 rounded-t-2xl overflow-hidden bg-gradient-to-br from-orange-500 to-orange-800">
                           <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12"
                             animate={{x:["-110%","210%"]}} transition={{duration:2.2,repeat:Infinity,repeatDelay:2,ease:"linear"}} />
                           <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-white/40 select-none">3</span>
