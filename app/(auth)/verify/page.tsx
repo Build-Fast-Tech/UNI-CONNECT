@@ -68,12 +68,7 @@ function VerifyContent() {
     const { error } = await supabase.auth.resend({ type: "signup", email });
     setResending(false);
     if (error) {
-      const msg = error.message.toLowerCase();
-      setResendMsg(
-        msg.includes("rate limit") || msg.includes("too many")
-          ? "Too many emails sent. Please wait a few minutes before trying again."
-          : error.message
-      );
+      setResendMsg(error.message);
     } else {
       setResendMsg("Email resent! Check your inbox.");
       startCooldown();
