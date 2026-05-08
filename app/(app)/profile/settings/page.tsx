@@ -329,18 +329,18 @@ export default function SettingsPage() {
                             style={{
                               background:
                                 theme.id === "light"
-                                  ? "linear-gradient(135deg, rgb(247 243 235), rgb(252 249 243))"
-                                  : "linear-gradient(135deg, rgb(14 13 12), rgb(22 20 18))",
+                                  ? "linear-gradient(135deg, rgb(var(--bg)), rgb(var(--bg-elev)))"
+                                  : "linear-gradient(135deg, rgb(var(--bg)), rgb(var(--bg-elev)))",
                             }}
                           >
                             <Icon
                               className="w-4 h-4"
-                              style={{ color: theme.id === "light" ? "rgb(46 78 62)" : "rgb(143 184 152)" }}
+                              style={{ color: "rgb(var(--primary))" }}
                             />
                             <span
                               className="w-6 h-1.5 rounded-full"
                               style={{
-                                background: theme.id === "light" ? "rgb(46 78 62)" : "rgb(143 184 152)",
+                                background: "rgb(var(--primary))",
                                 opacity: 0.7,
                               }}
                             />

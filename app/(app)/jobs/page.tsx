@@ -24,10 +24,10 @@ const TYPE_LABELS: Record<Job["type"], string> = {
 
 const TYPE_COLORS: Record<Job["type"], string> = {
   internship: "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]",
-  full_time:  "bg-emerald-500/10 text-emerald-500",
-  part_time:  "bg-amber-500/10 text-amber-500",
-  contract:   "bg-violet-500/10 text-violet-500",
-  remote:     "bg-sky-500/10 text-sky-500",
+  full_time:  "bg-[rgb(var(--success)/0.12)] text-[rgb(var(--success))]",
+  part_time:  "bg-[rgb(var(--warning)/0.12)] text-[rgb(var(--warning))]",
+  contract:   "bg-[rgb(var(--hue-e)/0.12)] text-[rgb(var(--hue-e))]",
+  remote:     "bg-[rgb(var(--hue-f)/0.12)] text-[rgb(var(--hue-f))]",
 };
 
 const FILTERS: Array<{ value: Job["type"] | "all" }> = [
@@ -200,8 +200,8 @@ export default function JobsPage() {
           {!search && filter === "all" && recommendedJobs.length > 0 && (
             <section>
               <div className="flex items-center gap-2 mb-3">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+                <Zap className="w-4 h-4 text-[rgb(var(--warning))]" />
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--warning))]">
                   Recommended for You
                 </h2>
                 <span className="text-xs text-[rgb(var(--muted-fg))]">Based on your CV skills</span>
@@ -249,8 +249,8 @@ export default function JobsPage() {
 function JobCard({ job, index, featured = false }: { job: Job; index: number; featured?: boolean }) {
   const dl = daysLeft(job.deadline);
   const dlColor =
-    dl === "Closed" ? "text-red-500" :
-    dl === "Last day" ? "text-amber-500" :
+    dl === "Closed" ? "text-[rgb(var(--danger))]" :
+    dl === "Last day" ? "text-[rgb(var(--warning))]" :
     "text-[rgb(var(--muted-fg))]";
 
   return (

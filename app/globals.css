@@ -1,127 +1,162 @@
 @import "tailwindcss";
 
-/* ════════════════════════════════════════════════════════════════
-   UNICONNECT — DESIGN SYSTEM
-   Two modes (light + dark). Every value is a token.
-   Components MUST NOT use raw hex; they reference these vars.
-   ════════════════════════════════════════════════════════════════ */
+/* ====================================================================
+   THEME TOKENS — PLACEHOLDER VALUES
+   The structure is final. The hex values are intentionally neutral.
+   Replace ONLY the values below to apply the final brand palette.
+   Do not rename tokens. Do not add new tokens without updating both
+   light and dark blocks.
+   ==================================================================== */
 
-/* ─── LIGHT (default) ───────────────────────────────────────────
-   Warm paper-cream + editorial ink. Single moss-green primary,
-   honeyed saffron accent. Restrained, magazine-print feel.
-   ─────────────────────────────────────────────────────────────── */
+/* ─── LIGHT (default) ───────────────────────────────────────────── */
 :root,
 :root[data-theme="light"] {
-  --bg:           247 243 235;          /* paper cream */
-  --bg-elev:      252 249 243;          /* bone (cards, popovers) */
-  --bg-sunk:      237 232 222;          /* sunken (inputs, wells) */
-  --bg-overlay:   252 249 243;          /* overlays */
+  /* Surfaces */
+  --surface:            252 252 252;
+  --surface-elevated:   255 255 255;
+  --surface-sunk:       245 245 245;
+  --surface-overlay:    255 255 255;
 
-  --fg:            18  17  15;          /* editorial ink */
-  --fg-2:          70  66  58;          /* secondary copy */
-  --fg-3:         128 122 110;          /* tertiary, captions */
+  /* Borders */
+  --border:             0 0 0 / 0.08;
+  --border-strong:      0 0 0 / 0.16;
 
-  --line:          18  17  15 / 0.08;   /* hairline */
-  --line-strong:   18  17  15 / 0.18;   /* strong divider */
+  /* Text */
+  --text-primary:       16 16 16;
+  --text-secondary:     80 80 80;
+  --text-muted:         120 120 120;
 
-  --primary:       46  78  62;          /* deep moss */
-  --primary-fg:   252 249 243;
-  --primary-soft:  46  78  62 / 0.10;
+  /* Brand / semantic */
+  --accent:             32 32 32;
+  --accent-hover:       16 16 16;
+  --accent-muted:       32 32 32 / 0.12;
 
-  --accent:       198 130  53;          /* honey saffron */
-  --accent-fg:     18  17  15;
-  --accent-soft:  198 130  53 / 0.14;
+  --success:            16 120 80;
+  --warning:            160 120 24;
+  --danger:             180 60 60;
 
-  --ring:          46  78  62;
-  --destructive:  178  50  50;
-  --positive:      74 130  60;
-  --warning:      198 130  53;
+  --ring:               32 32 32;
 
-  --field:        237 232 222;
-  --field-fg:      18  17  15;
-  --field-line:    18  17  15 / 0.12;
+  /* Multi-hue placeholder map (for tags/avatars only) */
+  --hue-a:              80 110 200;
+  --hue-b:              60 150 110;
+  --hue-c:              200 140 70;
+  --hue-d:              200 90 120;
+  --hue-e:              150 110 220;
+  --hue-f:              70 160 190;
 
-  /* Multi-hue palette for tags, avatars, multi-color demos.
-     Always referenced by components instead of raw hex. */
-  --hue-a:         74  88 168;          /* indigo */
-  --hue-b:         62 124  88;          /* moss */
-  --hue-c:        198 130  53;          /* saffron */
-  --hue-d:        180  60  78;          /* rose */
-  --hue-e:        124  86 168;          /* violet */
-  --hue-f:         56 132 152;          /* teal */
+  /* Shadows (subtle, layered) */
+  --shadow-sm:          0 1px 2px -1px rgb(0 0 0 / 0.10);
+  --shadow-md:          0 4px 14px -4px rgb(0 0 0 / 0.12),
+                        0 1px 3px -1px rgb(0 0 0 / 0.08);
+  --shadow-lg:          0 24px 48px -24px rgb(0 0 0 / 0.18),
+                        0 8px 16px -8px rgb(0 0 0 / 0.10);
+  --shadow-glow:        0 0 60px -16px rgb(var(--accent) / 0.14);
 
-  --shadow-sm:    0 1px 2px -1px rgb(0 0 0 / 0.10);
-  --shadow-md:    0 4px 14px -4px rgb(0 0 0 / 0.12),
-                  0 1px 3px -1px rgb(0 0 0 / 0.08);
-  --shadow-lg:    0 24px 48px -24px rgb(0 0 0 / 0.18),
-                  0 8px 16px -8px rgb(0 0 0 / 0.10);
-  --shadow-glow:  0 0 60px -12px rgb(46 78 62 / 0.30);
+  /* ── Backwards-compat aliases (don’t add new uses) ── */
+  --bg:                 var(--surface);
+  --bg-elev:            var(--surface-elevated);
+  --bg-sunk:            var(--surface-sunk);
+  --bg-overlay:         var(--surface-overlay);
 
-  /* ── Legacy aliases (old components reference these names) ── */
-  --muted:        237 232 222;
-  --muted-fg:      70  66  58;
-  --border:        18  17  15 / 0.08;
-  --card:         252 249 243;
-  --card-border:   18  17  15 / 0.06;
-  --input:        237 232 222;
-  --success:       74 130  60;
+  --fg:                 var(--text-primary);
+  --fg-2:               var(--text-secondary);
+  --fg-3:               var(--text-muted);
+
+  --line:               var(--border);
+  --line-strong:        var(--border-strong);
+
+  --primary:            var(--accent);
+  --primary-fg:         255 255 255;
+  --primary-soft:       var(--accent-muted);
+
+  --accent-fg:          255 255 255;
+  --accent-soft:        var(--accent-muted);
+
+  --destructive:        var(--danger);
+  --positive:           var(--success);
+
+  --field:              var(--surface-sunk);
+  --field-fg:           var(--text-primary);
+  --field-line:         var(--border-strong);
+
+  --muted:              var(--surface-sunk);
+  --muted-fg:           var(--text-secondary);
+  --card:               var(--surface-elevated);
+  --card-border:        var(--border);
+  --input:              var(--surface-sunk);
 }
 
-/* ─── DARK ─────────────────────────────────────────────────────
-   Inky charcoal canvas, lifted moss & saffron. Same palette,
-   recalibrated for late-night reading.
-   ─────────────────────────────────────────────────────────────── */
+/* ─── DARK ─────────────────────────────────────────────────────── */
 :root[data-theme="dark"] {
-  --bg:            14  13  12;          /* warm ink */
-  --bg-elev:       22  20  18;          /* raised */
-  --bg-sunk:        8   7   6;          /* sunken */
-  --bg-overlay:    28  25  22;          /* overlays */
+  --surface:            10 10 10;
+  --surface-elevated:   16 16 16;
+  --surface-sunk:       6 6 6;
+  --surface-overlay:    20 20 20;
 
-  --fg:           247 243 235;          /* paper */
-  --fg-2:         186 180 168;
-  --fg-3:         128 122 110;
+  --border:             255 255 255 / 0.10;
+  --border-strong:      255 255 255 / 0.18;
 
-  --line:         247 243 235 / 0.10;
-  --line-strong:  247 243 235 / 0.22;
+  --text-primary:       245 245 245;
+  --text-secondary:     190 190 190;
+  --text-muted:         140 140 140;
 
-  --primary:      143 184 152;          /* moss, lifted */
-  --primary-fg:    14  13  12;
-  --primary-soft: 143 184 152 / 0.16;
+  --accent:             230 230 230;
+  --accent-hover:       255 255 255;
+  --accent-muted:       230 230 230 / 0.10;
 
-  --accent:       228 174 100;          /* saffron, lifted */
-  --accent-fg:     14  13  12;
-  --accent-soft:  228 174 100 / 0.18;
+  --success:            90 200 150;
+  --warning:            220 180 90;
+  --danger:             255 120 120;
 
-  --ring:         143 184 152;
-  --destructive:  248 113 113;
-  --positive:     134 196 124;
-  --warning:      228 174 100;
+  --ring:               230 230 230;
 
-  --field:         22  20  18;
-  --field-fg:     247 243 235;
-  --field-line:   247 243 235 / 0.14;
+  --hue-a:              140 170 255;
+  --hue-b:              120 220 170;
+  --hue-c:              255 200 120;
+  --hue-d:              255 140 180;
+  --hue-e:              200 170 255;
+  --hue-f:              140 220 240;
 
-  --hue-a:        130 142 230;
-  --hue-b:        134 196 124;
-  --hue-c:        228 174 100;
-  --hue-d:        232 116 132;
-  --hue-e:        180 144 232;
-  --hue-f:        108 184 204;
+  --shadow-sm:          0 1px 2px -1px rgb(0 0 0 / 0.55);
+  --shadow-md:          0 4px 18px -4px rgb(0 0 0 / 0.60),
+                        0 1px 3px -1px rgb(0 0 0 / 0.45);
+  --shadow-lg:          0 28px 60px -24px rgb(0 0 0 / 0.75),
+                        0 8px 16px -8px rgb(0 0 0 / 0.55);
+  --shadow-glow:        0 0 80px -18px rgb(var(--accent) / 0.10);
 
-  --shadow-sm:    0 1px 2px -1px rgb(0 0 0 / 0.50);
-  --shadow-md:    0 4px 18px -4px rgb(0 0 0 / 0.55),
-                  0 1px 3px -1px rgb(0 0 0 / 0.40);
-  --shadow-lg:    0 28px 60px -24px rgb(0 0 0 / 0.70),
-                  0 8px 16px -8px rgb(0 0 0 / 0.45);
-  --shadow-glow:  0 0 80px -12px rgb(143 184 152 / 0.30);
+  /* Backwards-compat aliases */
+  --bg:                 var(--surface);
+  --bg-elev:            var(--surface-elevated);
+  --bg-sunk:            var(--surface-sunk);
+  --bg-overlay:         var(--surface-overlay);
 
-  --muted:         22  20  18;
-  --muted-fg:     186 180 168;
-  --border:       247 243 235 / 0.08;
-  --card:          22  20  18;
-  --card-border:  247 243 235 / 0.06;
-  --input:         22  20  18;
-  --success:      134 196 124;
+  --fg:                 var(--text-primary);
+  --fg-2:               var(--text-secondary);
+  --fg-3:               var(--text-muted);
+
+  --line:               var(--border);
+  --line-strong:        var(--border-strong);
+
+  --primary:            var(--accent);
+  --primary-fg:         10 10 10;
+  --primary-soft:       var(--accent-muted);
+
+  --accent-fg:          10 10 10;
+  --accent-soft:        var(--accent-muted);
+
+  --destructive:        var(--danger);
+  --positive:           var(--success);
+
+  --field:              var(--surface-elevated);
+  --field-fg:           var(--text-primary);
+  --field-line:         var(--border-strong);
+
+  --muted:              var(--surface-elevated);
+  --muted-fg:           var(--text-secondary);
+  --card:               var(--surface-elevated);
+  --card-border:        var(--border);
+  --input:              var(--surface-elevated);
 }
 
 /* ─── Tailwind v4 inline tokens ──────────────────────────────── */
@@ -153,7 +188,7 @@ body {
   background-color: rgb(var(--bg));
   color: rgb(var(--fg));
   font-family: var(--font-sans, system-ui, sans-serif);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -543,7 +578,7 @@ body {
    THEME-LOCAL FLOURISHES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Light mode: subtle paper-grain overlay (very faint, additive) */
+/* Light mode: subtle grain overlay (very faint, additive) */
 :root[data-theme="light"] body::before {
   content: "";
   position: fixed;
