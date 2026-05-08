@@ -42,6 +42,10 @@ export async function signUpAction(data: {
     });
 
     if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes("rate limit") || msg.includes("too many")) {
+        return { error: "Too many sign-up attempts. Please wait a few minutes and try again." };
+      }
       return { error: error.message };
     }
     return {};

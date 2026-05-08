@@ -96,25 +96,17 @@ export function CameraModal({ onClose, onSend }: CameraModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center backdrop-blur-sm"
-      style={{ background: "rgb(var(--bg) / 0.78)" }}
+      className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden relative"
-        style={{ background: "rgb(var(--bg-overlay))", border: "1px solid rgb(var(--line))" }}
+        className="w-full sm:max-w-sm bg-black rounded-t-3xl sm:rounded-3xl overflow-hidden relative"
         onClick={e => e.stopPropagation()}
       >
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-          style={{
-            background: "rgb(var(--fg) / 0.10)",
-            color: "rgb(var(--fg))",
-            border: "1px solid rgb(var(--fg) / 0.10)",
-          }}
-          aria-label="Close camera"
+          className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -123,28 +115,22 @@ export function CameraModal({ onClose, onSend }: CameraModalProps) {
         {!captured && (
           <button
             onClick={flipCamera}
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-            style={{
-              background: "rgb(var(--fg) / 0.10)",
-              color: "rgb(var(--fg))",
-              border: "1px solid rgb(var(--fg) / 0.10)",
-            }}
-            aria-label="Switch camera"
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
           >
             <SwitchCamera className="w-4 h-4" />
           </button>
         )}
 
         {/* Viewfinder */}
-        <div className="relative aspect-[3/4] w-full" style={{ background: "rgb(var(--bg-sunk))" }}>
+        <div className="relative aspect-[3/4] bg-neutral-900 w-full">
           {starting && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin" style={{ color: "rgb(var(--fg))" }} />
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
             </div>
           )}
           {error && (
             <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
-              <p className="text-sm" style={{ color: "rgb(var(--fg))" }}>{error}</p>
+              <p className="text-white text-sm">{error}</p>
             </div>
           )}
           <video
@@ -163,28 +149,22 @@ export function CameraModal({ onClose, onSend }: CameraModalProps) {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-center gap-8 py-6" style={{ background: "rgb(var(--bg-overlay))" }}>
+        <div className="flex items-center justify-center gap-8 py-6 bg-black">
           {!captured ? (
             <button
               onClick={takePhoto}
               disabled={starting || !!error}
-              className="w-16 h-16 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity hover:opacity-80 active:scale-95"
-              style={{ border: "4px solid rgb(var(--fg))" }}
-              aria-label="Take photo"
+              className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-40 transition-opacity hover:opacity-80 active:scale-95"
             >
-              <div className="w-11 h-11 rounded-full" style={{ background: "rgb(var(--fg))" }} />
+              <div className="w-11 h-11 rounded-full bg-white" />
             </button>
           ) : (
             <>
               <button
                 onClick={retake}
-                className="flex flex-col items-center gap-1"
-                style={{ color: "rgb(var(--fg))" }}
+                className="flex flex-col items-center gap-1 text-white"
               >
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ background: "rgb(var(--fg) / 0.10)", border: "1px solid rgb(var(--fg) / 0.10)" }}
-                >
+                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                   <RotateCcw className="w-5 h-5" />
                 </div>
                 <span className="text-[10px]">Retake</span>
@@ -192,13 +172,9 @@ export function CameraModal({ onClose, onSend }: CameraModalProps) {
               <button
                 onClick={handleSend}
                 disabled={sending}
-                className="flex flex-col items-center gap-1"
-                style={{ color: "rgb(var(--fg))" }}
+                className="flex flex-col items-center gap-1 text-white"
               >
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ background: "rgb(var(--success))", color: "rgb(var(--primary-fg))" }}
-                >
+                <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
                   {sending
                     ? <Loader2 className="w-5 h-5 animate-spin" />
                     : <Send className="w-5 h-5" />

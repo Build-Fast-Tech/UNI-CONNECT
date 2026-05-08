@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /**
  * Drifting aurora gradient mesh. Drop into any section as an
  * absolute-positioned background layer. Auto-tints from theme vars,
- * It is token-driven, so it adapts to light/dark automatically.
+ * so it looks soft on Linen and vivid on Midnight without forking.
  */
 export function AuroraMesh({ className }: { className?: string }) {
   return (

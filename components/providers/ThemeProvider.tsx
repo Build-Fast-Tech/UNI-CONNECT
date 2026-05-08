@@ -32,9 +32,9 @@ function migrateLegacy(): ThemeId | null {
     const raw = localStorage.getItem(key);
     if (raw) {
       localStorage.removeItem(key);
-      // Legacy keys existed in older builds. We intentionally do not keep
-      // or reference legacy theme names — only light/dark are supported.
-      // If a legacy key exists, we fall back to system preference.
+      // Map legacy themes to nearest light/dark equivalent.
+      if (raw === "midnight" || raw === "monochrome") return "dark";
+      if (raw === "linen" || raw === "daylight") return "light";
     }
     document.cookie = `${key}=; path=/; max-age=0`;
   }
