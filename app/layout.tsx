@@ -62,10 +62,7 @@ const themeInitScript = `
     var k = "uniconnect-theme-v3";
     var t = localStorage.getItem(k);
     if (t !== "light" && t !== "dark") {
-      var legacy = localStorage.getItem("uniconnect-theme-v2") || localStorage.getItem("uniconnect-theme");
-      if (legacy === "midnight" || legacy === "monochrome") t = "dark";
-      else if (legacy === "linen" || legacy === "daylight") t = "light";
-      else t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     document.documentElement.setAttribute("data-theme", t);
   } catch (e) {

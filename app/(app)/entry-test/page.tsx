@@ -39,11 +39,11 @@ interface University { id: string; name: string; short_name: string; }
 
 const TYPES = [
   { key: "all",        label: "All",          icon: Layers,       color: "text-[rgb(var(--primary))]" },
-  { key: "past_paper", label: "Past Papers",  icon: FileQuestion, color: "text-orange-400" },
-  { key: "notes",      label: "Notes",        icon: BookOpen,     color: "text-blue-400" },
-  { key: "lecture",    label: "Lectures",     icon: Video,        color: "text-violet-400" },
-  { key: "mcqs",       label: "MCQs",         icon: ListChecks,   color: "text-emerald-400" },
-  { key: "book",       label: "Books",        icon: FileText,     color: "text-rose-400" },
+  { key: "past_paper", label: "Past Papers",  icon: FileQuestion, color: "text-[rgb(var(--warning))]" },
+  { key: "notes",      label: "Notes",        icon: BookOpen,     color: "text-[rgb(var(--hue-a))]" },
+  { key: "lecture",    label: "Lectures",     icon: Video,        color: "text-[rgb(var(--hue-e))]" },
+  { key: "mcqs",       label: "MCQs",         icon: ListChecks,   color: "text-[rgb(var(--success))]" },
+  { key: "book",       label: "Books",        icon: FileText,     color: "text-[rgb(var(--hue-d))]" },
   { key: "other",      label: "Other",        icon: Layers,       color: "text-[rgb(var(--muted-fg))]" },
 ] as const;
 
@@ -375,8 +375,13 @@ export default function EntryTestPage() {
         className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center">
-              <ClipboardList className="w-4 h-4 text-white" />
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgb(var(--primary)), rgb(var(--accent)))",
+              }}
+            >
+              <ClipboardList className="w-4 h-4" style={{ color: "rgb(var(--primary-fg))" }} />
             </div>
             <h1 className="text-2xl font-bold">Entry Test Prep</h1>
           </div>

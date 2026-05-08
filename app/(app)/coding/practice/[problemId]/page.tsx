@@ -16,14 +16,44 @@ type SubmitStatus = "idle"|"running"|"accepted"|"wrong_answer"|"error"|"timeout"
 const LANG_LABELS: Record<string,string> = { cpp:"C++17", python:"Python 3", java:"Java", c:"C" };
 const LANG_EXT:   Record<string,string> = { cpp:"cpp", python:"py", java:"java", c:"c" };
 
-const SC: Record<SubmitStatus,{color:string;bg:string;border:string;label:string}> = {
-  idle:        {color:"#94A3B8",bg:"transparent",              border:"transparent",            label:""},
-  running:     {color:"#8BE9FD",bg:"rgba(139,233,253,0.06)",  border:"rgba(139,233,253,0.2)",  label:"Running…"},
-  accepted:    {color:"#50FA7B",bg:"rgba(80,250,123,0.08)",   border:"rgba(80,250,123,0.3)",   label:"Accepted — All test cases passed!"},
-  wrong_answer:{color:"#FFB86C",bg:"rgba(255,184,108,0.08)",  border:"rgba(255,184,108,0.3)",  label:"Wrong Answer"},
-  error:       {color:"#FF5555",bg:"rgba(255,85,85,0.08)",    border:"rgba(255,85,85,0.3)",    label:"Runtime / Compile Error"},
-  timeout:     {color:"#FF79C6",bg:"rgba(255,121,198,0.08)",  border:"rgba(255,121,198,0.3)",  label:"Time Limit Exceeded"},
-  pending_key: {color:"#BD93F9",bg:"rgba(189,147,249,0.08)",  border:"rgba(189,147,249,0.3)",  label:"No compiler configured"},
+const SC: Record<SubmitStatus, { color: string; bg: string; border: string; label: string }> = {
+  idle: { color: "rgb(var(--fg-3))", bg: "transparent", border: "transparent", label: "" },
+  running: {
+    color: "rgb(var(--hue-f))",
+    bg: "rgb(var(--hue-f) / 0.08)",
+    border: "rgb(var(--hue-f) / 0.22)",
+    label: "Running…",
+  },
+  accepted: {
+    color: "rgb(var(--success))",
+    bg: "rgb(var(--success) / 0.10)",
+    border: "rgb(var(--success) / 0.26)",
+    label: "Accepted — All test cases passed!",
+  },
+  wrong_answer: {
+    color: "rgb(var(--warning))",
+    bg: "rgb(var(--warning) / 0.10)",
+    border: "rgb(var(--warning) / 0.26)",
+    label: "Wrong Answer",
+  },
+  error: {
+    color: "rgb(var(--danger))",
+    bg: "rgb(var(--danger) / 0.10)",
+    border: "rgb(var(--danger) / 0.26)",
+    label: "Runtime / Compile Error",
+  },
+  timeout: {
+    color: "rgb(var(--hue-d))",
+    bg: "rgb(var(--hue-d) / 0.10)",
+    border: "rgb(var(--hue-d) / 0.26)",
+    label: "Time Limit Exceeded",
+  },
+  pending_key: {
+    color: "rgb(var(--hue-e))",
+    bg: "rgb(var(--hue-e) / 0.10)",
+    border: "rgb(var(--hue-e) / 0.26)",
+    label: "No compiler configured",
+  },
 };
 
 /* ── Purple confetti ──────────────────────────────────────────── */
@@ -31,7 +61,15 @@ function Confetti({ active }: { active: boolean }) {
   const [ps, setPs] = useState<{id:number;x:number;color:string;delay:number;size:number;dur:number}[]>([]);
   useEffect(() => {
     if (!active) return;
-    const cols = ["#BD93F9","#FF79C6","#50FA7B","#FFB86C","#8BE9FD","#6C3FD4","#FF5555"];
+    const cols = [
+      "rgb(var(--hue-e))",
+      "rgb(var(--hue-d))",
+      "rgb(var(--success))",
+      "rgb(var(--warning))",
+      "rgb(var(--hue-f))",
+      "rgb(var(--hue-a))",
+      "rgb(var(--danger))",
+    ];
     setPs(Array.from({length:55},(_,i)=>({id:i,x:Math.random()*100,color:cols[Math.floor(Math.random()*cols.length)],delay:Math.random()*0.6,size:5+Math.random()*7,dur:1.4+Math.random()*1.4})));
     setTimeout(()=>setPs([]),3500);
   },[active]);
@@ -145,9 +183,11 @@ export default function ProblemIDEPage() {
   if(!problem) return null;
   const lines=code.split("\n").length;
   const sc=SC[status];
-  const diffColor=problem.difficulty==="easy"?"#50FA7B":problem.difficulty==="medium"?"#FFB86C":"#FF5555";
-  const diffBg=problem.difficulty==="easy"?"rgba(80,250,123,0.1)":problem.difficulty==="medium"?"rgba(255,184,108,0.1)":"rgba(255,85,85,0.1)";
-  const diffBorder=problem.difficulty==="easy"?"rgba(80,250,123,0.3)":problem.difficulty==="medium"?"rgba(255,184,108,0.3)":"rgba(255,85,85,0.3)";
+  const diffTone =
+    problem.difficulty === "easy" ? "success" : problem.difficulty === "medium" ? "warning" : "danger";
+  const diffColor = `rgb(var(--${diffTone}))`;
+  const diffBg = `rgb(var(--${diffTone}) / 0.12)`;
+  const diffBorder = `rgb(var(--${diffTone}) / 0.28)`;
 
   return (
     <>
@@ -156,18 +196,29 @@ export default function ProblemIDEPage() {
 
         {/* Top bar */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link href="/coding/practice" className="flex items-center gap-1 text-xs transition-colors" style={{color:"#94A3B8"}}
-            onMouseEnter={e=>(e.currentTarget.style.color="#fff")} onMouseLeave={e=>(e.currentTarget.style.color="#94A3B8")}>
+          <Link
+            href="/coding/practice"
+            className="flex items-center gap-1 text-xs transition-colors link-grow"
+            style={{ color: "rgb(var(--fg-3))" }}
+          >
             <ChevronLeft className="w-4 h-4"/> Practice
           </Link>
-          <div className="h-4 w-px" style={{background:"rgba(255,255,255,0.1)"}}/>
-          <h1 className="font-semibold text-sm text-white flex-1 truncate">{problem.title}</h1>
+          <div className="h-4 w-px" style={{ background: "rgb(var(--fg) / 0.12)" }} />
+          <h1 className="font-semibold text-sm flex-1 truncate" style={{ color: "rgb(var(--fg))" }}>
+            {problem.title}
+          </h1>
           <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0"
             style={{color:diffColor,background:diffBg,border:`1px solid ${diffBorder}`}}>
             {problem.difficulty}
           </span>
-          <span className="text-xs font-bold shrink-0" style={{color:"#FFB86C"}}>{problem.points} pts</span>
-          {solved&&<span className="flex items-center gap-1 text-xs shrink-0" style={{color:"#50FA7B"}}><CheckCircle className="w-3.5 h-3.5"/> Solved</span>}
+          <span className="text-xs font-bold shrink-0" style={{ color: "rgb(var(--warning))" }}>
+            {problem.points} pts
+          </span>
+          {solved && (
+            <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: "rgb(var(--success))" }}>
+              <CheckCircle className="w-3.5 h-3.5" /> Solved
+            </span>
+          )}
         </div>
 
         {/* 2-col layout */}
@@ -175,16 +226,33 @@ export default function ProblemIDEPage() {
 
           {/* ── Left: Problem description ── */}
           <div className="flex flex-col min-h-0 overflow-hidden rounded-2xl"
-            style={{background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.07)"}}>
+            style={{
+              background: "rgb(var(--fg) / 0.03)",
+              border: "1px solid rgb(var(--fg) / 0.10)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
             <div className="overflow-y-auto flex-1 p-5 space-y-5">
               <div>
-                <h2 className="text-base font-bold text-white mb-3">{problem.title}</h2>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{color:"#CBD5E1"}}>{problem.description}</p>
+                <h2 className="text-base font-bold mb-3" style={{ color: "rgb(var(--fg))" }}>
+                  {problem.title}
+                </h2>
+                <p
+                  className="text-sm leading-relaxed whitespace-pre-wrap"
+                  style={{ color: "rgb(var(--fg-2))" }}
+                >
+                  {problem.description}
+                </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {problem.tags.map(tag=>(
                   <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                    style={{background:"rgba(189,147,249,0.1)",color:"#BD93F9",border:"1px solid rgba(189,147,249,0.2)"}}>
+                    style={{
+                      background: "rgb(var(--hue-e) / 0.12)",
+                      color: "rgb(var(--hue-e))",
+                      border: "1px solid rgb(var(--hue-e) / 0.22)",
+                    }}>
                     {tag}
                   </span>
                 ))}
@@ -192,7 +260,11 @@ export default function ProblemIDEPage() {
 
               {/* Test cases */}
               <div>
-                <button onClick={()=>setShowCases(v=>!v)} className="flex items-center gap-2 text-xs font-semibold mb-2 transition-opacity hover:opacity-80" style={{color:"#94A3B8"}}>
+                <button
+                  onClick={() => setShowCases(v => !v)}
+                  className="flex items-center gap-2 text-xs font-semibold mb-2 transition-opacity hover:opacity-80"
+                  style={{ color: "rgb(var(--fg-3))" }}
+                >
                   Examples {showCases?<ChevronUp className="w-3.5 h-3.5"/>:<ChevronDown className="w-3.5 h-3.5"/>}
                 </button>
                 <AnimatePresence>
@@ -201,20 +273,22 @@ export default function ProblemIDEPage() {
                       <div className="flex gap-1">
                         {problem.testCases.slice(0,3).map((_,i)=>(
                           <button key={i} onClick={()=>setActiveCase(i)} className="px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
-                            style={activeCase===i?{background:"rgba(108,63,212,0.3)",color:"#BD93F9",border:"1px solid rgba(108,63,212,0.4)"}
-                              :{background:"rgba(255,255,255,0.04)",color:"#6272A4",border:"1px solid rgba(255,255,255,0.06)"}}>
+                            style={activeCase===i
+                              ? { background: "rgb(var(--hue-a) / 0.18)", color: "rgb(var(--hue-e))", border: "1px solid rgb(var(--hue-a) / 0.26)" }
+                              : { background: "rgb(var(--fg) / 0.04)", color: "rgb(var(--fg-3))", border: "1px solid rgb(var(--fg) / 0.08)" }
+                            }>
                             Case {i+1}
                           </button>
                         ))}
                       </div>
-                      <div className="rounded-xl overflow-hidden text-xs" style={{border:"1px solid rgba(255,255,255,0.06)"}}>
-                        <div className="px-3 py-2" style={{borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(0,0,0,0.25)"}}>
-                          <p className="text-[10px] mb-1" style={{color:"#6272A4"}}>Input:</p>
-                          <pre className="font-mono" style={{color:"#50FA7B"}}>{problem.testCases[activeCase]?.input}</pre>
+                      <div className="rounded-xl overflow-hidden text-xs" style={{ border: "1px solid rgb(var(--fg) / 0.10)" }}>
+                        <div className="px-3 py-2" style={{ borderBottom: "1px solid rgb(var(--fg) / 0.08)", background: "rgb(var(--bg-sunk))" }}>
+                          <p className="text-[10px] mb-1" style={{ color: "rgb(var(--fg-3))" }}>Input:</p>
+                          <pre className="font-mono" style={{ color: "rgb(var(--success))" }}>{problem.testCases[activeCase]?.input}</pre>
                         </div>
-                        <div className="px-3 py-2" style={{background:"rgba(0,0,0,0.12)"}}>
-                          <p className="text-[10px] mb-1" style={{color:"#6272A4"}}>Expected Output:</p>
-                          <pre className="font-mono" style={{color:"#8BE9FD"}}>{problem.testCases[activeCase]?.expected}</pre>
+                        <div className="px-3 py-2" style={{ background: "rgb(var(--bg) / 0.6)" }}>
+                          <p className="text-[10px] mb-1" style={{ color: "rgb(var(--fg-3))" }}>Expected Output:</p>
+                          <pre className="font-mono" style={{ color: "rgb(var(--hue-f))" }}>{problem.testCases[activeCase]?.expected}</pre>
                         </div>
                       </div>
                     </motion.div>
@@ -225,14 +299,18 @@ export default function ProblemIDEPage() {
               {/* Hints */}
               {problem.hints.length>0&&(
                 <div>
-                  <button onClick={()=>setShowHints(v=>!v)} className="flex items-center gap-2 text-xs font-semibold transition-opacity hover:opacity-80" style={{color:"#FFB86C"}}>
+                  <button
+                    onClick={() => setShowHints(v => !v)}
+                    className="flex items-center gap-2 text-xs font-semibold transition-opacity hover:opacity-80"
+                    style={{ color: "rgb(var(--warning))" }}
+                  >
                     <Lightbulb className="w-3.5 h-3.5"/> Hints ({problem.hints.length})
                     {showHints?<ChevronUp className="w-3.5 h-3.5"/>:<ChevronDown className="w-3.5 h-3.5"/>}
                   </button>
                   <AnimatePresence>
                     {showHints&&(
                       <motion.ul initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}} className="overflow-hidden mt-2 space-y-1.5 pl-4">
-                        {problem.hints.map((h,i)=><li key={i} className="text-xs list-disc" style={{color:"#94A3B8"}}>{h}</li>)}
+                        {problem.hints.map((h,i)=><li key={i} className="text-xs list-disc" style={{color:"rgb(var(--fg-3))"}}>{h}</li>)}
                       </motion.ul>
                     )}
                   </AnimatePresence>
@@ -245,60 +323,107 @@ export default function ProblemIDEPage() {
           <div className="flex flex-col gap-2 min-h-0">
             {/* Toolbar */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl shrink-0"
-              style={{background:"rgba(26,11,46,0.9)",border:"1px solid rgba(108,63,212,0.25)"}}>
-              <Code2 className="w-3.5 h-3.5 shrink-0" style={{color:"#BD93F9"}}/>
-              <span className="text-xs font-mono flex-1" style={{color:"#6272A4"}}>solution.{LANG_EXT[language]}</span>
+              style={{background:"rgb(var(--bg-sunk))",border:"1px solid rgb(var(--fg) / 0.10)"}}>
+              <Code2 className="w-3.5 h-3.5 shrink-0" style={{ color: "rgb(var(--hue-e))" }} />
+              <span className="text-xs font-mono flex-1" style={{ color: "rgb(var(--fg-3))" }}>
+                solution.{LANG_EXT[language]}
+              </span>
               <select value={language} onChange={e=>setLanguage(e.target.value)}
                 className="h-6 px-2 rounded-md text-xs focus:outline-none"
-                style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(189,147,249,0.2)",color:"#BD93F9"}}>
+                style={{
+                  background: "rgb(var(--fg) / 0.04)",
+                  border: "1px solid rgb(var(--fg) / 0.12)",
+                  color: "rgb(var(--fg))",
+                }}>
                 {Object.entries(LANG_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
               </select>
               <button onClick={()=>{setCode(problem.starterCode);setStatus("idle");}}
-                className="p-1 rounded-md hover:bg-white/5 transition-colors" title="Reset code">
-                <RotateCcw className="w-3 h-3" style={{color:"#6272A4"}}/>
+                className="p-1 rounded-md transition-colors"
+                style={{ color: "rgb(var(--fg-3))" }}
+                title="Reset code"
+                aria-label="Reset code"
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgb(var(--fg) / 0.05)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <RotateCcw className="w-3 h-3" />
               </button>
             </div>
 
             {/* Code editor */}
             <div className="flex-1 rounded-xl overflow-hidden relative min-h-0"
-              style={{background:"#0F051D",border:"1px solid rgba(108,63,212,0.2)",boxShadow:"inset 0 0 40px rgba(108,63,212,0.04)"}}>
+              style={{
+                background: "rgb(var(--bg-overlay))",
+                border: "1px solid rgb(var(--fg) / 0.12)",
+                boxShadow: "inset 0 0 40px rgb(var(--primary) / 0.06)",
+              }}>
               <div className="flex h-full">
                 {/* Line numbers */}
                 <div className="pt-4 pb-4 px-3 select-none shrink-0"
-                  style={{borderRight:"1px solid rgba(255,255,255,0.04)",color:"#3a2f54",fontFamily:"'Fira Code',monospace",fontSize:"13px",lineHeight:"24px",minWidth:"40px",textAlign:"right"}}>
+                  style={{
+                    borderRight: "1px solid rgb(var(--fg) / 0.08)",
+                    color: "rgb(var(--fg-3))",
+                    fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                    fontSize: "13px",
+                    lineHeight: "24px",
+                    minWidth: "40px",
+                    textAlign: "right",
+                  }}>
                   {Array.from({length:lines},(_,i)=><div key={i}>{i+1}</div>)}
                 </div>
                 {/* Editor */}
                 <div className="relative flex-1 min-w-0 overflow-hidden">
                   <div ref={hlRef} className="absolute inset-0 p-4 pointer-events-none overflow-auto"
-                    style={{fontFamily:"'Fira Code',monospace",fontSize:"13px",lineHeight:"24px",color:"transparent",whiteSpace:"pre"}}
+                    style={{
+                      fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                      fontSize: "13px",
+                      lineHeight: "24px",
+                      color: "transparent",
+                      whiteSpace: "pre",
+                    }}
                     dangerouslySetInnerHTML={{__html:highlight(code)+"\n"}}/>
                   <textarea ref={taRef} value={code} onChange={e=>setCode(e.target.value)}
                     onKeyDown={handleTab} onScroll={syncScroll} spellCheck={false}
                     className="absolute inset-0 w-full h-full p-4 resize-none bg-transparent focus:outline-none"
-                    style={{fontFamily:"'Fira Code',monospace",fontSize:"13px",lineHeight:"24px",color:"rgba(226,232,240,0.92)",tabSize:4,caretColor:"#BD93F9"}}/>
+                    style={{
+                      fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                      fontSize: "13px",
+                      lineHeight: "24px",
+                      color: "rgb(var(--fg))",
+                      tabSize: 4,
+                      caretColor: "rgb(var(--primary))",
+                    }}/>
                 </div>
               </div>
             </div>
 
             {/* Status bar */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg shrink-0 text-xs"
-              style={{background:"rgba(15,5,29,0.9)",border:"1px solid rgba(255,255,255,0.05)"}}>
+              style={{background:"rgb(var(--bg-sunk))",border:"1px solid rgb(var(--fg) / 0.10)"}}>
               <div className="w-2 h-2 rounded-full"
-                style={{background:status==="accepted"?"#50FA7B":status==="running"?"#8BE9FD":status==="idle"?"#3a2f54":"#FF5555"}}/>
-              <span style={{color:"#6272A4"}}>Piston</span>
-              <span style={{color:"#3a2f54"}}>|</span>
-              <span style={{color:"#6272A4"}}>{LANG_LABELS[language]}</span>
-              <span style={{color:"#3a2f54"}}>|</span>
-              <span style={{color:"#6272A4"}}>{lines} ln</span>
-              {execMs>0&&<><span style={{color:"#3a2f54"}}>|</span><span style={{color:"#6272A4"}}>{execMs}ms</span></>}
+                style={{
+                  background:
+                    status === "accepted"
+                      ? "rgb(var(--success))"
+                      : status === "running"
+                        ? "rgb(var(--hue-f))"
+                        : status === "idle"
+                          ? "rgb(var(--fg) / 0.25)"
+                          : "rgb(var(--danger))",
+                }}
+              />
+              <span style={{ color: "rgb(var(--fg-3))" }}>Piston</span>
+              <span style={{ color: "rgb(var(--fg) / 0.25)" }}>|</span>
+              <span style={{ color: "rgb(var(--fg-3))" }}>{LANG_LABELS[language]}</span>
+              <span style={{ color: "rgb(var(--fg) / 0.25)" }}>|</span>
+              <span style={{ color: "rgb(var(--fg-3))" }}>{lines} ln</span>
+              {execMs>0&&<><span style={{color:"rgb(var(--fg) / 0.25)"}}>|</span><span style={{color:"rgb(var(--fg-3))"}}>{execMs}ms</span></>}
             </div>
 
             {/* Buttons */}
             <div className="flex gap-2 shrink-0">
               <button onClick={()=>compile(false)} disabled={status==="running"}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-                style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#E2E8F0"}}>
+                style={{background:"rgb(var(--fg) / 0.04)",border:"1px solid rgb(var(--fg) / 0.12)",color:"rgb(var(--fg))"}}>
                 {status==="running"?<Loader2 className="w-4 h-4 animate-spin"/>:<Play className="w-4 h-4"/>}
                 Run
               </button>
@@ -324,21 +449,28 @@ export default function ProblemIDEPage() {
                     {sc.label}
                     {status==="accepted"&&!solved&&(
                       <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                        style={{background:"rgba(80,250,123,0.15)",color:"#50FA7B",border:"1px solid rgba(80,250,123,0.3)"}}>
+                        style={{background:"rgb(var(--success) / 0.16)",color:"rgb(var(--success))",border:"1px solid rgb(var(--success) / 0.26)"}}>
                         +{problem.points} pts
                       </span>
                     )}
-                    {execMs>0&&<span className="ml-auto" style={{color:"#6272A4"}}>{execMs}ms</span>}
+                    {execMs>0&&<span className="ml-auto" style={{color:"rgb(var(--fg-3))"}}>{execMs}ms</span>}
                   </div>
                   {(output||errLog)&&(
                     <pre className="px-3 py-2.5 text-xs font-mono max-h-28 overflow-y-auto whitespace-pre-wrap"
-                      style={{color:status==="error"?"#FF5555":"#E2E8F0",background:"rgba(15,5,29,0.7)"}}>
+                      style={{
+                        color: status === "error" ? "rgb(var(--danger))" : "rgb(var(--fg))",
+                        background: "rgb(var(--bg-sunk))",
+                      }}>
                       {output||errLog}
                     </pre>
                   )}
                   {status==="pending_key"&&(
-                    <p className="px-3 py-2 text-xs" style={{color:"#94A3B8"}}>
-                      Run Piston on localhost:2000 or add <code className="font-mono" style={{color:"#BD93F9"}}>JUDGE0_API_KEY</code> to .env.local
+                    <p className="px-3 py-2 text-xs" style={{ color: "rgb(var(--fg-3))" }}>
+                      Run Piston on localhost:2000 or add{" "}
+                      <code className="font-mono" style={{ color: "rgb(var(--hue-e))" }}>
+                        JUDGE0_API_KEY
+                      </code>{" "}
+                      to .env.local
                     </p>
                   )}
                 </motion.div>
