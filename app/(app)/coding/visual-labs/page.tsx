@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Binary, Braces, BarChart3, Cpu, Play, RotateCcw } from "lucide-react";
+import { Cpu, Play, RotateCcw, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Lab = "pointer" | "recursion" | "array";
@@ -43,15 +43,7 @@ function PointerPlayground() {
           <h3 className="font-bold">Pointer Playground</h3>
           <p className="text-xs text-[rgb(var(--muted-fg))]">Click a variable to point to it, then modify via pointer</p>
         </div>
-        <button
-          onClick={reset}
-          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg transition-colors"
-          style={{
-            background: "rgb(var(--bg-sunk))",
-            border: "1px solid rgb(var(--line))",
-            color: "rgb(var(--fg))",
-          }}
-        >
+        <button onClick={reset} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[rgb(var(--muted))] hover:bg-[rgb(var(--border))] transition-colors">
           <RotateCcw className="w-3 h-3" /> Reset
         </button>
       </div>
@@ -62,20 +54,12 @@ function PointerPlayground() {
           <motion.button key={v.name} onClick={() => pointTo(v.name)}
             whileTap={{ scale: 0.97 }}
             className={cn("p-4 rounded-xl border-2 text-center transition-all",
-              ptr === v.name ? "coding-glow-border-active" : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.5)]")}
-            style={{ background: "rgb(var(--bg-elev))" }}
-          >
+              ptr === v.name ? "border-purple-500 bg-purple-500/10" : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.5)]")}>
             <div className="text-[10px] font-mono text-[rgb(var(--muted-fg))] mb-1">{v.addr}</div>
-            <div className="text-2xl font-bold font-mono" style={{ color: "rgb(var(--fg))" }}>
-              {v.value}
-            </div>
-            <div className="text-xs font-mono mt-1" style={{ color: "rgb(var(--fg-2))" }}>
-              int {v.name}
-            </div>
+            <div className="text-2xl font-bold font-mono text-purple-300">{v.value}</div>
+            <div className="text-xs font-mono mt-1">int {v.name}</div>
             {ptr === v.name && (
-              <div className="mt-2 text-[10px] font-mono animate-pulse" style={{ color: "rgb(var(--primary))" }}>
-                ← p points here
-              </div>
+              <div className="mt-2 text-[10px] text-purple-400 font-mono animate-pulse">← p points here</div>
             )}
           </motion.button>
         ))}
@@ -84,13 +68,7 @@ function PointerPlayground() {
       {/* Pointer display */}
       {ptr && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="p-3 rounded-xl font-mono text-sm"
-          style={{
-            background: "rgb(var(--primary) / 0.10)",
-            border: "1px solid rgb(var(--primary) / 0.24)",
-            color: "rgb(var(--fg))",
-          }}
-        >
+          className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 font-mono text-sm text-purple-300">
           <span className="text-[rgb(var(--muted-fg))]">int* p = </span>&amp;{ptr}
           <span className="text-[rgb(var(--muted-fg))]"> = </span>
           {vars.find(v => v.name === ptr)?.addr}
@@ -105,18 +83,9 @@ function PointerPlayground() {
       </button>
 
       {/* Console */}
-      <div
-        className="rounded-xl p-3 max-h-40 overflow-y-auto"
-        style={{ background: "rgb(var(--bg-sunk))", border: "1px solid rgb(var(--line))" }}
-      >
+      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-3 max-h-40 overflow-y-auto">
         {log.map((l, i) => (
-          <div
-            key={i}
-            className="text-xs font-mono"
-            style={{ color: l.startsWith("//") ? "rgb(var(--fg-3))" : "rgb(var(--fg))" }}
-          >
-            {l}
-          </div>
+          <div key={i} className={cn("text-xs font-mono", l.startsWith("//") ? "text-[rgb(var(--muted-fg))]" : "text-purple-300")}>{l}</div>
         ))}
       </div>
     </div>
@@ -132,26 +101,17 @@ function buildFibTree(n: number, depth = 0): TreeNode {
 }
 
 function TreeViz({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
-  const colors = [
-    "rgb(var(--hue-e))",
-    "rgb(var(--hue-a))",
-    "rgb(var(--hue-b))",
-    "rgb(var(--hue-c))",
-    "rgb(var(--hue-f))",
-    "rgb(var(--hue-d))",
-  ];
+  const colors = ["text-purple-400", "text-blue-400", "text-emerald-400", "text-yellow-400", "text-orange-400", "text-pink-400"];
   const color = colors[depth % colors.length];
   return (
     <div className="flex flex-col items-center gap-1">
       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: depth * 0.1 }}
-        className={cn("w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-bold font-mono")}
-        style={{ color, borderColor: "currentColor", background: "rgb(var(--bg-elev))" }}
-      >
+        className={cn("w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-bold font-mono", color, "border-current bg-[rgb(var(--muted)/0.4)]")}>
         f({node.val})
       </motion.div>
       {(node.left || node.right) && (
         <div className="flex gap-4 relative">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px" style={{ background: "rgb(var(--line))" }} />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-[rgb(var(--border))]" />
           {node.left  && <TreeViz node={node.left}  depth={depth + 1} />}
           {node.right && <TreeViz node={node.right} depth={depth + 1} />}
         </div>
@@ -181,30 +141,17 @@ function RecursionTree() {
           <Play className="w-3 h-3" /> Draw
         </button>
       </div>
-      <div
-        className="rounded-xl p-4 overflow-auto min-h-48 flex items-start justify-center"
-        style={{ background: "rgb(var(--bg-sunk))", border: "1px solid rgb(var(--line))" }}
-      >
+      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-4 overflow-auto min-h-48 flex items-start justify-center">
         {showTree && <TreeViz node={tree} />}
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="theme-card p-3">
           <p className="text-xs text-[rgb(var(--muted-fg))]">Result</p>
-          <p className="font-bold font-mono" style={{ color: "rgb(var(--success))" }}>
-            fib({n}) ={" "}
-            {tree.val <= 1
-              ? tree.val
-              : (() => {
-                  const f = (x: number): number => (x <= 1 ? x : f(x - 1) + f(x - 2));
-                  return f(n);
-                })()}
-          </p>
+          <p className="font-bold font-mono text-emerald-400">fib({n}) = {tree.val <= 1 ? tree.val : (() => { const f = (x: number): number => x <= 1 ? x : f(x-1)+f(x-2); return f(n); })()}</p>
         </div>
         <div className="theme-card p-3">
           <p className="text-xs text-[rgb(var(--muted-fg))]">Time Complexity</p>
-          <p className="font-bold font-mono" style={{ color: "rgb(var(--danger))" }}>
-            O(2ⁿ)
-          </p>
+          <p className="font-bold font-mono text-red-400">O(2ⁿ)</p>
         </div>
       </div>
     </div>
@@ -283,7 +230,7 @@ function ArrayEngine() {
       </div>
 
       {/* Visual bars */}
-      <div className="rounded-xl p-4" style={{ background: "rgb(var(--bg-sunk))", border: "1px solid rgb(var(--line))" }}>
+      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-4">
         <div className="flex items-end gap-2 h-32 justify-center">
           {arr.map((v, i) => {
             const h = Math.max(8, (v / maxVal) * MAX_H);
@@ -293,17 +240,7 @@ function ArrayEngine() {
               <motion.div key={i} layout onClick={() => setSelected(isSel ? null : i)}
                 animate={{ height: `${h}%` }} transition={{ duration: 0.15 }}
                 className={cn("flex-1 min-w-0 rounded-t-md flex flex-col items-center justify-end cursor-pointer relative",
-                  "transition-[filter,transform]")}
-                style={{
-                  background: isSwapping
-                    ? "rgb(var(--danger))"
-                    : isSel
-                      ? "rgb(var(--warning))"
-                      : sorted
-                        ? "rgb(var(--success))"
-                        : "rgb(var(--primary))",
-                }}
-              >
+                  isSwapping ? "bg-red-500" : isSel ? "bg-yellow-400" : sorted ? "bg-emerald-500" : "bg-[rgb(var(--primary))]")}>
                 <span className="text-[9px] font-bold text-white pb-0.5 truncate">{v}</span>
               </motion.div>
             );
@@ -318,27 +255,15 @@ function ArrayEngine() {
 
       {selected !== null && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="p-3 rounded-xl text-sm font-mono"
-          style={{
-            background: "rgb(var(--warning) / 0.12)",
-            border: "1px solid rgb(var(--warning) / 0.22)",
-            color: "rgb(var(--warning))",
-          }}
-        >
+          className="p-3 rounded-xl bg-yellow-400/10 border border-yellow-400/20 text-sm font-mono text-yellow-400">
           arr[{selected}] = {arr[selected]} | address: 0x{(0x1000 + selected * 4).toString(16).toUpperCase()}
         </motion.div>
       )}
 
       {/* Log */}
-      <div className="rounded-xl p-3 max-h-28 overflow-y-auto" style={{ background: "rgb(var(--bg-sunk))", border: "1px solid rgb(var(--line))" }}>
+      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-3 max-h-28 overflow-y-auto">
         {log.slice(-8).map((l, i) => (
-          <div
-            key={i}
-            className="text-xs font-mono"
-            style={{ color: l.startsWith("//") ? "rgb(var(--fg-3))" : "rgb(var(--success))" }}
-          >
-            {l}
-          </div>
+          <div key={i} className={cn("text-xs font-mono", l.startsWith("//") ? "text-[rgb(var(--muted-fg))]" : "text-emerald-400")}>{l}</div>
         ))}
       </div>
     </div>
@@ -349,25 +274,10 @@ function ArrayEngine() {
 export default function VisualLabsPage() {
   const [active, setActive] = useState<Lab>("pointer");
 
-  const LABS: { id: Lab; label: string; icon: React.ReactNode; desc: string }[] = [
-    {
-      id: "pointer",
-      label: "Pointer Playground",
-      icon: <Binary className="w-5 h-5" style={{ color: "rgb(var(--hue-e))" }} aria-hidden="true" />,
-      desc: "Visualize memory addresses and pointer dereferencing",
-    },
-    {
-      id: "recursion",
-      label: "Recursion Tree",
-      icon: <Braces className="w-5 h-5" style={{ color: "rgb(var(--hue-a))" }} aria-hidden="true" />,
-      desc: "Watch recursive calls expand as a live tree",
-    },
-    {
-      id: "array",
-      label: "Array Engine",
-      icon: <BarChart3 className="w-5 h-5" style={{ color: "rgb(var(--hue-c))" }} aria-hidden="true" />,
-      desc: "Dynamic memory allocation and sorting visualization",
-    },
+  const LABS: { id: Lab; label: string; icon: string; desc: string }[] = [
+    { id: "pointer",   label: "Pointer Playground", icon: "🔮", desc: "Visualize memory addresses and pointer dereferencing" },
+    { id: "recursion", label: "Recursion Tree",     icon: "🌳", desc: "Watch recursive calls expand as a live tree" },
+    { id: "array",     label: "Array Engine",       icon: "📊", desc: "Dynamic memory allocation and sorting visualization" },
   ];
 
   return (
@@ -388,7 +298,7 @@ export default function VisualLabsPage() {
           <button key={lab.id} onClick={() => setActive(lab.id)}
             className={cn("p-4 rounded-xl border text-left transition-all",
               active === lab.id ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]" : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.4)]")}>
-            <div className="mb-2">{lab.icon}</div>
+            <div className="text-2xl mb-2">{lab.icon}</div>
             <p className={cn("font-semibold text-sm", active === lab.id && "text-[rgb(var(--primary))]")}>{lab.label}</p>
             <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">{lab.desc}</p>
           </button>

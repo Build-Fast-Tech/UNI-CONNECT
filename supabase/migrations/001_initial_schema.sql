@@ -53,7 +53,7 @@ create table if not exists profiles (
   linkedin         text,
   github           text,
   portfolio_url    text,
-  theme            text not null default 'dark',
+  theme            text not null default 'midnight',
   is_verified      boolean not null default false,
   last_active_at   timestamptz,
   created_at       timestamptz not null default now(),
