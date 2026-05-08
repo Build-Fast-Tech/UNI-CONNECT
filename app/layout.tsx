@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import "./globals.css";
 
@@ -15,21 +15,22 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const playfairDisplay = Playfair_Display({
-  variable: "--font-instrument-serif",
+const displaySerif = Instrument_Serif({
+  variable: "--font-display-serif",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://uniconnect.pk"),
   title: {
-    default: "UniConnect — Pakistan's University Student Platform",
-    template: "%s | UniConnect",
+    default: "UniConnect — One campus. Every campus.",
+    template: "%s · UniConnect",
   },
   description:
-    "The all-in-one platform for Pakistani university students — notes, societies, study groups, jobs, and AI tutoring.",
+    "An editorial home for Pakistani university students. Notes, societies, jobs, and an AI study partner — designed with intent.",
   keywords: [
     "university", "Pakistan", "students", "NUST", "LUMS", "FAST", "IBA",
     "notes", "jobs", "chat", "societies", "study groups", "AI tutor",
@@ -40,13 +41,13 @@ export const metadata: Metadata = {
     locale: "en_PK",
     url: "https://uniconnect.pk",
     siteName: "UniConnect",
-    title: "UniConnect — Pakistan's University Student Platform",
-    description: "Notes, societies, study groups, jobs, and AI tutoring for Pakistani university students.",
+    title: "UniConnect — One campus. Every campus.",
+    description: "Notes, societies, jobs, and AI tutoring for Pakistani university students.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "UniConnect — Pakistan's University Student Platform",
-    description: "Notes, societies, study groups, jobs, and AI tutoring for Pakistani university students.",
+    title: "UniConnect — One campus. Every campus.",
+    description: "Notes, societies, jobs, and AI tutoring for Pakistani university students.",
   },
   robots: {
     index: true,
@@ -55,39 +56,23 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": "https://uniconnect.pk/#website",
-      url: "https://uniconnect.pk",
-      name: "UniConnect",
-      description: "Pakistan's all-in-one university student platform",
-      potentialAction: {
-        "@type": "SearchAction",
-        target: { "@type": "EntryPoint", urlTemplate: "https://uniconnect.pk/notes?q={search_term_string}" },
-        "query-input": "required name=search_term_string",
-      },
-    },
-    {
-      "@type": "Organization",
-      "@id": "https://uniconnect.pk/#organization",
-      name: "UniConnect",
-      url: "https://uniconnect.pk",
-      logo: { "@type": "ImageObject", url: "https://uniconnect.pk/og-image.png" },
-      sameAs: ["https://github.com/ruvnet/uniconnect"],
-      description: "The all-in-one platform for Pakistani university students — notes, societies, study groups, jobs, and AI tutoring.",
-    },
-    {
-      "@type": "EducationalOrganization",
-      "@id": "https://uniconnect.pk/#edu",
-      name: "UniConnect",
-      description: "Connecting Pakistani university students through shared notes, societies, and collaborative study tools.",
-      url: "https://uniconnect.pk",
-    },
-  ],
-};
+const themeInitScript = `
+(function () {
+  try {
+    var k = "uniconnect-theme-v3";
+    var t = localStorage.getItem(k);
+    if (t !== "light" && t !== "dark") {
+      var legacy = localStorage.getItem("uniconnect-theme-v2") || localStorage.getItem("uniconnect-theme");
+      if (legacy === "midnight" || legacy === "monochrome") t = "dark";
+      else if (legacy === "linen" || legacy === "daylight") t = "light";
+      else t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -96,26 +81,45 @@ export default function RootLayout({
 }) {
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "UniConnect",
-    "url": "https://uniconnect.pk",
-    "description": "The super-platform for Pakistani university students. Notes, chats, and AI partner.",
-    "applicationCategory": "EducationApplication",
-    "operatingSystem": "Web",
-    "author": {
-      "@type": "Organization",
-      "name": "UniConnect"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://uniconnect.pk/#website",
+        url: "https://uniconnect.pk",
+        name: "UniConnect",
+        description: "Pakistan's all-in-one university student platform",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: { "@type": "EntryPoint", urlTemplate: "https://uniconnect.pk/notes?q={search_term_string}" },
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://uniconnect.pk/#organization",
+        name: "UniConnect",
+        url: "https://uniconnect.pk",
+        logo: { "@type": "ImageObject", url: "https://uniconnect.pk/og-image.png" },
+        description: "An editorial home for Pakistani university students. Notes, societies, study groups, jobs, and AI tutoring.",
+      },
+      {
+        "@type": "EducationalOrganization",
+        "@id": "https://uniconnect.pk/#edu",
+        name: "UniConnect",
+        description: "Connecting Pakistani university students through shared notes, societies, and collaborative study tools.",
+        url: "https://uniconnect.pk",
+      },
+    ],
   };
 
   return (
     <html
       lang="en"
-      data-theme="linen"
-      className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${displaySerif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
