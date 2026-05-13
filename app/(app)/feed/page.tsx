@@ -95,7 +95,7 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
   return (
     <div
       className="relative overflow-hidden rounded-2xl p-6 flex flex-col justify-between min-h-[186px]"
-      style={{ background: "linear-gradient(135deg, rgb(var(--fg)) 0%, rgb(var(--primary)) 55%, rgb(var(--accent)) 100%)" }}
+      style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 35%, #4f46e5 65%, #818cf8 100%)" }}
     >
       {/* existing decorative circles */}
       <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
@@ -685,9 +685,9 @@ export default function FeedPage() {
         {/* Row 1: Hero + Stats */}
         <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} subjectsToReview={subjectsToReview} /></div>
         <div className="flex flex-col gap-4">
-          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="rgb(var(--hue-a))" />
-          <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="rgb(var(--hue-b))" />
-          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="rgb(var(--hue-c))" />
+          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="#6366f1" />
+          <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="#10b981" />
+          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
         </div>
 
         {/* Row 2: Comm Hub + Jobs / CV */}

@@ -1,90 +1,70 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { UserPlus, Download, Zap } from "lucide-react";
 
 const STEPS = [
   {
-    number: "01",
-    title: "Sign up & verify",
-    desc: "Create your account, choose your university and branch. A `.edu.pk` email instantly verifies you. Otherwise, a quick check by our team.",
+    icon: UserPlus,
+    step: "01",
+    title: "Sign up & pick your university",
+    desc: "Create your account, choose your university and branch. Your identity is instantly verified if you use a .edu.pk email.",
   },
   {
-    number: "02",
-    title: "Make it yours",
-    desc: "Join your campus and branch chats. Browse the library. Upload a CV. Configure the AI to think in your subjects and your context.",
+    icon: Download,
+    step: "02",
+    title: "Join chats, download notes, post your CV",
+    desc: "Dive into your university community, grab notes from any subject, and showcase your profile to employers.",
   },
   {
-    number: "03",
-    title: "Use it daily",
-    desc: "Apply to a job in one click. Ask the AI at 2am. Pull notes for tomorrow's quiz. The platform fades into the background — that's the point.",
+    icon: Zap,
+    step: "03",
+    title: "Apply for jobs or ask the AI anything",
+    desc: "One-click job applications with your uploaded CV. Ask UniConnect AI to explain anything — 24/7.",
   },
 ];
 
 export function HowItWorks() {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 70%", "end 30%"],
-  });
-  const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   return (
-    <section ref={ref} className="relative py-28 sm:py-36 px-4 sm:px-6">
-      <div className="max-w-[1100px] mx-auto">
-        <header className="grid grid-cols-12 gap-6 mb-20 sm:mb-24">
-          <div className="col-span-12 lg:col-span-8">
-            <p className="eyebrow mb-5">How it works</p>
-            <h2 className="font-display text-[clamp(40px,7vw,96px)] leading-[0.95] tracking-[-0.02em] text-[rgb(var(--fg))]">
-              Up and running in
-              <br />
-              <em className="italic text-[rgb(var(--accent))]">under a minute.</em>
-            </h2>
-          </div>
-        </header>
+    <section className="py-24 px-4 sm:px-6 max-w-6xl mx-auto" ref={ref}>
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
+        className="text-center mb-16"
+      >
+        <h2 className="text-4xl sm:text-5xl font-bold mb-4">How it works</h2>
+        <p className="text-lg text-[rgb(var(--muted-fg))]">Up and running in under 30 seconds.</p>
+      </motion.div>
 
-        {/* Vertical timeline */}
-        <div className="relative pl-8 sm:pl-16">
-          {/* Track */}
-          <div
-            aria-hidden
-            className="absolute left-[7px] sm:left-[31px] top-2 bottom-2 w-px bg-[rgb(var(--line))]"
-          />
-          {/* Filled progress */}
+      <div className="relative flex flex-col md:flex-row gap-8 items-start">
+        {/* Connecting line (desktop) */}
+        <div className="hidden md:block absolute top-10 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-gradient-to-r from-transparent via-[rgb(var(--primary)/0.4)] to-transparent" />
+
+        {STEPS.map((step, i) => (
           <motion.div
-            aria-hidden
-            style={{ height: lineHeight }}
-            className="absolute left-[7px] sm:left-[31px] top-2 w-px bg-gradient-to-b from-[rgb(var(--primary))] to-[rgb(var(--accent))]"
-          />
-
-          <ol className="space-y-16 sm:space-y-24">
-            {STEPS.map((step, i) => (
-              <motion.li
-                key={step.number}
-                initial={{ opacity: 0, x: 14 }}
-                animate={inView ? { opacity: 1, x: 0 } : {}}
-                transition={{ duration: 0.6, delay: 0.15 * i, ease: [0.22, 0.68, 0.32, 1] }}
-                className="relative"
-              >
-                {/* Dot */}
-                <span
-                  aria-hidden
-                  className="absolute -left-8 sm:-left-16 top-1.5 w-4 h-4 rounded-full bg-[rgb(var(--bg))] border-2 border-[rgb(var(--primary))]"
-                />
-                <span className="font-mono text-[11px] tracking-widest uppercase text-[rgb(var(--fg-3))]">
-                  Step {step.number}
-                </span>
-                <h3 className="font-display text-3xl sm:text-4xl mt-2 mb-3 tracking-tight text-[rgb(var(--fg))]">
-                  {step.title}
-                </h3>
-                <p className="text-[15px] sm:text-base text-[rgb(var(--fg-2))] leading-relaxed max-w-[58ch]">
-                  {step.desc}
-                </p>
-              </motion.li>
-            ))}
-          </ol>
-        </div>
+            key={step.step}
+            initial={{ opacity: 0, y: 30 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: i * 0.2, duration: 0.5 }}
+            className="flex-1 flex flex-col items-center text-center"
+          >
+            {/* Icon */}
+            <div className="relative mb-6">
+              <div className="w-20 h-20 rounded-2xl bg-[rgb(var(--primary)/0.1)] border border-[rgb(var(--primary)/0.2)] flex items-center justify-center">
+                <step.icon className="w-8 h-8 text-[rgb(var(--primary))]" />
+              </div>
+              <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-bold flex items-center justify-center">
+                {i + 1}
+              </span>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-[rgb(var(--fg))]">{step.title}</h3>
+            <p className="text-sm text-[rgb(var(--muted-fg))] leading-relaxed max-w-xs">{step.desc}</p>
+          </motion.div>
+        ))}
       </div>
     </section>
   );

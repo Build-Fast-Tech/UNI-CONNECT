@@ -27,8 +27,8 @@ interface SubjectStats {
 }
 
 const PRESET_COLORS = [
-  "rgb(var(--hue-a))","rgb(var(--hue-e))","rgb(var(--hue-d))","rgb(var(--destructive))","rgb(var(--hue-c))",
-  "rgb(var(--warning))","rgb(var(--positive))","rgb(var(--hue-b))","rgb(var(--hue-f))","rgb(var(--primary))",
+  "#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316",
+  "#eab308","#22c55e","#10b981","#06b6d4","#3b82f6",
 ];
 
 function GradeBar({ value, max = 100, color }: { value: number; max?: number; color: string }) {

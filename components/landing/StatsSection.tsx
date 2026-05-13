@@ -1,13 +1,13 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { useInView, motion } from "framer-motion";
+import { useInView } from "framer-motion";
 
 const STATS = [
-  { value: 250, suffix: "+",  label: "Universities indexed" },
-  { value: 24,  suffix: "/7", label: "AI study partner" },
-  { value: 100, suffix: "%",  label: "Free for students" },
-  { value: 1,   suffix: " app", label: "Replacing fifteen" },
+  { value: 100, suffix: "+", label: "Universities" },
+  { value: 24, suffix: "/7", label: "AI Help" },
+  { value: 100, suffix: "%", label: "Free to Join" },
+  { value: 1, suffix: " App", label: "Everything in" },
 ];
 
 function CountUp({ end, suffix, active }: { end: number; suffix: string; active: boolean }) {
@@ -15,24 +15,25 @@ function CountUp({ end, suffix, active }: { end: number; suffix: string; active:
 
   useEffect(() => {
     if (!active) return;
-    const duration = 2000;
+    const duration = 1800;
     const steps = 60;
     const stepTime = duration / steps;
     let step = 0;
+
     const timer = setInterval(() => {
       step++;
       const progress = step / steps;
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setVal(Math.floor(eased * end));
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setVal(Math.floor(easedProgress * end));
       if (step >= steps) { setVal(end); clearInterval(timer); }
     }, stepTime);
+
     return () => clearInterval(timer);
   }, [active, end]);
 
   return (
-    <span className="tabular-nums">
-      {val.toLocaleString()}
-      <span className="text-[rgb(var(--fg-3))]">{suffix}</span>
+    <span>
+      {val.toLocaleString()}{suffix}
     </span>
   );
 }
@@ -42,26 +43,16 @@ export function StatsSection() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section ref={ref} className="relative py-28 sm:py-36 px-4 sm:px-6">
-      <div className="max-w-[1240px] mx-auto">
-        <p className="eyebrow text-center mb-12 sm:mb-16">By the numbers</p>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-6 text-center">
-          {STATS.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 14 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.22, 0.68, 0.32, 1] }}
-              className="relative"
-            >
-              <p className="font-display leading-none text-[clamp(56px,9vw,128px)] tracking-[-0.03em] text-[rgb(var(--fg))]">
+    <section ref={ref} className="py-20 border-y border-[rgb(var(--border))] bg-[rgb(var(--muted)/0.2)]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {STATS.map((stat) => (
+            <div key={stat.label} className="space-y-2">
+              <p className="text-4xl sm:text-5xl font-bold gradient-text tabular-nums">
                 <CountUp end={stat.value} suffix={stat.suffix} active={inView} />
               </p>
-              <p className="mt-3 text-sm text-[rgb(var(--fg-2))] tracking-tight max-w-[20ch] mx-auto">
-                {stat.label}
-              </p>
-            </motion.div>
+              <p className="text-sm text-[rgb(var(--muted-fg))] font-medium">{stat.label}</p>
+            </div>
           ))}
         </div>
       </div>
