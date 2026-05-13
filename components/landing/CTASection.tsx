@@ -2,69 +2,69 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AuroraMesh } from "@/components/animations/AuroraMesh";
 
 export function CTASection() {
   return (
-    <section className="relative py-32 sm:py-40 px-4 sm:px-6 overflow-hidden">
-      <AuroraMesh />
+    <section className="py-32 px-4 sm:px-6 relative overflow-hidden">
+      {/* Animated gradient mesh background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 opacity-30"
+          style={{
+            background: `radial-gradient(ellipse 80% 50% at 50% 50%, rgb(var(--primary) / 0.3) 0%, transparent 60%)`
+          }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full"
+          style={{ background: `radial-gradient(ellipse, rgb(var(--accent) / 0.2) 0%, transparent 70%)` }}
+        />
+      </div>
 
-      <div className="relative max-w-[1240px] mx-auto text-center">
-        <p className="eyebrow mb-6">A standing invitation</p>
-
+      <div className="relative max-w-4xl mx-auto text-center">
         <motion.h2
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.7, ease: [0.22, 0.68, 0.32, 1] }}
-          className="font-display text-[clamp(56px,11vw,180px)] leading-[0.92] tracking-[-0.025em] text-[rgb(var(--fg))]"
+          transition={{ duration: 0.6 }}
+          className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-8 leading-tight"
+          style={{ fontFamily: "var(--font-instrument-serif, serif)" }}
         >
           Ready to{" "}
-          <em className="italic text-[rgb(var(--accent))]">connect?</em>
+          <span className="gradient-text">connect?</span>
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.18, ease: [0.22, 0.68, 0.32, 1] }}
-          className="mt-8 text-[17px] sm:text-lg text-[rgb(var(--fg-2))] max-w-[52ch] mx-auto leading-relaxed"
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="text-xl text-[rgb(var(--muted-fg))] mb-10 max-w-2xl mx-auto"
         >
-          Join thousands of students sharing notes, asking better questions,
-          and landing better roles — across every campus in Pakistan.
+          Join 2,400+ students from across Pakistan who are already sharing notes, chatting, and landing jobs.
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.32, ease: [0.22, 0.68, 0.32, 1] }}
-          className="mt-12 flex flex-wrap items-center justify-center gap-3"
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="flex flex-wrap gap-4 justify-center"
         >
-          <Link href="/signup" data-magnet>
-            <Button variant="primary" size="xl" shape="pill" className="group">
-              Join UniConnect free
-              <ArrowUpRight className="w-5 h-5 transition-transform duration-[var(--dur-quick)] group-hover:rotate-45" />
+          <Link href="/signup">
+            <Button variant="primary" size="xl" className="group glow">
+              Join UniConnect Free
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
-          <Link href="/universities" data-magnet>
-            <Button variant="ghost" size="xl" shape="pill">
-              Browse universities
+          <Link href="/universities">
+            <Button variant="outline" size="xl">
+              Browse Universities
             </Button>
           </Link>
         </motion.div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="mt-10 text-xs font-mono tracking-widest text-[rgb(var(--fg-3))]"
-        >
-          NO CREDIT CARD · NO SPAM · NO BS
-        </motion.p>
       </div>
     </section>
   );
