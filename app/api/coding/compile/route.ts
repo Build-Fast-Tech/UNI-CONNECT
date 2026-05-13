@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
         const result = await runWithJudge0(code, language, stdin);
         return NextResponse.json(result);
       } catch (judgeErr: any) {
-        return NextResponse.json({ error: judgeErr.message, status: "error" }, { status: 500 });
+        console.error("Judge0 error:", judgeErr?.message ?? judgeErr);
+        return NextResponse.json({ error: "Compiler unavailable", status: "error" }, { status: 500 });
       }
     }
     // No compiler available

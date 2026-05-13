@@ -18,7 +18,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Not logged in → can't access app pages
-  const appPrefixes = ["/feed", "/profile", "/notes", "/jobs", "/chat", "/ai", "/inbox", "/cvs", "/universities", "/feedback", "/about"];
+  const appPrefixes = ["/feed", "/profile", "/notes", "/jobs", "/chat", "/ai", "/inbox", "/cvs", "/universities", "/feedback", "/about", "/admin"];
   const isAppRoute = appPrefixes.some((r) => pathname.startsWith(r));
 
   if (!hasSession && (isAppRoute || pathname.startsWith("/onboarding"))) {

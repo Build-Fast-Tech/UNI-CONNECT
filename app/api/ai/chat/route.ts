@@ -153,7 +153,7 @@ export async function POST(req: Request) {
         } catch (streamErr: any) {
           const msg = streamErr?.message ?? String(streamErr);
           console.error("Gemini stream error:", msg);
-          controller.enqueue(encoder.encode(`\n\n[Stream error: ${msg}]`));
+          controller.enqueue(encoder.encode(`\n\n[Stream error]`));
           controller.close();
         }
       },
@@ -167,8 +167,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-    const msg = err?.message ?? String(err);
-    console.error("AI route error:", msg);
-    return new Response(msg, { status: 500 });
+    console.error("AI route error:", err?.message ?? err);
+    return new Response("Internal server error", { status: 500 });
   }
 }
