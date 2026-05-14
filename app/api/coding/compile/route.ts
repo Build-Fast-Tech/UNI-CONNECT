@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Piston API (self-hosted at localhost:2000 or configurable)
-const PISTON_URL   = process.env.PISTON_API_URL   || "http://localhost:2000";
+// Piston API — defaults to the free public instance; set PISTON_API_URL to override
+const PISTON_URL   = process.env.PISTON_API_URL   || "https://emkc.org";
 const JUDGE0_URL   = process.env.JUDGE0_API_URL    || "https://judge0-ce.p.rapidapi.com";
 const JUDGE0_KEY   = process.env.JUDGE0_API_KEY    || "";
 
