@@ -346,6 +346,11 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   // ── Context menu ─────────────────────────────────────────────────────────────
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; msg: Message } | null>(null);
 
+  // ── Swipe-to-reply (mobile) ──────────────────────────────────────────────────
+  const [swipeMsgId,  setSwipeMsgId]  = useState<string | null>(null);
+  const [swipeDelta,  setSwipeDelta]  = useState(0);
+  const swipeTouchX   = useRef(0);
+
   // ── @mention ─────────────────────────────────────────────────────────────────
   const [mentionQuery,   setMentionQuery]   = useState<string | null>(null);
   const [mentionResults, setMentionResults] = useState<Array<{ id: string; full_name: string; username: string | null; avatar_url: string | null }>>([]);
@@ -1062,8 +1067,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     broadcastTyping(false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     const filteredContent = (channel?.type === "global" || channel?.type === "university") ? filterProfanity(content) : content;
+    const savedReply = replyToMessage;
     const { data: inserted, error } = await (supabase as any).from("messages")
-      .insert({ channel_id: channelId, sender_id: userId, content: filteredContent, reply_to_id: replyToMessage?.id ?? null })
+      .insert({ channel_id: channelId, sender_id: userId, content: filteredContent, reply_to_id: savedReply?.id ?? null })
       .select("id, content, created_at, sender_id").single();
     setReplyToMessage(null);
     if (error) { setSendError(error.message); }
@@ -1071,7 +1077,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       const selfProfile = profileCache.current.get(userId) ?? { full_name: myName, avatar_url: myAvatar, username: null, branch: null, universities: null };
       setMessages(prev => {
         if (prev.some(m => m.id === inserted.id)) return prev;
-        return [...prev, { id: inserted.id, content: inserted.content ?? content, created_at: inserted.created_at, sender_id: inserted.sender_id, sender: selfProfile as Profile }];
+        return [...prev, {
+          id: inserted.id,
+          content: inserted.content ?? content,
+          created_at: inserted.created_at,
+          sender_id: inserted.sender_id,
+          sender: selfProfile as Profile,
+          reply_to_id: savedReply?.id ?? null,
+          replied_msg: savedReply ? { id: savedReply.id, content: savedReply.content, sender: savedReply.sender } : null,
+        }];
       });
       setTimeout(() => scrollToBottom(), 50);
     }
@@ -1220,13 +1234,24 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
               <div
                 id={`msg-${msg.id}`}
                 className={cn(
-                  "flex items-end gap-2 transition-colors",
+                  "flex items-end gap-2 transition-colors relative",
                   isOwn ? "flex-row-reverse" : "flex-row",
                   groupHeader ? "mt-3" : "mt-0.5",
                   isHighlighted && "bg-yellow-400/10 rounded-2xl px-1"
                 )}
                 onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, msg }); }}
+                onTouchStart={e => { swipeTouchX.current = e.touches[0].clientX; setSwipeMsgId(msg.id); setSwipeDelta(0); }}
+                onTouchMove={e => { const d = e.touches[0].clientX - swipeTouchX.current; if (d > 0 && d <= 80) setSwipeDelta(d); }}
+                onTouchEnd={() => { if (swipeDelta > 50) setReplyToMessage(msg); setSwipeMsgId(null); setSwipeDelta(0); }}
               >
+                {/* Swipe reply hint icon */}
+                {swipeMsgId === msg.id && swipeDelta > 20 && (
+                  <div className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center", isOwn ? "right-full mr-2" : "left-full ml-2")} style={{ opacity: Math.min(swipeDelta / 60, 1) }}>
+                    <div className="w-7 h-7 rounded-full bg-[rgb(var(--primary)/0.15)] flex items-center justify-center">
+                      <Reply className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
+                    </div>
+                  </div>
+                )}
                 {/* Avatar (others only, first in group) */}
                 {!isOwn && (
                   <div className="w-8 flex-shrink-0 self-end mb-1">
@@ -1262,6 +1287,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                   {/* Reaction bar (hover) */}
                   <div
                     className="relative"
+                    style={swipeMsgId === msg.id && swipeDelta > 0 ? { transform: `translateX(${swipeDelta * 0.5}px)`, transition: "none" } : { transition: "transform 0.2s" }}
                     onMouseEnter={() => {
                       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                       setHoveredMsgId(msg.id);
@@ -1284,6 +1310,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                             {emoji}
                           </button>
                         ))}
+                        <div className="w-px h-4 bg-[rgb(var(--border))] mx-0.5" />
+                        <button
+                          onClick={() => { setReplyToMessage(msg); setHoveredMsgId(null); }}
+                          className="p-1 rounded-full hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))] transition-colors"
+                          title="Reply"
+                        >
+                          <Reply className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
 
