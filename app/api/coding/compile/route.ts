@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Piston API — defaults to the free public instance; set PISTON_API_URL to override
-const PISTON_URL   = process.env.PISTON_API_URL   || "https://emkc.org";
+// Self-hosted Piston uses /api/v2/execute; emkc.org public instance uses /api/v2/piston/execute
+const PISTON_URL   = process.env.PISTON_API_URL   || "https://emkc.org/api/v2/piston";
 const JUDGE0_URL   = process.env.JUDGE0_API_URL    || "https://judge0-ce.p.rapidapi.com";
 const JUDGE0_KEY   = process.env.JUDGE0_API_KEY    || "";
 
@@ -20,7 +21,7 @@ const JUDGE0_IDS: Record<string, number> = {
 
 async function runWithPiston(code: string, language: string, stdin: string) {
   const lang = PISTON_LANGS[language] ?? PISTON_LANGS.cpp;
-  const res = await fetch(`${PISTON_URL}/api/v2/execute`, {
+  const res = await fetch(`${PISTON_URL}/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
     // No compiler available
     return NextResponse.json({
       status: "pending_key",
-      message: "No compiler configured. Add JUDGE0_API_KEY to .env.local or run Piston on localhost:2000",
+      message: "No compiler configured. Add JUDGE0_API_KEY to .env.local or set PISTON_API_URL",
       output: "", error: null, executionTime: 0,
     });
   }

@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { motion } from "framer-motion";
 import {
-  Download, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck,
+  Download, ExternalLink, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck,
   Share2, Flag, ArrowLeft, FileText, User,
   Calendar, GraduationCap, ChevronLeft, ChevronRight,
   ZoomIn, ZoomOut, Bot, Pencil, X, Check, Trash2,
@@ -377,13 +377,25 @@ export default function NoteDetailPage({
 
           {/* Actions */}
           <div className="theme-card p-4 space-y-2.5">
-            {/* Download */}
-            <button
-              onClick={handleDownload}
+            {/* View in browser */}
+            <a
+              href={note.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"
             >
+              <ExternalLink className="w-4 h-4" /> View
+            </a>
+
+            {/* Download */}
+            <a
+              href={note.file_url}
+              download
+              onClick={() => note && supabase.from("notes").update({ downloads: note.downloads + 1 }).eq("id", noteId)}
+              className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-[rgb(var(--border))] text-[rgb(var(--fg))] text-sm font-semibold hover:bg-[rgb(var(--muted))] transition-colors"
+            >
               <Download className="w-4 h-4" /> Download
-            </button>
+            </a>
 
             {/* Vote */}
             <div className="flex gap-2">
