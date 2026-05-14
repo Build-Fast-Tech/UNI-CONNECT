@@ -111,72 +111,92 @@ function PracticeContent() {
         ))}
       </div>
 
-      {/* Problem table */}
-      <div className="rounded-2xl overflow-hidden"
-        style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-        {/* Column headers */}
-        <div className="grid grid-cols-[28px_36px_1fr_80px_80px_64px] items-center gap-3 px-5 py-2.5"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(108,63,212,0.06)" }}>
-          {["#", "✓", "Title", "Track", "Difficulty", "Points"].map(h => (
-            <span key={h} className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#6272A4" }}>{h}</span>
-          ))}
-        </div>
+      {/* Problem blocks grouped by difficulty */}
+      {filtered.length === 0 && (
+        <p className="text-center py-16 text-sm" style={{ color: "#4a4070" }}>No problems match your filters.</p>
+      )}
 
-        <div>
-          {filtered.length === 0 && (
-            <p className="text-center py-16 text-sm" style={{ color: "#4a4070" }}>No problems match your filters.</p>
-          )}
-          {filtered.map((p, i) => {
-            const isSolved = solved.has(p.id);
-            const ts = TRACK_STYLE[p.track];
-            return (
-              <motion.div key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                transition={{ delay: Math.min(i * 0.012, 0.25) }}>
-                <Link href={`/coding/practice/${p.id}`}
-                  className="grid grid-cols-[28px_36px_1fr_80px_80px_64px] items-center gap-3 px-5 py-3 group transition-all block"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(108,63,212,0.07)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <span className="text-xs font-mono" style={{ color: "#4a4070" }}>{i + 1}</span>
-                  <div className="flex justify-center">
-                    {isSolved
-                      ? <CheckCircle className="w-4 h-4" style={{ color: "#50FA7B" }} />
-                      : <div className="w-4 h-4 rounded-full border" style={{ borderColor: "rgba(255,255,255,0.12)" }} />}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-medium block truncate transition-colors"
-                      style={{ color: isSolved ? "#6272A4" : "#E2E8F0" }}>
-                      {p.title}
-                    </span>
-                    <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {p.tags.slice(0, 2).map(tag => (
-                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded"
-                          style={{ background: "rgba(255,255,255,0.04)", color: "#6272A4" }}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-center"
-                    style={{ color: ts.color, background: ts.bg }}>
-                    {p.track === "fundamentals" ? "Fund." : p.track.toUpperCase()}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold text-center"
-                    style={DIFF_STYLE[p.difficulty]}>
-                    {p.difficulty}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold" style={{ color: "#FFB86C" }}>{p.points}</span>
-                    <span className="text-[10px]" style={{ color: "#6272A4" }}>pts</span>
-                    <ArrowRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: "#BD93F9" }} />
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
+      {(["easy", "medium", "hard"] as Difficulty[]).map(diff => {
+        const group = filtered.filter(p => p.difficulty === diff);
+        if (group.length === 0) return null;
+        const solvedInGroup = group.filter(p => solved.has(p.id)).length;
+        const diffColor = diff === "easy" ? "#50FA7B" : diff === "medium" ? "#FFB86C" : "#FF5555";
+        return (
+          <div key={diff} className="space-y-2">
+            {/* Difficulty group header */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: diffColor }}>
+                {diff} — {solvedInGroup}/{group.length}
+              </span>
+              <div className="flex-1 h-px" style={{ background: `${diffColor}20` }} />
+            </div>
+
+            {/* Problem cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {group.map((p, i) => {
+                const isSolved = solved.has(p.id);
+                const ts = TRACK_STYLE[p.track];
+                return (
+                  <motion.div key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.04, 0.3) }}>
+                    <Link href={`/coding/practice/${p.id}`} className="group flex rounded-xl overflow-hidden transition-all"
+                      style={{
+                        background: isSolved ? "rgba(80,250,123,0.04)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isSolved ? "rgba(80,250,123,0.18)" : "rgba(255,255,255,0.07)"}`,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = isSolved ? "rgba(80,250,123,0.08)" : "rgba(108,63,212,0.1)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = isSolved ? "rgba(80,250,123,0.04)" : "rgba(255,255,255,0.03)")}>
+
+                      {/* Completion tab on the left */}
+                      <div className="w-1.5 flex-shrink-0 rounded-l-xl transition-all"
+                        style={{ background: isSolved ? "#50FA7B" : "rgba(255,255,255,0.08)" }} />
+
+                      {/* Card body */}
+                      <div className="flex items-center gap-3 px-4 py-3 flex-1 min-w-0">
+                        {/* Check indicator */}
+                        <div className="flex-shrink-0">
+                          {isSolved
+                            ? <CheckCircle className="w-4 h-4" style={{ color: "#50FA7B" }} />
+                            : <div className="w-4 h-4 rounded-full border-2" style={{ borderColor: "rgba(255,255,255,0.15)" }} />}
+                        </div>
+
+                        {/* Title + tags */}
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-semibold block truncate transition-colors"
+                            style={{ color: isSolved ? "#50FA7B" : "#E2E8F0" }}>
+                            {p.title}
+                          </span>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {p.tags.slice(0, 3).map(tag => (
+                              <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-md"
+                                style={{ background: "rgba(255,255,255,0.05)", color: "#6272A4" }}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Right side: points + arrow */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs font-bold block" style={{ color: "#FFB86C" }}>{p.points}pts</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                              style={{ color: ts.color, background: ts.bg }}>
+                              {p.track === "fundamentals" ? "Fund." : p.track.toUpperCase()}
+                            </span>
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ color: "#BD93F9" }} />
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
