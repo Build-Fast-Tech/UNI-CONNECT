@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { X, Download, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileText } from "lucide-react";
+import { X, Download, ExternalLink, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileText } from "lucide-react";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -58,7 +58,14 @@ export default function PdfPreviewModal({ note, onClose }: { note: NoteMin; onCl
           </div>
         )}
 
+        {/* Open in new tab (view) */}
         <a href={note.file_url} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[rgb(var(--border))] text-[rgb(var(--fg))] text-xs font-semibold hover:bg-[rgb(var(--muted))] transition-colors flex-shrink-0">
+          <ExternalLink className="w-3.5 h-3.5" /> Open
+        </a>
+
+        {/* Force download */}
+        <a href={note.file_url} download
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold hover:opacity-90 transition-opacity flex-shrink-0">
           <Download className="w-3.5 h-3.5" /> Download
         </a>
@@ -86,12 +93,18 @@ export default function PdfPreviewModal({ note, onClose }: { note: NoteMin; onCl
           <FileText className="w-14 h-14 opacity-25" />
           <p className="text-base font-semibold text-white/80">{note.title}</p>
           <p className="text-sm">
-            {isPdf ? "Could not load PDF." : "In-browser preview isn't available for this file type."}
+            {isPdf ? "Could not render PDF inline." : "In-browser preview isn't available for this file type."}
           </p>
-          <a href={note.file_url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity">
-            <Download className="w-4 h-4" /> Open / Download
-          </a>
+          <div className="flex items-center gap-3">
+            <a href={note.file_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/20 text-white text-sm font-semibold hover:bg-white/10 transition-colors">
+              <ExternalLink className="w-4 h-4" /> View in Browser
+            </a>
+            <a href={note.file_url} download
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity">
+              <Download className="w-4 h-4" /> Download
+            </a>
+          </div>
         </div>
       )}
     </div>
