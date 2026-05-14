@@ -313,12 +313,7 @@ function AIChat() {
                   : "bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] rounded-tl-sm"
               )}>
                 {msg.content ? (
-                  <span className="whitespace-pre-wrap">
-                    {msg.content}
-                    {msg.streaming && msg.role === "assistant" && (
-                      <span className="ai-caret" aria-hidden />
-                    )}
-                  </span>
+                  <span className="whitespace-pre-wrap">{msg.content}</span>
                 ) : msg.streaming ? (
                   <span className="flex items-end gap-0.5 h-5">
                     {[0, 150, 300].map(d => (

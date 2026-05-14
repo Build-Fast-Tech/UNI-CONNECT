@@ -23,12 +23,15 @@ export function formatBytes(bytes: number): string {
 }
 
 export const THEMES = [
-  { id: "light", label: "Day", color: "#F7F3EB" },
-  { id: "dark",  label: "Night", color: "#0E0D0C" },
+  { id: "midnight",   label: "Midnight",   color: "#818CF8" },
+  { id: "daylight",   label: "Daylight",   color: "#F59E0B" },
+  { id: "monochrome", label: "Monochrome", color: "#6B7280" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
+// Subjects that should always appear in the upload/filter dropdowns, even when
+// the `subjects` table hasn't been seeded. Merged with DB results in the UI.
 export const FALLBACK_SUBJECTS = [
   "Applied Physics",
   "Artificial Intelligence",
@@ -70,6 +73,11 @@ export function mergeSubjects(fromDb: string[]): string[] {
   );
 }
 
+// Discord-style typing indicator text.
+//   1 name:    "Alice is typing…"
+//   2 names:   "Alice and Bob are typing…"
+//   3 names:   "Alice, Bob, and Carol are typing…"
+//   4+ names:  "Several people are typing…"
 export function formatTypingNames(names: string[]): string {
   const n = names.length;
   if (n === 0) return "";

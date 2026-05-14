@@ -19,7 +19,7 @@ export async function GET() {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const adminEmails = (process.env.ADMIN_EMAILS || "abdullah.xf90@gmail.com")
+  const adminEmails = (process.env.ADMIN_EMAILS || "")
     .split(",").map(s => s.trim()).filter(Boolean);
 
   const report: Record<string, any> = {

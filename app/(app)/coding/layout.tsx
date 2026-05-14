@@ -1,77 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import { Code2, ArrowLeft } from "lucide-react";
-import { Pill } from "@/components/ui/Pill";
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
+import { Code2, BookOpen, Cpu, Eye, FlaskConical, Swords, Trophy, FolderKanban } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const NAV = [
+  { href: "/coding/learning-hub", label: "Learn",     icon: BookOpen },
+  { href: "/coding/practice",     label: "Practice",  icon: Cpu },
+  { href: "/coding/dry-runs",     label: "Dry Runs",  icon: Eye },
+  { href: "/coding/projects",     label: "Projects",  icon: FolderKanban },
+  { href: "/coding/visual-labs",  label: "Labs",      icon: FlaskConical },
+  { href: "/coding/battle",       label: "Battle",    icon: Swords },
+  { href: "/coding/leaderboard",  label: "Ranks",     icon: Trophy },
+];
 
 export default function CodingLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   return (
-    <div className="flex items-center justify-center min-h-[70vh]">
-      <div className="text-center max-w-md mx-auto px-6">
-        <div
-          className="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-          style={{
-            background:
-              "linear-gradient(135deg, rgb(var(--primary)), rgb(var(--accent)))",
-            boxShadow: "0 0 40px rgb(var(--primary) / 0.40)",
-          }}
-        >
-          <Code2 className="w-9 h-9" style={{ color: "rgb(var(--primary-fg))" }} />
+    <div className="max-w-6xl mx-auto px-4 pb-10">
+      {/* Header */}
+      <div className="flex items-center gap-3 py-5 mb-2">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: "linear-gradient(135deg,#6C3FD4,#4F46E5)", boxShadow: "0 0 20px rgba(108,63,212,0.4)" }}>
+          <Code2 className="w-4.5 h-4.5 text-white" />
         </div>
-
-        <Pill tone="primary" size="md" className="mb-4 uppercase tracking-widest font-semibold">
-          Coming soon
-        </Pill>
-
-        <h1 className="font-display text-[40px] leading-tight tracking-tight text-[rgb(var(--fg))] mt-3 mb-3">
-          Coding OS.
-        </h1>
-        <p className="text-sm leading-relaxed mb-8 text-[rgb(var(--fg-2))]">
-          We&apos;re building something powerful — a full in-browser coding environment with an IDE,
-          dry runs, visual labs, battle rooms, and a global leaderboard. Stay tuned.
-        </p>
-
-        <div className="space-y-2.5 mb-8 text-left">
-          {[
-            { label: "Learning Hub",  done: true  },
-            { label: "Practice Labs", done: false },
-            { label: "Dry Runs",      done: false },
-            { label: "Visual Labs",   done: false },
-            { label: "Battle Rooms",  done: false },
-            { label: "Leaderboard",   done: false },
-          ].map(item => (
-            <div key={item.label} className="flex items-center gap-3">
-              <span
-                className={`w-4 h-4 rounded-full shrink-0 flex items-center justify-center ${
-                  item.done
-                    ? "bg-[rgb(var(--positive)/0.14)] border border-[rgb(var(--positive)/0.40)]"
-                    : "bg-[rgb(var(--bg-sunk))] border border-[rgb(var(--line))]"
-                }`}
-              >
-                {item.done && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--positive))]" />
-                )}
-              </span>
-              <span className={`text-sm ${item.done ? "text-[rgb(var(--fg))]" : "text-[rgb(var(--fg-3))]"}`}>
-                {item.label}
-              </span>
-              {item.done && (
-                <span className="text-[10px] font-semibold uppercase tracking-widest ml-auto text-[rgb(var(--positive))]">
-                  Ready
-                </span>
-              )}
-            </div>
-          ))}
+        <div>
+          <h1 className="text-lg font-bold text-white leading-none">Coding OS</h1>
+          <p className="text-xs mt-0.5" style={{ color: "#6272A4" }}>Practice · Learn · Build</p>
         </div>
-
-        <Link href="/feed">
-          <Button variant="outline" size="md" shape="pill">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Feed
-          </Button>
-        </Link>
       </div>
+
+      {/* Nav tabs */}
+      <div className="flex gap-1 overflow-x-auto pb-1 mb-6 scrollbar-hide">
+        {NAV.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link key={href} href={href}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0",
+                active
+                  ? "text-white"
+                  : "text-[#6272A4] hover:text-[#94A3B8] hover:bg-white/5"
+              )}
+              style={active ? {
+                background: "linear-gradient(135deg,rgba(108,63,212,0.3),rgba(79,70,229,0.3))",
+                border: "1px solid rgba(108,63,212,0.4)",
+                boxShadow: "0 0 12px rgba(108,63,212,0.2)",
+              } : {
+                border: "1px solid transparent",
+              }}>
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Page content */}
+      {children}
     </div>
   );
 }

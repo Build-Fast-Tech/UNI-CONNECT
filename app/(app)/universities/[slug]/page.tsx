@@ -54,8 +54,8 @@ function StarPicker({
           onMouseLeave={() => !readonly && setHovered(0)}
           className={cn("transition-transform", !readonly && "hover:scale-110 active:scale-95")}>
           <Star className={cn(sz, "transition-colors")}
-            fill={star <= active ? "rgb(var(--warning))" : "none"}
-            stroke={star <= active ? "rgb(var(--warning))" : "rgb(var(--border))"}
+            fill={star <= active ? "#FBBF24" : "none"}
+            stroke={star <= active ? "#FBBF24" : "rgb(var(--border))"}
             strokeWidth={1.5} />
         </button>
       ))}
@@ -69,7 +69,7 @@ function RatingBar({ label, count, total }: { label: string; count: number; tota
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="w-3 text-right text-[rgb(var(--muted-fg))]">{label}</span>
-      <Star className="w-3 h-3 shrink-0" fill="rgb(var(--warning))" stroke="rgb(var(--warning))" />
+      <Star className="w-3 h-3 shrink-0" fill="#FBBF24" stroke="#FBBF24" />
       <div className="flex-1 h-2 rounded-full bg-[rgb(var(--muted))] overflow-hidden">
         <motion.div className="h-full rounded-full bg-amber-400"
           initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: "easeOut" }} />
@@ -301,7 +301,7 @@ export default function UniversityHubPage({ params }: { params: Promise<{ slug: 
             <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {members.length} member{members.length !== 1 ? "s" : ""}</span>
             {totalReviews > 0 && (
               <span className="flex items-center gap-1.5">
-                <Star className="w-4 h-4" fill="rgb(var(--warning))" stroke="rgb(var(--warning))" />
+                <Star className="w-4 h-4" fill="#FBBF24" stroke="#FBBF24" />
                 <span className="font-semibold">{avgRating.toFixed(1)}</span>
                 <span className="text-[rgb(var(--muted-fg))]">({totalReviews} review{totalReviews !== 1 ? "s" : ""})</span>
               </span>

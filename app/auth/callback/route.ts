@@ -25,6 +25,26 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // Check if user has completed onboarding (has university_id set)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("university_id")
+          .eq("id", user.id)
+          .single();
+
+        const response = NextResponse.redirect(`${origin}${next}`);
+        if (profile?.university_id) {
+          // User already onboarded — set cookie so middleware doesn't redirect them
+          response.cookies.set("uc_onboarded", "1", {
+            path: "/",
+            maxAge: 60 * 60 * 24 * 365,
+            sameSite: "lax",
+          });
+        }
+        return response;
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
     return NextResponse.redirect(
