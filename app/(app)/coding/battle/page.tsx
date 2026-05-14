@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Swords, Plus, Users, Clock, Loader2, Play, Trophy,
-  X, Zap, Globe, Lock, CheckCircle,
+  X, Zap, Globe, Lock, CheckCircle, Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -132,6 +132,13 @@ export default function BattlePage() {
     setJoining(null);
   };
 
+  const deleteRoom = async (roomId: string) => {
+    if (!userId) return;
+    await (supabase as any).from("battle_participants").delete().eq("room_id", roomId);
+    await (supabase as any).from("battle_rooms").delete().eq("id", roomId).eq("creator_id", userId);
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+  };
+
   const TOPICS = ["Arrays", "Strings", "Recursion", "Linked Lists", "Trees", "Graphs", "Dynamic Programming", "Sorting", "Math", "Bit Manipulation"];
 
   return (
@@ -205,6 +212,13 @@ export default function BattlePage() {
                   {joining === room.id ? <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                     : room.creator_id === userId ? "Your Room" : "Join →"}
                 </button>
+                {room.creator_id === userId && (
+                  <button onClick={() => deleteRoom(room.id)}
+                    className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all"
+                    title="Delete room">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}
