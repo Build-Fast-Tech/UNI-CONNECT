@@ -150,8 +150,8 @@ function StarDisplay({ avg, count }: { avg: number; count: number }) {
       <div className="flex gap-0.5">
         {[1,2,3,4,5].map(s => (
           <Star key={s} className="w-3 h-3"
-            fill={s <= Math.round(avg) ? "rgb(var(--warning))" : "none"}
-            stroke={s <= Math.round(avg) ? "rgb(var(--warning))" : "rgb(var(--border))"}
+            fill={s <= Math.round(avg) ? "#FBBF24" : "none"}
+            stroke={s <= Math.round(avg) ? "#FBBF24" : "rgb(var(--border))"}
             strokeWidth={1.5} />
         ))}
       </div>

@@ -5,27 +5,25 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Palette, Lock, Bell, Trash2, Eye, EyeOff, CheckCircle,
-  AlertTriangle, User, LogOut, AtSign, Loader2, Sun, Moon,
+  AlertTriangle, User, LogOut, AtSign, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/Surface";
-import { Pill } from "@/components/ui/Pill";
-import { Field } from "@/components/ui/Field";
-import { useTheme } from "@/components/providers/ThemeProvider";
 import { createClient } from "@/lib/supabase/client";
-import type { ThemeId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-const THEME_CARDS: { id: ThemeId; label: string; desc: string; icon: typeof Sun }[] = [
-  { id: "light", label: "Light", desc: "Paper cream, ink, restraint.", icon: Sun },
-  { id: "dark",  label: "Dark",  desc: "Inky charcoal, lifted moss.",  icon: Moon },
-];
+const THEMES = [
+  { id: "midnight",   label: "Midnight",   bg: "#0A0A0F", primary: "#6366F1", desc: "Late-night study sessions" },
+  { id: "daylight",   label: "Daylight",   bg: "#FAFAFA", primary: "#4F46E5", desc: "Clean, library, Sunday morning" },
+  { id: "monochrome", label: "Monochrome", bg: "#000000", primary: "#FFFFFF", desc: "Minimalist, pure focus" },
+] as const;
+
+type ThemeId = typeof THEMES[number]["id"];
 
 const SECTIONS = [
-  { id: "username",   label: "Username",   icon: AtSign },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "security",   label: "Security",   icon: Lock },
-  { id: "account",    label: "Account",    icon: User },
+  { id: "username",   label: "Username",    icon: AtSign },
+  { id: "appearance", label: "Appearance",  icon: Palette },
+  { id: "security",   label: "Security",    icon: Lock },
+  { id: "account",    label: "Account",     icon: User },
 ];
 
 const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
@@ -33,8 +31,8 @@ const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { theme: currentTheme, setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("username");
+  const [currentTheme, setCurrentTheme] = useState<ThemeId>("midnight");
 
   // Username
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
@@ -60,6 +58,12 @@ export default function SettingsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  useEffect(() => {
+    const saved = (document.documentElement.dataset.theme as ThemeId) || "midnight";
+    setCurrentTheme(saved);
+  }, []);
+
+  // Load current username
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -122,11 +126,13 @@ export default function SettingsPage() {
   };
 
   const applyTheme = async (theme: ThemeId) => {
-    setTheme(theme);
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("theme", theme);
+    setCurrentTheme(theme);
+
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Best-effort persistence; ignore the error if the column was dropped/migrated.
-      await (supabase.from("profiles") as any).update({ theme }).eq("id", user.id);
+      await supabase.from("profiles").update({ theme }).eq("id", user.id);
     }
   };
 
@@ -137,6 +143,7 @@ export default function SettingsPage() {
     if (newPass !== confirmPass) { setPassError("Passwords do not match."); return; }
 
     setPassLoading(true);
+    // Re-authenticate then update
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.email) { setPassError("Could not verify session."); setPassLoading(false); return; }
 
@@ -165,6 +172,7 @@ export default function SettingsPage() {
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== "DELETE") return;
     setDeleteLoading(true);
+    // Cascade delete via Supabase (profiles row deletes cascade to auth)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from("profiles").delete().eq("id", user.id);
@@ -174,304 +182,297 @@ export default function SettingsPage() {
     setDeleteLoading(false);
   };
 
-  const usernameSuffix = (() => {
-    if (usernameChecking) return <Loader2 className="w-4 h-4 animate-spin" />;
-    if (usernameAvailable === true && usernameInput) return <CheckCircle className="w-4 h-4 text-[rgb(var(--positive))]" />;
-    if (usernameAvailable === false) return <AlertTriangle className="w-4 h-4 text-[rgb(var(--destructive))]" />;
-    return null;
-  })();
-
   return (
-    <div className="max-w-4xl mx-auto">
-      <header className="mb-10">
-        <p className="eyebrow mb-3">Account</p>
-        <h1 className="font-display text-[44px] sm:text-[52px] leading-[0.95] tracking-[-0.02em] text-[rgb(var(--fg))]">
-          Settings.
-        </h1>
-        <p className="mt-3 text-[15px] text-[rgb(var(--fg-2))]">Manage your account preferences.</p>
-      </header>
+    <div className="max-w-3xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-sm text-[rgb(var(--muted-fg))] mt-1">Manage your account preferences</p>
+      </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        <nav className="col-span-12 md:col-span-3 space-y-1">
+      <div className="flex gap-6">
+        {/* Sidebar nav */}
+        <nav className="w-44 flex-shrink-0 space-y-1">
           {SECTIONS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveSection(id)}
               className={cn(
-                "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors duration-[var(--dur-quick)]",
+                "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                 activeSection === id
-                  ? "bg-[rgb(var(--primary)/0.10)] text-[rgb(var(--primary))]"
-                  : "text-[rgb(var(--fg-2))] hover:bg-[rgb(var(--bg-sunk))] hover:text-[rgb(var(--fg))]"
+                  ? "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]"
+                  : "text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
               )}
             >
-              <Icon className="w-[18px] h-[18px]" strokeWidth={1.7} />
+              <Icon className="w-4 h-4" />
               {label}
             </button>
           ))}
 
-          <div className="pt-4 mt-3 border-t border-[rgb(var(--line))]">
+          <div className="pt-4 border-t border-[rgb(var(--border))]">
             <button
               onClick={handleSignOut}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[rgb(var(--destructive))] hover:bg-[rgb(var(--destructive)/0.08)] transition-colors duration-[var(--dur-quick)]"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-[rgb(var(--destructive))] hover:bg-[rgb(var(--destructive)/0.08)] transition-all duration-200"
             >
-              <LogOut className="w-[18px] h-[18px]" strokeWidth={1.7} />
+              <LogOut className="w-4 h-4" />
               Sign out
             </button>
           </div>
         </nav>
 
-        <div className="col-span-12 md:col-span-9 min-w-0">
+        {/* Content */}
+        <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
-            {/* Username */}
+            {/* ── Username ── */}
             {activeSection === "username" && (
               <motion.div
                 key="username"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: 0.2 }}
+                className="theme-card p-6 space-y-5"
               >
-                <Surface tone="default" radius="lg" elevation="low" className="p-7 space-y-6">
-                  <div>
-                    <h2 className="font-display text-2xl tracking-tight text-[rgb(var(--fg))]">Your username</h2>
-                    <p className="text-sm text-[rgb(var(--fg-2))] mt-1.5 leading-relaxed">
-                      Pick a unique handle. Others can search for you by this name. 3–20 characters, lowercase letters, numbers, and underscores.
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                    <AtSign className="w-4 h-4 text-[rgb(var(--primary))]" />
+                    Your Username
+                  </h2>
+                  <p className="text-sm text-[rgb(var(--muted-fg))]">
+                    Pick a unique @handle. Others can search for you by this name.
+                    Only lowercase letters, numbers, and underscores. 3–20 characters.
+                  </p>
+                </div>
 
-                  {currentUsername && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgb(var(--bg-sunk))] border border-[rgb(var(--line))] text-sm">
-                      <span className="text-[rgb(var(--fg-3))]">Current</span>
-                      <span className="font-mono font-semibold text-[rgb(var(--primary))]">@{currentUsername}</span>
-                    </div>
+                {currentUsername && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">
+                    <span className="text-[rgb(var(--muted-fg))]">Current:</span>
+                    <span className="font-mono font-semibold text-[rgb(var(--primary))]">@{currentUsername}</span>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">New Username</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted-fg))] font-mono text-sm select-none">@</span>
+                    <input
+                      type="text"
+                      value={usernameInput}
+                      onChange={e => handleUsernameInput(e.target.value)}
+                      maxLength={20}
+                      placeholder="your_username"
+                      className="w-full h-10 pl-7 pr-10 rounded-xl text-sm font-mono bg-[rgb(var(--input))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {usernameChecking && <Loader2 className="w-4 h-4 animate-spin text-[rgb(var(--muted-fg))]" />}
+                      {!usernameChecking && usernameAvailable === true && usernameInput && (
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      )}
+                      {!usernameChecking && usernameAvailable === false && (
+                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                      )}
+                    </span>
+                  </div>
+                  {usernameError && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {usernameError}
+                    </p>
                   )}
-
-                  <Field
-                    label="New username"
-                    name="username"
-                    value={usernameInput}
-                    onChange={(e) => handleUsernameInput(e.target.value)}
-                    maxLength={20}
-                    placeholder="your_username"
-                    className="font-mono"
-                    prefix={<AtSign className="w-4 h-4" />}
-                    suffix={usernameSuffix}
-                    error={usernameError || null}
-                    hint={
-                      usernameSuccess
-                        ? "Username saved."
-                        : usernameAvailable && usernameInput
-                          ? `@${usernameInput} is available.`
-                          : undefined
-                    }
-                  />
-
-                  <Button
-                    variant="primary"
-                    size="md"
-                    shape="pill"
-                    loading={usernameSaving}
-                    disabled={
-                      !usernameInput ||
-                      usernameInput === currentUsername ||
-                      !usernameAvailable ||
-                      usernameSaving
-                    }
-                    onClick={handleSaveUsername}
-                  >
-                    Save username
-                  </Button>
-
-                  <div className="pt-2 border-t border-[rgb(var(--line))]">
-                    <p className="text-xs text-[rgb(var(--fg-3))] leading-relaxed">
-                      Your username is how people find you in search. Appears as{" "}
-                      <span className="font-mono text-[rgb(var(--fg))]">@{usernameInput || "you"}</span> across the platform.
+                  {usernameAvailable && !usernameError && (
+                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 flex-shrink-0" /> @{usernameInput} is available!
                     </p>
-                  </div>
-                </Surface>
+                  )}
+                  {usernameSuccess && (
+                    <p className="text-xs text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 flex-shrink-0" /> Username saved!
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="md"
+                  loading={usernameSaving}
+                  disabled={
+                    !usernameInput ||
+                    usernameInput === currentUsername ||
+                    !usernameAvailable ||
+                    usernameSaving
+                  }
+                  onClick={handleSaveUsername}
+                >
+                  Save Username
+                </Button>
+
+                <div className="pt-2 border-t border-[rgb(var(--border))]">
+                  <p className="text-xs text-[rgb(var(--muted-fg))] leading-relaxed">
+                    Your username is how people find you in search. It appears as <span className="font-mono text-[rgb(var(--fg))]">@{usernameInput || "you"}</span> on your profile and in messages.
+                    You can change it at any time as long as the new name is available.
+                  </p>
+                </div>
               </motion.div>
             )}
 
-            {/* Appearance */}
+            {/* ── Appearance ── */}
             {activeSection === "appearance" && (
               <motion.div
                 key="appearance"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: 0.2 }}
+                className="theme-card p-6"
               >
-                <Surface tone="default" radius="lg" elevation="low" className="p-7 space-y-6">
-                  <div>
-                    <h2 className="font-display text-2xl tracking-tight text-[rgb(var(--fg))]">Appearance</h2>
-                    <p className="text-sm text-[rgb(var(--fg-2))] mt-1.5 leading-relaxed">
-                      Two modes. The platform decides nothing about you — pick whichever feels right.
-                    </p>
-                  </div>
+                <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-[rgb(var(--primary))]" />
+                  Theme
+                </h2>
+                <p className="text-sm text-[rgb(var(--muted-fg))] mb-5">
+                  Choose your vibe. Changes apply instantly and are saved to your account.
+                </p>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    {THEME_CARDS.map((theme) => {
-                      const active = currentTheme === theme.id;
-                      const Icon = theme.icon;
-                      return (
-                        <button
-                          key={theme.id}
-                          onClick={() => applyTheme(theme.id)}
-                          className={cn(
-                            "relative p-4 rounded-2xl border-2 text-left transition-colors duration-[var(--dur-quick)]",
-                            active
-                              ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.06)]"
-                              : "border-[rgb(var(--line))] hover:border-[rgb(var(--line-strong))]"
-                          )}
-                        >
-                          <div
-                            className="w-full h-14 rounded-xl mb-3 flex items-center justify-center gap-2"
-                            style={{
-                              background:
-                                theme.id === "light"
-                                  ? "linear-gradient(135deg, rgb(247 243 235), rgb(252 249 243))"
-                                  : "linear-gradient(135deg, rgb(14 13 12), rgb(22 20 18))",
-                            }}
-                          >
-                            <Icon
-                              className="w-4 h-4"
-                              style={{ color: theme.id === "light" ? "rgb(46 78 62)" : "rgb(143 184 152)" }}
-                            />
-                            <span
-                              className="w-6 h-1.5 rounded-full"
-                              style={{
-                                background: theme.id === "light" ? "rgb(46 78 62)" : "rgb(143 184 152)",
-                                opacity: 0.7,
-                              }}
-                            />
-                          </div>
-                          <p className="text-sm font-semibold tracking-tight text-[rgb(var(--fg))]">
-                            {theme.label}
-                          </p>
-                          <p className="text-xs text-[rgb(var(--fg-3))] mt-0.5 leading-tight">
-                            {theme.desc}
-                          </p>
-                          {active && (
-                            <div className="absolute top-3 right-3">
-                              <CheckCircle className="w-4 h-4 text-[rgb(var(--primary))]" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </Surface>
+                <div className="grid grid-cols-2 gap-3">
+                  {THEMES.map(theme => (
+                    <button
+                      key={theme.id}
+                      onClick={() => applyTheme(theme.id)}
+                      className={cn(
+                        "relative p-3 rounded-xl border-2 text-left transition-all duration-200",
+                        currentTheme === theme.id
+                          ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.06)]"
+                          : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.4)]"
+                      )}
+                    >
+                      {/* Swatch */}
+                      <div
+                        className="w-full h-12 rounded-lg mb-2 flex items-center justify-center gap-1.5"
+                        style={{ backgroundColor: theme.bg }}
+                      >
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.primary }} />
+                        <div className="w-6 h-1.5 rounded-full" style={{ backgroundColor: theme.primary, opacity: 0.6 }} />
+                      </div>
+                      <p className="text-xs font-semibold">{theme.label}</p>
+                      <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5 leading-tight">{theme.desc}</p>
+                      {currentTheme === theme.id && (
+                        <div className="absolute top-2 right-2">
+                          <CheckCircle className="w-4 h-4 text-[rgb(var(--primary))]" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             )}
 
-            {/* Security */}
+            {/* ── Security ── */}
             {activeSection === "security" && (
               <motion.div
                 key="security"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: 0.2 }}
+                className="theme-card p-6"
               >
-                <Surface tone="default" radius="lg" elevation="low" className="p-7">
-                  <div className="mb-6">
-                    <h2 className="font-display text-2xl tracking-tight text-[rgb(var(--fg))]">Change password</h2>
-                    <p className="text-sm text-[rgb(var(--fg-2))] mt-1.5 leading-relaxed">
-                      Min. 10 characters with at least one letter and one number.
+                <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-[rgb(var(--primary))]" />
+                  Change password
+                </h2>
+                <p className="text-sm text-[rgb(var(--muted-fg))] mb-5">
+                  Min. 10 characters with at least one letter and one number.
+                </p>
+
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                  {[
+                    { label: "Current password", value: currentPass, set: setCurrentPass },
+                    { label: "New password",      value: newPass,     set: setNewPass },
+                    { label: "Confirm new password", value: confirmPass, set: setConfirmPass },
+                  ].map(({ label, value, set }) => (
+                    <div key={label}>
+                      <label className="block text-sm font-medium mb-1.5">{label}</label>
+                      <div className="relative">
+                        <input
+                          type={showPass ? "text" : "password"}
+                          value={value}
+                          onChange={e => set(e.target.value)}
+                          required
+                          className={cn(
+                            "w-full h-10 pl-4 pr-10 rounded-xl text-sm",
+                            "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
+                            "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
+                            "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring))]"
+                          )}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPass(s => !s)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgb(var(--muted-fg))]"
+                        >
+                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {passError && (
+                    <p className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.1)] px-3 py-2 rounded-lg">
+                      {passError}
                     </p>
-                  </div>
+                  )}
+                  {passSuccess && (
+                    <p className="text-sm text-[rgb(var(--success))] bg-[rgb(var(--success)/0.1)] px-3 py-2 rounded-lg flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Password updated successfully.
+                    </p>
+                  )}
 
-                  <form onSubmit={handlePasswordChange} className="space-y-5">
-                    {[
-                      { label: "Current password",     value: currentPass, set: setCurrentPass },
-                      { label: "New password",         value: newPass,     set: setNewPass     },
-                      { label: "Confirm new password", value: confirmPass, set: setConfirmPass },
-                    ].map(({ label, value, set }) => (
-                      <Field
-                        key={label}
-                        label={label}
-                        name={label}
-                        type={showPass ? "text" : "password"}
-                        value={value}
-                        onChange={(e) => set(e.target.value)}
-                        required
-                        prefix={<Lock className="w-4 h-4" />}
-                        suffix={
-                          label === "Current password" ? (
-                            <button
-                              type="button"
-                              onClick={() => setShowPass((s) => !s)}
-                              className="hover:text-[rgb(var(--fg))] transition-colors"
-                              aria-label={showPass ? "Hide passwords" : "Show passwords"}
-                            >
-                              {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          ) : null
-                        }
-                      />
-                    ))}
-
-                    {passError && (
-                      <div className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.08)] border border-[rgb(var(--destructive)/0.20)] px-3.5 py-2.5 rounded-xl">
-                        {passError}
-                      </div>
-                    )}
-                    {passSuccess && (
-                      <div className="text-sm text-[rgb(var(--positive))] bg-[rgb(var(--positive)/0.10)] border border-[rgb(var(--positive)/0.20)] px-3.5 py-2.5 rounded-xl flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" /> Password updated successfully.
-                      </div>
-                    )}
-
-                    <Button type="submit" variant="primary" size="md" shape="pill" loading={passLoading}>
-                      Update password
-                    </Button>
-                  </form>
-                </Surface>
+                  <Button type="submit" variant="primary" size="md" loading={passLoading}>
+                    Update password
+                  </Button>
+                </form>
               </motion.div>
             )}
 
-            {/* Account */}
+            {/* ── Account ── */}
             {activeSection === "account" && (
               <motion.div
                 key="account"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.22 }}
+                transition={{ duration: 0.2 }}
                 className="space-y-4"
               >
-                <Surface tone="default" radius="lg" elevation="low" className="p-7">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="theme-card p-6">
+                  <h2 className="text-base font-semibold mb-1 flex items-center gap-2">
                     <Bell className="w-4 h-4 text-[rgb(var(--primary))]" />
-                    <h2 className="font-display text-2xl tracking-tight text-[rgb(var(--fg))]">Notifications</h2>
-                  </div>
-                  <p className="text-sm text-[rgb(var(--fg-2))] mb-4 leading-relaxed">
+                    Notifications
+                  </h2>
+                  <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">
                     Notification preferences coming soon.
                   </p>
-                  <div className="text-xs text-[rgb(var(--fg-3))] bg-[rgb(var(--bg-sunk))] border border-[rgb(var(--line))] px-3.5 py-2.5 rounded-xl">
+                  <div className="text-xs text-[rgb(var(--muted-fg))] bg-[rgb(var(--muted))] px-3 py-2 rounded-lg">
                     Email notifications for job applications, DMs, and note activity will be configurable here.
                   </div>
-                </Surface>
+                </div>
 
-                <Surface tone="default" radius="lg" elevation="low" className="p-7 border-[rgb(var(--destructive)/0.30)]">
-                  <div className="flex items-center gap-2 text-[rgb(var(--destructive))] mb-1">
+                {/* Danger zone */}
+                <div className="theme-card p-6 border border-[rgb(var(--destructive)/0.2)]">
+                  <h2 className="text-base font-semibold mb-1 flex items-center gap-2 text-[rgb(var(--destructive))]">
                     <AlertTriangle className="w-4 h-4" />
-                    <h2 className="font-display text-2xl tracking-tight">Danger zone</h2>
-                  </div>
-                  <p className="text-sm text-[rgb(var(--fg-2))] mb-4 leading-relaxed">
+                    Danger zone
+                  </h2>
+                  <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">
                     Permanently delete your account and all data. This cannot be undone.
                   </p>
                   <Button
                     variant="outline"
                     size="sm"
-                    shape="pill"
                     onClick={() => setShowDeleteModal(true)}
-                    className="border-[rgb(var(--destructive)/0.40)] text-[rgb(var(--destructive))] hover:bg-[rgb(var(--destructive)/0.08)]"
+                    className="border-[rgb(var(--destructive)/0.4)] text-[rgb(var(--destructive))] hover:bg-[rgb(var(--destructive)/0.08)]"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    Delete my account
+                    <Trash2 className="w-4 h-4" /> Delete my account
                   </Button>
-                </Surface>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -485,57 +486,57 @@ export default function SettingsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[rgb(var(--fg)/0.50)] backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowDeleteModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md"
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="theme-card p-6 w-full max-w-md"
             >
-              <Surface tone="default" radius="lg" elevation="high" className="p-7">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="w-10 h-10 rounded-full bg-[rgb(var(--destructive)/0.12)] text-[rgb(var(--destructive))] flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5" />
-                  </span>
-                  <h3 className="font-display text-xl tracking-tight text-[rgb(var(--fg))]">Delete account</h3>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[rgb(var(--destructive)/0.15)] flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-[rgb(var(--destructive))]" />
                 </div>
-                <p className="text-sm text-[rgb(var(--fg-2))] mb-4 leading-relaxed">
-                  This will permanently delete your profile, notes, messages, and all data. Type{" "}
-                  <strong className="text-[rgb(var(--fg))] font-mono">DELETE</strong> to confirm.
-                </p>
-                <Field
-                  name="confirm-delete"
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  placeholder="Type DELETE to confirm"
-                  className="font-mono"
-                />
-                <div className="flex gap-3 mt-6">
-                  <Button
-                    variant="outline"
-                    size="md"
-                    shape="pill"
-                    className="flex-1"
-                    onClick={() => setShowDeleteModal(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="md"
-                    shape="pill"
-                    loading={deleteLoading}
-                    disabled={deleteConfirm !== "DELETE"}
-                    onClick={handleDeleteAccount}
-                    className="flex-1"
-                  >
-                    Delete forever
-                  </Button>
-                </div>
-              </Surface>
+                <h3 className="text-lg font-bold">Delete account</h3>
+              </div>
+              <p className="text-sm text-[rgb(var(--muted-fg))] mb-4">
+                This will permanently delete your profile, notes, messages, and all data. Type{" "}
+                <strong className="text-[rgb(var(--fg))]">DELETE</strong> to confirm.
+              </p>
+              <input
+                type="text"
+                value={deleteConfirm}
+                onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className={cn(
+                  "w-full h-10 px-4 rounded-xl text-sm mb-4",
+                  "bg-[rgb(var(--input))] border border-[rgb(var(--border))]",
+                  "text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
+                  "focus:outline-none focus:ring-2 focus:ring-[rgb(var(--destructive))]"
+                )}
+              />
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="md"
+                  loading={deleteLoading}
+                  disabled={deleteConfirm !== "DELETE"}
+                  onClick={handleDeleteAccount}
+                  className="flex-1 bg-[rgb(var(--destructive))] text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  Delete forever
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}

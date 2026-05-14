@@ -1,66 +1,67 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { Palette } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { THEMES } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-/**
- * Two-state theme toggle. Sun ↔ moon swap via Framer Motion crossfade
- * with a tiny rotate to signal the change. Tokens only — works on both
- * light and dark surfaces.
- *
- * Backwards-compatible: the rest of the codebase imports this same name.
- */
-export function ThemeSwitcher({ className }: { className?: string }) {
-  const { theme, toggle } = useTheme();
-  const isDark = theme === "dark";
+export function ThemeSwitcher() {
+  const { theme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-      title={`Switch to ${isDark ? "light" : "dark"} mode`}
-      className={cn(
-        "relative inline-flex items-center justify-center",
-        "h-9 w-9 rounded-full overflow-hidden",
-        "border border-[rgb(var(--line))] bg-[rgb(var(--bg-elev))]",
-        "text-[rgb(var(--fg))]",
-        "hover:border-[rgb(var(--line-strong))] hover:bg-[rgb(var(--bg-sunk))]",
-        "transition-[background-color,border-color] duration-[var(--dur-quick)]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg))]",
-        className
-      )}
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {isDark ? (
-          <motion.span
-            key="moon"
-            initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-            animate={{ rotate: 0, opacity: 1, scale: 1 }}
-            exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
-            transition={{ duration: 0.32, ease: [0.22, 0.68, 0.32, 1] }}
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <Moon className="w-[18px] h-[18px]" strokeWidth={1.6} />
-          </motion.span>
-        ) : (
-          <motion.span
-            key="sun"
-            initial={{ rotate: 90, opacity: 0, scale: 0.6 }}
-            animate={{ rotate: 0, opacity: 1, scale: 1 }}
-            exit={{ rotate: -90, opacity: 0, scale: 0.6 }}
-            transition={{ duration: 0.32, ease: [0.22, 0.68, 0.32, 1] }}
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <Sun className="w-[18px] h-[18px]" strokeWidth={1.6} />
-          </motion.span>
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex items-center gap-2 h-9 px-3 rounded-xl text-sm font-medium",
+          "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",
+          "hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted)/0.7)]",
+          "transition-all duration-200 border border-[rgb(var(--border))]"
         )}
-      </AnimatePresence>
-    </button>
+        aria-label="Switch theme"
+      >
+        <Palette className="w-4 h-4" />
+        <span className="hidden sm:block capitalize">{theme}</span>
+      </button>
+
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className={cn(
+              "absolute right-0 top-11 z-50 p-2 rounded-2xl",
+              "bg-[rgb(var(--card))] border border-[rgb(var(--card-border))]",
+              "shadow-[0_8px_32px_rgb(0,0,0,0.4)]",
+              "flex flex-col gap-1 w-44"
+            )}
+          >
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setTheme(t.id); setOpen(false); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-xl text-sm",
+                  "hover:bg-[rgb(var(--muted))] transition-colors",
+                  theme === t.id
+                    ? "bg-[rgb(var(--primary)/0.15)] text-[rgb(var(--primary))] font-medium"
+                    : "text-[rgb(var(--fg))]"
+                )}
+              >
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0 ring-1 ring-white/10"
+                  style={{ backgroundColor: t.color }}
+                />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
-
-/* Backwards-compat alias used in some imports */
-export const ThemeToggle = ThemeSwitcher;

@@ -27,10 +27,7 @@ interface ScheduleBlock {
   color: string;
 }
 
-const COLORS = [
-  "rgb(var(--hue-a))","rgb(var(--hue-b))","rgb(var(--hue-c))","rgb(var(--destructive))",
-  "rgb(var(--hue-e))","rgb(var(--hue-f))","rgb(var(--hue-d))","rgb(var(--warning))",
-];
+const COLORS = ["#6366f1","#10b981","#f97316","#ef4444","#8b5cf6","#3b82f6","#ec4899","#eab308"];
 const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MONTHS = [
   "January","February","March","April","May","June",

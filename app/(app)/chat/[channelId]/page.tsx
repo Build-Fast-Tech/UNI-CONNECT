@@ -1655,13 +1655,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           <div ref={attachMenuRef}
             className="absolute bottom-full left-2 mb-3 z-50 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl overflow-hidden w-52 py-1">
             {[
-              { label: "Document",        icon: FileText,   color: "rgb(var(--hue-e))", action: () => docFileRef.current?.click() },
-              { label: "Photos & videos", icon: ImageIcon,  color: "rgb(var(--hue-d))", action: () => fileInputRef.current?.click() },
-              { label: "Camera",          icon: Camera,     color: "rgb(var(--hue-e))", action: () => setShowCamera(true) },
-              { label: "Audio",           icon: Music,      color: "rgb(var(--hue-c))", action: () => audioFileRef.current?.click() },
-              { label: "Poll",            icon: BarChart2,  color: "rgb(var(--hue-f))", action: () => { setShowPollCreator(true); setShowGifPicker(false); setShowStickerPicker(false); } },
-              { label: "Sticker",         icon: Sticker,    color: "rgb(var(--positive))", action: () => { setShowStickerPicker(p => !p); setShowGifPicker(false); } },
-              { label: "GIF",             icon: Smile,      color: "rgb(var(--hue-c))", action: () => { setShowGifPicker(p => !p); setShowStickerPicker(false); } },
+              { label: "Document",        icon: FileText,   color: "#7F66FF", action: () => docFileRef.current?.click() },
+              { label: "Photos & videos", icon: ImageIcon,  color: "#EB3D44", action: () => fileInputRef.current?.click() },
+              { label: "Camera",          icon: Camera,     color: "#AA66EE", action: () => setShowCamera(true) },
+              { label: "Audio",           icon: Music,      color: "#EF6034", action: () => audioFileRef.current?.click() },
+              { label: "Poll",            icon: BarChart2,  color: "#0288D1", action: () => { setShowPollCreator(true); setShowGifPicker(false); setShowStickerPicker(false); } },
+              { label: "Sticker",         icon: Sticker,    color: "#00A884", action: () => { setShowStickerPicker(p => !p); setShowGifPicker(false); } },
+              { label: "GIF",             icon: Smile,      color: "#FF6B35", action: () => { setShowGifPicker(p => !p); setShowStickerPicker(false); } },
             ].map(({ label, icon: Icon, color, action }) => (
               <button key={label} type="button"
                 onClick={() => { action(); setShowAttachMenu(false); }}

@@ -3,9 +3,14 @@ import { NextResponse, type NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check for Supabase session cookie (set when user logs in)
-  const hasSession = request.cookies.has("sb-mwpuwgoesgvsvknhqmor-auth-token") ||
-    request.cookies.getAll().some(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+  // Check for Supabase session cookie — handles both single and chunked tokens
+  // (PKCE/OAuth splits large tokens into .0, .1, ... chunks)
+  const hasSession = request.cookies.getAll().some(c =>
+    c.name.startsWith("sb-") && (
+      c.name.endsWith("-auth-token") ||
+      /sb-.+-auth-token\.\d+$/.test(c.name)
+    )
+  );
 
   const hasOnboarded = request.cookies.has("uc_onboarded");
 
@@ -18,7 +23,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Not logged in → can't access app pages
-  const appPrefixes = ["/feed", "/profile", "/notes", "/jobs", "/chat", "/ai", "/inbox", "/cvs", "/universities", "/feedback", "/about"];
+  const appPrefixes = ["/feed", "/profile", "/notes", "/jobs", "/chat", "/ai", "/inbox", "/cvs", "/universities", "/feedback", "/about", "/admin"];
   const isAppRoute = appPrefixes.some((r) => pathname.startsWith(r));
 
   if (!hasSession && (isAppRoute || pathname.startsWith("/onboarding"))) {

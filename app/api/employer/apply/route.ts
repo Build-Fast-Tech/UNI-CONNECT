@@ -121,7 +121,7 @@ export async function POST(req: Request) {
         : "";
       await transporter.sendMail({
         from: `"UniConnect" <${process.env.GMAIL_USER}>`,
-        to: "abdullah.xf90@gmail.com",
+        to: process.env.ADMIN_EMAILS?.split(",")[0]?.trim() || process.env.GMAIL_USER || "",
         subject: `[UniConnect] New Employer Application — ${companyName}`,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto">

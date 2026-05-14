@@ -462,6 +462,237 @@ export const DRY_RUN_SNIPPETS = [
       { line: 4, variables: { output: "BD~D~B" }, note: "~Base() called last" },
     ],
   },
+
+  // ── 15 new snippets ──────────────────────────────────────────────
+
+  {
+    id: "dr-011", track: "fundamentals" as Track, difficulty: "easy" as Difficulty, points: 5,
+    code: `int i = 0;\nwhile(i < 4){\n  cout << i*i << " ";\n  i++;\n}`,
+    correctOutput: "0 1 4 9 ",
+    explanation: "i goes 0,1,2,3. i*i = 0,1,4,9.",
+    traceSteps: [
+      { line: 1, variables: { i: 0 }, note: "i initialised to 0" },
+      { line: 2, variables: { i: 0, "i<4": "true" }, note: "Check 0<4 → true" },
+      { line: 3, variables: { i: 0, "i*i": 0, output: "0 " }, note: "Print 0*0=0" },
+      { line: 4, variables: { i: 1 }, note: "i++" },
+      { line: 2, variables: { i: 1, "i<4": "true" }, note: "Check 1<4 → true" },
+      { line: 3, variables: { i: 1, "i*i": 1, output: "0 1 " }, note: "Print 1*1=1" },
+      { line: 4, variables: { i: 2 }, note: "i++" },
+      { line: 3, variables: { i: 2, "i*i": 4, output: "0 1 4 " }, note: "Print 2*2=4" },
+      { line: 4, variables: { i: 3 }, note: "i++" },
+      { line: 3, variables: { i: 3, "i*i": 9, output: "0 1 4 9 " }, note: "Print 3*3=9" },
+      { line: 4, variables: { i: 4 }, note: "i++" },
+      { line: 2, variables: { i: 4, "i<4": "false" }, note: "Check 4<4 → false, exit loop" },
+    ],
+  },
+
+  {
+    id: "dr-012", track: "fundamentals" as Track, difficulty: "easy" as Difficulty, points: 5,
+    code: `int arr[] = {2,4,6,8,10};\nint sum = 0;\nfor(int i=0;i<5;i++)\n  sum += arr[i];\ncout << sum;`,
+    correctOutput: "30",
+    explanation: "Sum = 2+4+6+8+10 = 30.",
+    traceSteps: [
+      { line: 1, variables: { arr: "[2,4,6,8,10]" }, note: "Array initialised" },
+      { line: 2, variables: { sum: 0 }, note: "sum = 0" },
+      { line: 3, variables: { i: 0, sum: 2 }, note: "i=0: sum += arr[0]=2 → sum=2" },
+      { line: 3, variables: { i: 1, sum: 6 }, note: "i=1: sum += arr[1]=4 → sum=6" },
+      { line: 3, variables: { i: 2, sum: 12 }, note: "i=2: sum += arr[2]=6 → sum=12" },
+      { line: 3, variables: { i: 3, sum: 20 }, note: "i=3: sum += arr[3]=8 → sum=20" },
+      { line: 3, variables: { i: 4, sum: 30 }, note: "i=4: sum += arr[4]=10 → sum=30" },
+      { line: 5, variables: { output: "30" }, note: "Print sum=30" },
+    ],
+  },
+
+  {
+    id: "dr-013", track: "fundamentals" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `string s = "Hello";\nfor(int i=s.size()-1;i>=0;i--)\n  cout << s[i];`,
+    correctOutput: "olleH",
+    explanation: "Iterates string in reverse order printing each character.",
+    traceSteps: [
+      { line: 1, variables: { s: "Hello", "s.size()": 5 }, note: "s = \"Hello\", length 5" },
+      { line: 2, variables: { i: 4, "s[i]": "o", output: "o" }, note: "i=4: print s[4]='o'" },
+      { line: 2, variables: { i: 3, "s[i]": "l", output: "ol" }, note: "i=3: print s[3]='l'" },
+      { line: 2, variables: { i: 2, "s[i]": "l", output: "oll" }, note: "i=2: print s[2]='l'" },
+      { line: 2, variables: { i: 1, "s[i]": "e", output: "olle" }, note: "i=1: print s[1]='e'" },
+      { line: 2, variables: { i: 0, "s[i]": "H", output: "olleH" }, note: "i=0: print s[0]='H'" },
+      { line: 2, variables: { i: -1, "i>=0": "false" }, note: "i=-1, exit loop" },
+    ],
+  },
+
+  {
+    id: "dr-014", track: "fundamentals" as Track, difficulty: "easy" as Difficulty, points: 5,
+    code: `int x = 15;\nif(x > 10)\n  if(x > 20)\n    cout << "big";\n  else\n    cout << "medium";\nelse\n  cout << "small";`,
+    correctOutput: "medium",
+    explanation: "x=15 > 10 (true), x=15 > 20 (false) → else branch prints medium.",
+    traceSteps: [
+      { line: 1, variables: { x: 15 }, note: "x = 15" },
+      { line: 2, variables: { "x>10": "true" }, note: "15 > 10 is true" },
+      { line: 3, variables: { "x>20": "false" }, note: "15 > 20 is false" },
+      { line: 6, variables: { output: "medium" }, note: "else branch: print 'medium'" },
+    ],
+  },
+
+  {
+    id: "dr-015", track: "fundamentals" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `int n = 5, fact = 1;\ndo {\n  fact *= n;\n  n--;\n} while(n > 0);\ncout << fact;`,
+    correctOutput: "120",
+    explanation: "do-while computes 5! = 5*4*3*2*1 = 120.",
+    traceSteps: [
+      { line: 1, variables: { n: 5, fact: 1 }, note: "n=5, fact=1" },
+      { line: 3, variables: { n: 5, fact: 5 }, note: "fact *= 5 → fact=5" },
+      { line: 4, variables: { n: 4 }, note: "n-- → n=4" },
+      { line: 5, variables: { "n>0": "true" }, note: "4>0 → continue" },
+      { line: 3, variables: { n: 4, fact: 20 }, note: "fact *= 4 → fact=20" },
+      { line: 4, variables: { n: 3 }, note: "n-- → n=3" },
+      { line: 3, variables: { n: 3, fact: 60 }, note: "fact *= 3 → fact=60" },
+      { line: 4, variables: { n: 2 }, note: "n-- → n=2" },
+      { line: 3, variables: { n: 2, fact: 120 }, note: "fact *= 2 → fact=120" },
+      { line: 4, variables: { n: 1 }, note: "n-- → n=1" },
+      { line: 3, variables: { n: 1, fact: 120 }, note: "fact *= 1 → fact=120" },
+      { line: 4, variables: { n: 0 }, note: "n-- → n=0" },
+      { line: 5, variables: { "n>0": "false" }, note: "0>0 → exit loop" },
+      { line: 6, variables: { output: "120" }, note: "Print 120" },
+    ],
+  },
+
+  {
+    id: "dr-016", track: "fundamentals" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `int x = 10;\nint& ref = x;\nref = 20;\ncout << x << " " << ref;`,
+    correctOutput: "20 20",
+    explanation: "ref is a reference (alias) to x. Changing ref changes x too.",
+    traceSteps: [
+      { line: 1, variables: { x: 10 }, note: "x = 10" },
+      { line: 2, variables: { x: 10, ref: "→x (10)" }, note: "ref is an alias for x (same memory)" },
+      { line: 3, variables: { x: 20, ref: "→x (20)" }, note: "ref=20 changes x to 20" },
+      { line: 4, variables: { output: "20 20" }, note: "Both x and ref are 20" },
+    ],
+  },
+
+  {
+    id: "dr-017", track: "oop" as Track, difficulty: "easy" as Difficulty, points: 5,
+    code: `struct Point { int x, y; };\nPoint p;\np.x = 3; p.y = 4;\ncout << p.x + p.y;`,
+    correctOutput: "7",
+    explanation: "struct members x=3, y=4. Sum = 7.",
+    traceSteps: [
+      { line: 1, variables: { "Point": "struct{x,y}" }, note: "Struct Point defined" },
+      { line: 2, variables: { "p.x": "?", "p.y": "?" }, note: "p created (uninitialised)" },
+      { line: 3, variables: { "p.x": 3 }, note: "p.x = 3" },
+      { line: 3, variables: { "p.x": 3, "p.y": 4 }, note: "p.y = 4" },
+      { line: 4, variables: { "p.x+p.y": 7, output: "7" }, note: "3+4=7, print" },
+    ],
+  },
+
+  {
+    id: "dr-018", track: "dsa" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `int arr[] = {5,2,8,1,9};\nfor(int i=0;i<4;i++)\n  for(int j=0;j<4-i;j++)\n    if(arr[j]>arr[j+1])\n      swap(arr[j],arr[j+1]);\ncout<<arr[0]<<" "<<arr[4];`,
+    correctOutput: "1 9",
+    explanation: "Bubble sort puts smallest at front, largest at back. arr[0]=1, arr[4]=9.",
+    traceSteps: [
+      { line: 1, variables: { arr: "[5,2,8,1,9]" }, note: "Unsorted array" },
+      { line: 2, variables: { i: 0, arr: "[2,5,1,8,9]" }, note: "Pass 1: largest 9 bubbles to end" },
+      { line: 2, variables: { i: 1, arr: "[2,1,5,8,9]" }, note: "Pass 2: 8 already in place" },
+      { line: 2, variables: { i: 2, arr: "[1,2,5,8,9]" }, note: "Pass 3: 1 bubbles to front" },
+      { line: 2, variables: { i: 3, arr: "[1,2,5,8,9]" }, note: "Pass 4: already sorted" },
+      { line: 6, variables: { "arr[0]": 1, "arr[4]": 9, output: "1 9" }, note: "Print first and last" },
+    ],
+  },
+
+  {
+    id: "dr-019", track: "dsa" as Track, difficulty: "easy" as Difficulty, points: 5,
+    code: `queue<int> q;\nq.push(10); q.push(20); q.push(30);\ncout << q.front() << " ";\nq.pop();\ncout << q.front();`,
+    correctOutput: "10 20",
+    explanation: "Queue is FIFO. Front is always the oldest element. Pop removes 10, new front is 20.",
+    traceSteps: [
+      { line: 1, variables: { queue: "[]" }, note: "Empty queue" },
+      { line: 2, variables: { queue: "[10,20,30]" }, note: "Pushed 10, 20, 30" },
+      { line: 3, variables: { "q.front()": 10, output: "10 " }, note: "front() = 10 (FIFO, oldest first)" },
+      { line: 4, variables: { queue: "[20,30]" }, note: "pop() removes front (10)" },
+      { line: 5, variables: { "q.front()": 20, output: "10 20" }, note: "New front = 20" },
+    ],
+  },
+
+  {
+    id: "dr-020", track: "oop" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `class Box {\n  int val;\npublic:\n  Box(int v):val(v){}\n  int get(){ return val; }\n};\nBox b(42);\ncout << b.get();`,
+    correctOutput: "42",
+    explanation: "Constructor initialises val=42 via initializer list. get() returns 42.",
+    traceSteps: [
+      { line: 1, variables: { "Box": "class" }, note: "Box class defined" },
+      { line: 7, variables: { "b.val": 42 }, note: "Box b(42): constructor called, val=42" },
+      { line: 8, variables: { "b.get()": 42, output: "42" }, note: "get() returns val=42" },
+    ],
+  },
+
+  {
+    id: "dr-021", track: "fundamentals" as Track, difficulty: "hard" as Difficulty, points: 15,
+    code: `int a=5,b=3;\na = a^b;\nb = a^b;\na = a^b;\ncout << a << " " << b;`,
+    correctOutput: "3 5",
+    explanation: "XOR swap: swaps a and b without a temp variable. Result: a=3, b=5.",
+    traceSteps: [
+      { line: 1, variables: { a: 5, b: 3 }, note: "a=5 (101), b=3 (011)" },
+      { line: 2, variables: { a: 6, b: 3 }, note: "a = 5^3 = 110 = 6" },
+      { line: 3, variables: { a: 6, b: 5 }, note: "b = 6^3 = 101 = 5" },
+      { line: 4, variables: { a: 3, b: 5 }, note: "a = 6^5 = 011 = 3" },
+      { line: 5, variables: { output: "3 5" }, note: "Values swapped!" },
+    ],
+  },
+
+  {
+    id: "dr-022", track: "dsa" as Track, difficulty: "hard" as Difficulty, points: 15,
+    code: `int memo[10]={0};\nmemo[0]=0; memo[1]=1;\nfor(int i=2;i<=6;i++)\n  memo[i]=memo[i-1]+memo[i-2];\ncout<<memo[6];`,
+    correctOutput: "8",
+    explanation: "DP Fibonacci. memo[6] = F(6) = 8.",
+    traceSteps: [
+      { line: 2, variables: { "memo[0]": 0, "memo[1]": 1 }, note: "Base cases set" },
+      { line: 3, variables: { i: 2, "memo[2]": 1 }, note: "i=2: 0+1=1" },
+      { line: 3, variables: { i: 3, "memo[3]": 2 }, note: "i=3: 1+1=2" },
+      { line: 3, variables: { i: 4, "memo[4]": 3 }, note: "i=4: 1+2=3" },
+      { line: 3, variables: { i: 5, "memo[5]": 5 }, note: "i=5: 2+3=5" },
+      { line: 3, variables: { i: 6, "memo[6]": 8 }, note: "i=6: 3+5=8" },
+      { line: 5, variables: { output: "8" }, note: "Print memo[6]=8" },
+    ],
+  },
+
+  {
+    id: "dr-023", track: "oop" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `class Animal{\npublic:\n  virtual string speak(){ return "..."; }\n};\nclass Dog:public Animal{\npublic:\n  string speak(){ return "Woof"; }\n};\nAnimal* a = new Dog();\ncout << a->speak();`,
+    correctOutput: "Woof",
+    explanation: "Virtual function + polymorphism: runtime dispatch calls Dog::speak().",
+    traceSteps: [
+      { line: 1, variables: { Animal: "base class" }, note: "Animal with virtual speak()" },
+      { line: 5, variables: { Dog: "derived class" }, note: "Dog overrides speak()" },
+      { line: 9, variables: { a: "→Dog object" }, note: "Animal* points to Dog instance" },
+      { line: 10, variables: { "a->speak()": "Woof", output: "Woof" }, note: "vptr dispatches to Dog::speak()" },
+    ],
+  },
+
+  {
+    id: "dr-024", track: "fundamentals" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `int x = 7;\ncout << (x << 1) << " ";\ncout << (x >> 1);`,
+    correctOutput: "14 3",
+    explanation: "Left shift <<1 multiplies by 2: 7*2=14. Right shift >>1 divides by 2 (int): 7/2=3.",
+    traceSteps: [
+      { line: 1, variables: { x: 7, "binary": "0111" }, note: "x=7 = 0111 in binary" },
+      { line: 2, variables: { "x<<1": 14, "binary": "1110", output: "14 " }, note: "Shift left: 0111→1110 = 14" },
+      { line: 3, variables: { "x>>1": 3, "binary": "0011", output: "14 3" }, note: "Shift right: 0111→0011 = 3" },
+    ],
+  },
+
+  {
+    id: "dr-025", track: "dsa" as Track, difficulty: "medium" as Difficulty, points: 10,
+    code: `vector<int> v = {1,2,3,4,5};\nreverse(v.begin(), v.end());\nfor(int x : v)\n  cout << x << " ";`,
+    correctOutput: "5 4 3 2 1 ",
+    explanation: "std::reverse reverses the vector in-place.",
+    traceSteps: [
+      { line: 1, variables: { v: "[1,2,3,4,5]" }, note: "Vector initialised" },
+      { line: 2, variables: { v: "[5,4,3,2,1]" }, note: "reverse() swaps elements: [1,2,3,4,5]→[5,4,3,2,1]" },
+      { line: 3, variables: { x: 5, output: "5 " }, note: "Print 5" },
+      { line: 3, variables: { x: 4, output: "5 4 " }, note: "Print 4" },
+      { line: 3, variables: { x: 3, output: "5 4 3 " }, note: "Print 3" },
+      { line: 3, variables: { x: 2, output: "5 4 3 2 " }, note: "Print 2" },
+      { line: 3, variables: { x: 1, output: "5 4 3 2 1 " }, note: "Print 1" },
+    ],
+  },
 ];
 
 // ── Additional 20+ problems to reach 50+ ─────────────────────────

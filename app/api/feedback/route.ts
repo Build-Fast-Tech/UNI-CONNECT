@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 // Primary recipient. Honour ADMIN_EMAILS env (comma-separated) so deployments
 // can override without a code change.
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "abdullah.xf90@gmail.com")
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map(s => s.trim())
   .filter(Boolean);

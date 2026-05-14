@@ -48,10 +48,10 @@ function gradeToLetter(pct: number): string {
 }
 
 function gradeColor(pct: number): string {
-  if (pct >= 80) return "rgb(var(--positive))";
-  if (pct >= 65) return "rgb(var(--warning))";
-  if (pct >= 50) return "rgb(var(--hue-c))";
-  return "rgb(var(--destructive))";
+  if (pct >= 80) return "#22c55e";
+  if (pct >= 65) return "#f59e0b";
+  if (pct >= 50) return "#f97316";
+  return "#ef4444";
 }
 
 function pctToGpa4(pct: number): number {
@@ -85,7 +85,7 @@ function GradeBar({ value, max, color }: { value: number; max: number; color: st
 function GPAGauge({ gpa, scale }: { gpa: number; scale: "4.0" | "percent" }) {
   const max = scale === "4.0" ? 4.0 : 100;
   const pct = Math.min(100, (gpa / max) * 100);
-  const color = pct >= 80 ? "rgb(var(--positive))" : pct >= 60 ? "rgb(var(--warning))" : "rgb(var(--destructive))";
+  const color = pct >= 80 ? "#22c55e" : pct >= 60 ? "#f59e0b" : "#ef4444";
   const display = scale === "4.0" ? gpa.toFixed(2) : `${gpa.toFixed(1)}%`;
   const letter = gradeToLetter(scale === "4.0" ? gpa * 25 : gpa);
 
