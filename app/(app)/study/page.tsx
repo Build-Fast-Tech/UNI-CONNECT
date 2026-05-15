@@ -291,7 +291,7 @@ export default function StudyPage() {
     if (!sessionStartTime || !selectedSubject || !userId) return;
     const minutes = Math.round((Date.now() - sessionStartTime) / 60000);
     if (minutes >= 1) {
-      await supabase.from("study_logs").insert({
+      await (supabase as any).from("study_logs").insert({
         user_id: userId, subject_id: selectedSubject.id,
         duration_minutes: minutes, is_group_session: groupMode, session_code: sessionCode,
         study_group_id: joinedGroupId ?? null,
