@@ -418,6 +418,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const profileCache   = useRef<Map<string, Profile>>(new Map());
   const gifSearchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingStateRef = useRef(false);
+  const wasSendingRef  = useRef(false);
+
+  // Re-focus textarea after send completes (runs after React re-render)
+  useEffect(() => {
+    if (wasSendingRef.current && !sending) {
+      textareaRef.current?.focus();
+    }
+    wasSendingRef.current = sending;
+  }, [sending]);
 
   // ─── Derived: filtered messages ──────────────────────────────────────────────
   const filteredMessages = searchQuery.trim()
@@ -724,7 +733,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       channel_id: channelId, sender_id: userId, content: "📷 GIF",
       gif_url: url, reply_to_id: replyToMessage?.id ?? null,
     });
-    setReplyToMessage(null); setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
+    setReplyToMessage(null); setSending(false);
   };
 
   // ─── Send sticker ─────────────────────────────────────────────────────────────
@@ -735,7 +744,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       channel_id: channelId, sender_id: userId, content: "🎭 Sticker",
       sticker_id: stickerUrl, reply_to_id: replyToMessage?.id ?? null,
     });
-    setReplyToMessage(null); setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
+    setReplyToMessage(null); setSending(false);
   };
 
   // ─── Send poll ────────────────────────────────────────────────────────────────
@@ -747,7 +756,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       poll_data: { question, options },
       reply_to_id: replyToMessage?.id ?? null,
     });
-    setReplyToMessage(null); setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
+    setReplyToMessage(null); setSending(false);
   };
 
   // ─── Poll vote ────────────────────────────────────────────────────────────────
@@ -1130,7 +1139,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       });
       setTimeout(() => scrollToBottom(), 50);
     }
-    setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
+    setSending(false);
   };
 
   const handleDelete = async (msgId: string) => {
