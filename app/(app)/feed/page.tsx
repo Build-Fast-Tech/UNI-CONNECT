@@ -13,7 +13,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { useAcademic } from "@/lib/hooks/useAcademic";
 
-interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; }
+interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; file_url?: string | null; }
 interface Job     { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
 interface ChatMsg { id: string; content: string; created_at: string; sender_id: string; sender: { full_name: string; avatar_url: string | null } | null; }
 interface CalEvent { id: string; title: string; date: string; start_time: string | null; end_time: string | null; color: string; }
@@ -150,7 +150,7 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
 
 function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: string; sub: string; icon: React.ElementType; color: string }) {
   return (
-    <div className="theme-card p-4 flex items-center gap-3 flex-1">
+    <div className="theme-card p-4 flex items-center gap-3 flex-1 animate-fade-up">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + "22" }}>
         <Icon className="w-4 h-4" style={{ color }} />
       </div>
@@ -283,10 +283,10 @@ function JobPortal({ jobs, loading }: { jobs: Job[]; loading: boolean }) {
       ) : jobs.length === 0 ? (
         <p className="text-xs text-[rgb(var(--muted-fg))] text-center py-4">No jobs available right now</p>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-1 stagger">
           {jobs.slice(0, 3).map(job => (
             <Link key={job.id} href={`/jobs/${job.id}`}
-              className="flex items-start gap-3 p-2 -mx-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors group">
+              className="flex items-start gap-3 p-2 -mx-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-all group animate-fade-up">
               <div className="w-7 h-7 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0 text-xs font-bold text-[rgb(var(--primary))]">
                 {job.company_name.slice(0, 1)}
               </div>
@@ -375,10 +375,10 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 stagger">
           {notes.slice(0, 4).map(note => (
             <Link key={note.id} href={`/notes/${note.id}`}
-              className="p-3 rounded-xl border border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.35)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group">
+              className="p-3 rounded-xl border border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.35)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group cursor-pointer animate-scale-in">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
                   <FileText className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
@@ -388,9 +388,12 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
               <p className="text-xs font-medium leading-tight group-hover:text-[rgb(var(--primary))] transition-colors line-clamp-2 mb-2">
                 {note.title}
               </p>
-              <div className="flex items-center gap-2.5 text-[11px] text-[rgb(var(--muted-fg))]">
-                <span className="flex items-center gap-1"><Download className="w-3 h-3" />{note.downloads}</span>
-                <span className="flex items-center gap-1"><Star className="w-3 h-3" />{note.upvotes}</span>
+              <div className="flex items-center justify-between text-[11px] text-[rgb(var(--muted-fg))]">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex items-center gap-1"><Download className="w-3 h-3" />{note.downloads}</span>
+                  <span className="flex items-center gap-1"><Star className="w-3 h-3" />{note.upvotes}</span>
+                </div>
+                <span className="text-[10px] text-[rgb(var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity font-medium">Open →</span>
               </div>
             </Link>
           ))}
@@ -533,7 +536,7 @@ export default function FeedPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState("");
   const [gpa, setGpa]                   = useState<number | null>(null);
-  const [hoursThisWeek, setHoursThisWeek] = useState(0);
+  const [studyMinsThisWeek, setStudyMinsThisWeek] = useState(0);
   const [applications, setApplications] = useState(0);
   const [subjectsToReview, setSubjectsToReview] = useState(0);
 
@@ -543,14 +546,30 @@ export default function FeedPage() {
     const supabase = createClient();
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     Promise.all([
-      supabase.from("profiles").select("cgpa").eq("id", userId).single(),
+      supabase.from("gpa_assignments").select("grade, max_grade, weight, subject_id").eq("user_id", userId),
+      supabase.from("user_subjects").select("id, credits").eq("user_id", userId),
       supabase.from("study_logs").select("duration_minutes").eq("user_id", userId).gte("timestamp", weekAgo.toISOString()),
       supabase.from("job_applications").select("id", { count: "exact", head: true }).eq("applicant_id", userId),
-    ]).then(([profileRes, logsRes, appsRes]) => {
-      if (profileRes.data?.cgpa) setGpa(Number(profileRes.data.cgpa));
+    ]).then(([assignRes, subsRes, logsRes, appsRes]) => {
+      // Compute GPA from assignments (same logic as /gpa page)
+      const assigns = (assignRes.data ?? []) as { grade: number; max_grade: number; weight: number; subject_id: string }[];
+      const subs = (subsRes.data ?? []) as { id: string; credits: number }[];
+      if (assigns.length > 0 && subs.length > 0) {
+        let num = 0, den = 0;
+        for (const sub of subs) {
+          const subAssigns = assigns.filter(a => a.subject_id === sub.id);
+          if (!subAssigns.length) continue;
+          let n = 0, d = 0;
+          for (const a of subAssigns) { n += (a.grade / a.max_grade) * 100 * a.weight; d += a.weight; }
+          const score = d ? n / d : 0;
+          num += score * sub.credits;
+          den += sub.credits;
+        }
+        if (den > 0) setGpa(Math.round((num / den) * 100) / 100);
+      }
       const rows = (logsRes.data as { duration_minutes: number }[] | null) ?? [];
       const mins = rows.reduce((s, r) => s + r.duration_minutes, 0);
-      setHoursThisWeek(Math.round((mins / 60) * 10) / 10);
+      setStudyMinsThisWeek(mins);
       setApplications(appsRes.count ?? 0);
     });
 
@@ -558,7 +577,7 @@ export default function FeedPage() {
       .channel(`feed-study-${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "study_logs", filter: `user_id=eq.${userId}` }, (payload) => {
         const mins = (payload.new as { duration_minutes: number }).duration_minutes;
-        setHoursThisWeek(prev => Math.round((prev + mins / 60) * 10) / 10);
+        setStudyMinsThisWeek(prev => prev + mins);
       })
       .subscribe();
     return () => { supabase.removeChannel(studyLogSub); };
@@ -659,7 +678,7 @@ export default function FeedPage() {
       const subject = NOTE_SUBJECTS[noteTab];
       let q = supabase
         .from("notes")
-        .select("id, title, subject, downloads, upvotes")
+        .select("id, title, subject, downloads, upvotes, file_url")
         .eq("status", "published");
 
       if (subject) {
@@ -679,14 +698,14 @@ export default function FeedPage() {
   return (
     <div className="relative space-y-4">
       <LiveNowTicker />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Row 1: Hero + Stats */}
         <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} subjectsToReview={subjectsToReview} /></div>
-        <div className="flex flex-col gap-4">
-          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="#6366f1" />
-          <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="#10b981" />
+        <div className="flex flex-col gap-4 stagger">
+          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#6366f1" />
+          <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#10b981" />
           <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
         </div>
 
