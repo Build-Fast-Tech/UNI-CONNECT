@@ -58,16 +58,24 @@ export default function NoteDetailPage({
 
   useEffect(() => {
     (async () => {
-      const [{ data: { user } }, { data: noteData }] = await Promise.all([
+      const [{ data: { user } }, noteRes] = await Promise.all([
         supabase.auth.getUser(),
-        supabase
-          .from("notes")
-          .select("*, profiles!uploader_id(id, full_name, avatar_url), universities!university_id(short_name, slug)")
-          .eq("id", noteId)
-          .single(),
+        supabase.from("notes").select("*").eq("id", noteId).single(),
       ]);
 
+      let noteData: any = noteRes.data;
       if (!noteData) { setLoading(false); return; }
+
+      // Fetch related data separately to avoid FK join failures
+      const [uploaderRes, uniRes] = await Promise.all([
+        noteData.uploader_id
+          ? supabase.from("profiles").select("id, full_name, avatar_url").eq("id", noteData.uploader_id).single()
+          : Promise.resolve({ data: null }),
+        noteData.university_id
+          ? supabase.from("universities").select("short_name, slug").eq("id", noteData.university_id).single()
+          : Promise.resolve({ data: null }),
+      ]);
+      noteData = { ...noteData, profiles: uploaderRes.data, universities: uniRes.data };
       setNote(noteData);
       setUpvotes(noteData.upvotes);
       setUserId(user?.id || null);

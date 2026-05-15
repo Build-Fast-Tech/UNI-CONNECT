@@ -192,6 +192,7 @@ function AIChat() {
     }
     setLoading(false);
     refreshUsage();
+    setTimeout(() => textareaRef.current?.focus(), 0);
   }, [input, messages, loading, noteContext, refreshUsage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

@@ -724,7 +724,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       channel_id: channelId, sender_id: userId, content: "📷 GIF",
       gif_url: url, reply_to_id: replyToMessage?.id ?? null,
     });
-    setReplyToMessage(null); setSending(false);
+    setReplyToMessage(null); setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   // ─── Send sticker ─────────────────────────────────────────────────────────────
@@ -735,7 +735,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       channel_id: channelId, sender_id: userId, content: "🎭 Sticker",
       sticker_id: stickerUrl, reply_to_id: replyToMessage?.id ?? null,
     });
-    setReplyToMessage(null); setSending(false);
+    setReplyToMessage(null); setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   // ─── Send poll ────────────────────────────────────────────────────────────────
@@ -747,7 +747,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       poll_data: { question, options },
       reply_to_id: replyToMessage?.id ?? null,
     });
-    setReplyToMessage(null); setSending(false);
+    setReplyToMessage(null); setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   // ─── Poll vote ────────────────────────────────────────────────────────────────
@@ -1130,7 +1130,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       });
       setTimeout(() => scrollToBottom(), 50);
     }
-    setSending(false); textareaRef.current?.focus();
+    setSending(false); setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const handleDelete = async (msgId: string) => {

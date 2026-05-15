@@ -25,6 +25,8 @@ export default function MyProfilePage() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [loadingDone, setLoadingDone] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [editingLinks, setEditingLinks] = useState(false);
+  const [savingLinks, setSavingLinks] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Edit state
@@ -125,6 +127,20 @@ export default function MyProfilePage() {
     }
     setAvatarFile(null);
     setEditing(false);
+  };
+
+  const saveLinks = async () => {
+    if (!profile) return;
+    setSavingLinks(true);
+    await supabase.from("profiles").update({ linkedin, github, portfolio_url: portfolio }).eq("id", profile.id);
+    setProfile({ ...profile, linkedin, github, portfolio_url: portfolio });
+    setEditingLinks(false);
+    setSavingLinks(false);
+  };
+
+  const cancelLinks = () => {
+    if (profile) { setLinkedin(profile.linkedin || ""); setGithub(profile.github || ""); setPortfolio(profile.portfolio_url || ""); }
+    setEditingLinks(false);
   };
 
   if (!loadingDone) {
@@ -311,8 +327,19 @@ export default function MyProfilePage() {
         transition={{ delay: 0.05 }}
         className="theme-card p-6"
       >
-        <h2 className="text-sm font-semibold mb-4">Links</h2>
-        {editing ? (
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold">Links</h2>
+          {!editing && !editingLinks && (
+            <button
+              onClick={() => setEditingLinks(true)}
+              className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--primary))] transition-colors px-2 py-1 rounded-lg hover:bg-[rgb(var(--muted))]"
+            >
+              <Edit2 className="w-3 h-3" /> Edit links
+            </button>
+          )}
+        </div>
+
+        {(editing || editingLinks) ? (
           <div className="space-y-3">
             {[
               { label: "LinkedIn", value: linkedin, set: setLinkedin, icon: Link2, placeholder: "linkedin.com/in/yourname" },
@@ -335,6 +362,18 @@ export default function MyProfilePage() {
                 />
               </div>
             ))}
+            {editingLinks && !editing && (
+              <div className="flex gap-2 pt-1">
+                <button onClick={saveLinks} disabled={savingLinks}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 disabled:opacity-50 transition-all">
+                  <Save className="w-3 h-3" /> {savingLinks ? "Saving…" : "Save links"}
+                </button>
+                <button onClick={cancelLinks}
+                  className="px-3 py-1.5 rounded-lg text-xs text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))] transition-colors">
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -356,7 +395,7 @@ export default function MyProfilePage() {
               </a>
             ))}
             {!profile.linkedin && !profile.github && !profile.portfolio_url && (
-              <p className="text-sm text-[rgb(var(--muted-fg))]">No links added yet.</p>
+              <p className="text-sm text-[rgb(var(--muted-fg))]">No links added yet. Click &ldquo;Edit links&rdquo; above.</p>
             )}
           </div>
         )}
