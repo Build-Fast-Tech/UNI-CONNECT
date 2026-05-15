@@ -1450,14 +1450,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                       )}
 
                       {/* Timestamp + read ticks */}
-                      <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-end")}>
-                        <span className="text-[10px] opacity-60">{formatTime(msg.created_at)}</span>
+                      <div className={cn("flex items-center gap-0.5 mt-1", isOwn ? "justify-end" : "justify-end")}>
+                        <span className="text-[9px] opacity-50">{formatTime(msg.created_at)}</span>
                         {isOwn && (
-                          <span className="text-[11px] font-bold leading-none tracking-tighter" style={{
-                            color: (readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(255,255,255,0.38)",
-                          }}>
-                            ✓✓
-                          </span>
+                          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" style={{ flexShrink: 0 }}>
+                            <path d="M1 4L3.5 6.5L8 1" stroke={(readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(255,255,255,0.35)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 4L7.5 6.5L12 1" stroke={(readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(255,255,255,0.35)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
                         )}
                       </div>
                     </div>
