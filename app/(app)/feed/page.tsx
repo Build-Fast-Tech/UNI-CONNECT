@@ -13,7 +13,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { useAcademic } from "@/lib/hooks/useAcademic";
 
-interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; }
+interface Note    { id: string; title: string; subject: string; downloads: number; upvotes: number; file_url?: string | null; }
 interface Job     { id: string; title: string; company_name: string; type: string; city: string | null; is_remote: boolean; }
 interface ChatMsg { id: string; content: string; created_at: string; sender_id: string; sender: { full_name: string; avatar_url: string | null } | null; }
 interface CalEvent { id: string; title: string; date: string; start_time: string | null; end_time: string | null; color: string; }
@@ -378,7 +378,7 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
         <div className="grid grid-cols-2 gap-3">
           {notes.slice(0, 4).map(note => (
             <Link key={note.id} href={`/notes/${note.id}`}
-              className="p-3 rounded-xl border border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.35)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group">
+              className="p-3 rounded-xl border border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.35)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group cursor-pointer">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
                   <FileText className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
@@ -388,9 +388,12 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
               <p className="text-xs font-medium leading-tight group-hover:text-[rgb(var(--primary))] transition-colors line-clamp-2 mb-2">
                 {note.title}
               </p>
-              <div className="flex items-center gap-2.5 text-[11px] text-[rgb(var(--muted-fg))]">
-                <span className="flex items-center gap-1"><Download className="w-3 h-3" />{note.downloads}</span>
-                <span className="flex items-center gap-1"><Star className="w-3 h-3" />{note.upvotes}</span>
+              <div className="flex items-center justify-between text-[11px] text-[rgb(var(--muted-fg))]">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex items-center gap-1"><Download className="w-3 h-3" />{note.downloads}</span>
+                  <span className="flex items-center gap-1"><Star className="w-3 h-3" />{note.upvotes}</span>
+                </div>
+                <span className="text-[10px] text-[rgb(var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity font-medium">Open →</span>
               </div>
             </Link>
           ))}
@@ -675,7 +678,7 @@ export default function FeedPage() {
       const subject = NOTE_SUBJECTS[noteTab];
       let q = supabase
         .from("notes")
-        .select("id, title, subject, downloads, upvotes")
+        .select("id, title, subject, downloads, upvotes, file_url")
         .eq("status", "published");
 
       if (subject) {
