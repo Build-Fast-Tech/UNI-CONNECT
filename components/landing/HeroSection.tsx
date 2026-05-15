@@ -1,7 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -46,31 +47,74 @@ const FEATURE_TAGS = [
 ];
 
 export function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+
+  // Water-like spring smoothing on scroll
+  const smooth = useSpring(scrollYProgress, { stiffness: 80, damping: 30, mass: 0.6 });
+
+  // Each blob has its own scroll-driven trajectory
+  const blob1X     = useTransform(smooth, [0, 1], [0, 180]);
+  const blob1Y     = useTransform(smooth, [0, 1], [0, -120]);
+  const blob1Scale = useTransform(smooth, [0, 0.5, 1], [1, 1.25, 0.8]);
+
+  const blob2X     = useTransform(smooth, [0, 1], [0, -200]);
+  const blob2Y     = useTransform(smooth, [0, 1], [0, 150]);
+  const blob2Scale = useTransform(smooth, [0, 0.5, 1], [1, 0.85, 1.3]);
+
+  const blob3X     = useTransform(smooth, [0, 1], [0, 120]);
+  const blob3Y     = useTransform(smooth, [0, 1], [0, 220]);
+  const blob3Scale = useTransform(smooth, [0, 1], [1, 1.4]);
+
+  // Hero content drifts up + fades as you scroll past
+  const heroY       = useTransform(smooth, [0, 1], [0, -100]);
+  const heroOpacity = useTransform(smooth, [0, 0.6, 1], [1, 0.5, 0]);
+
   return (
-    <section className="relative min-h-screen flex items-center pt-20 pb-16 overflow-hidden">
-      {/* Animated background blobs */}
+    <section ref={sectionRef} className="relative min-h-screen flex items-center pt-20 pb-16 overflow-hidden">
+      {/* Watery scroll-controlled blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          animate={{ x: [0, 30, 0], y: [0, -20, 0], scale: [1, 1.05, 1] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 -left-32 w-96 h-96 rounded-full opacity-20"
-          style={{ background: `radial-gradient(circle, rgb(var(--primary)) 0%, transparent 70%)` }}
+          className="absolute top-1/4 -left-32 w-96 h-96 blob-morph-slow"
+          style={{
+            background: `radial-gradient(circle, rgb(var(--primary)/0.35) 0%, transparent 70%)`,
+            filter: "blur(40px)",
+            x: blob1X,
+            y: blob1Y,
+            scale: blob1Scale,
+          }}
         />
         <motion.div
-          animate={{ x: [0, -25, 0], y: [0, 30, 0], scale: [1, 0.95, 1] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-          className="absolute bottom-1/4 -right-32 w-[500px] h-[500px] rounded-full opacity-15"
-          style={{ background: `radial-gradient(circle, rgb(var(--accent)) 0%, transparent 70%)` }}
+          className="absolute bottom-1/4 -right-32 w-[500px] h-[500px] blob-morph"
+          style={{
+            background: `radial-gradient(circle, rgb(var(--accent)/0.28) 0%, transparent 70%)`,
+            filter: "blur(50px)",
+            animationDelay: "-4s",
+            x: blob2X,
+            y: blob2Y,
+            scale: blob2Scale,
+          }}
         />
         <motion.div
-          animate={{ x: [0, 15, 0], y: [0, 25, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 6 }}
-          className="absolute top-1/2 left-1/2 w-64 h-64 rounded-full opacity-10"
-          style={{ background: `radial-gradient(circle, rgb(var(--primary)) 0%, transparent 70%)` }}
+          className="absolute top-1/2 left-1/2 w-64 h-64 blob-morph-fast"
+          style={{
+            background: `radial-gradient(circle, rgb(var(--primary)/0.22) 0%, transparent 70%)`,
+            filter: "blur(60px)",
+            animationDelay: "-2s",
+            x: blob3X,
+            y: blob3Y,
+            scale: blob3Scale,
+          }}
         />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
+      <motion.div
+        style={{ y: heroY, opacity: heroOpacity }}
+        className="relative max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center"
+      >
         {/* Left: Text */}
         <div className="space-y-8">
           {/* Badge */}
@@ -200,7 +244,7 @@ export function HeroSection() {
             })}
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 }
