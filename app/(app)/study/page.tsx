@@ -175,17 +175,20 @@ export default function StudyPage() {
       const raw = ch.presenceState<any>();
       const myCode = sessionCodeRef.current;
 
+      // Deduplicate by userId — multiple presence keys can exist per user (multiple tabs/re-renders)
+      const byUser: Record<string, any> = {};
+      Object.values(raw).flat().forEach((s: any) => {
+        if (!s.userId) return;
+        const prev = byUser[s.userId];
+        if (!prev || (s.isRunning && !prev.isRunning)) byUser[s.userId] = s;
+      });
       setLiveSessions(
-        Object.values(raw).flat().filter((s: any) => {
-          // Always show self when timer is running, in a private session, or in a study group
+        Object.values(byUser).filter((s: any) => {
           if (s.userId === userId) {
             return s.isRunning || (s.isPrivate && s.sessionCode) || s.studyGroupId;
           }
-          // Others running in public pomodoro
           if (s.isRunning && s.mode === "pomodoro" && !s.isPrivate) return true;
-          // Others running in (or present in) the same private session code
           if (s.isPrivate && s.sessionCode && s.sessionCode === myCode) return true;
-          // Others who have joined any study group
           if (s.studyGroupId) return true;
           return false;
         }) as LiveSession[]
@@ -240,7 +243,7 @@ export default function StudyPage() {
         if (joinedGroupId) fetchLeaderboard(joinedGroupId);
       }
     }
-  }, [userId, selectedSubject, groupMode, sessionCode]));
+  }, [userId, selectedSubject, groupMode, sessionCode, joinedGroupId]));
 
   // Track session start for manual end
   useEffect(() => {
@@ -291,8 +294,10 @@ export default function StudyPage() {
       await supabase.from("study_logs").insert({
         user_id: userId, subject_id: selectedSubject.id,
         duration_minutes: minutes, is_group_session: groupMode, session_code: sessionCode,
+        study_group_id: joinedGroupId ?? null,
       });
       setTodayMinutes(p => p + minutes);
+      if (joinedGroupId) fetchLeaderboard(joinedGroupId);
     }
     pause();
     if (presenceRef.current) presenceRef.current.untrack();
