@@ -318,6 +318,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [channel, setChannel]           = useState<Channel | null>(null);
   const [input, setInput]               = useState("");
   const [sending, setSending]           = useState(false);
+  const [readCounts, setReadCounts]     = useState<Record<string, number>>({});
   const [userId, setUserId]             = useState<string | null>(null);
   const [myName, setMyName]             = useState<string>("");
   const [myAvatar, setMyAvatar]         = useState<string | null>(null);
@@ -846,6 +847,21 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     setMyPollVotes(myVotes);
   }, [supabase, userId]);
 
+  // ─── Load read counts for own messages ───────────────────────────────────────
+  const loadReadCounts = useCallback(async (myMsgIds: string[], uid: string) => {
+    if (myMsgIds.length === 0) return;
+    const { data } = await (supabase as any).from("message_reads")
+      .select("message_id")
+      .in("message_id", myMsgIds)
+      .neq("user_id", uid);
+    if (!data) return;
+    const counts: Record<string, number> = {};
+    for (const row of data as { message_id: string }[]) {
+      counts[row.message_id] = (counts[row.message_id] ?? 0) + 1;
+    }
+    setReadCounts(counts);
+  }, [supabase]);
+
   // ─── Auto-resize textarea ──────────────────────────────────────────────────────
   const resizeTextarea = () => {
     const el = textareaRef.current;
@@ -892,7 +908,14 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         });
         const ids = typed.map(m => m.id);
         const pollIds = typed.filter(m => m.poll_data).map(m => m.id);
-        await Promise.all([loadReactions(ids), loadPollVotes(pollIds)]);
+        const ownIds  = typed.filter(m => m.sender_id === user.id).map(m => m.id);
+        await Promise.all([loadReactions(ids), loadPollVotes(pollIds), loadReadCounts(ownIds, user.id)]);
+        // Mark all visible messages as read
+        if (ids.length > 0) {
+          (supabase as any).from("message_reads")
+            .upsert(ids.map(id => ({ message_id: id, user_id: user.id })), { onConflict: "message_id,user_id", ignoreDuplicates: true })
+            .then(() => {});
+        }
       }
       setLoading(false);
     };
@@ -934,6 +957,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           const newMsg: Message = { id: row.id, content: row.content, created_at: row.created_at, sender_id: row.sender_id, sender, gif_url: row.gif_url, sticker_id: row.sticker_id, poll_data: row.poll_data, reply_to_id: row.reply_to_id, replied_msg };
           if (myName && row.sender_id !== userId && row.content?.toLowerCase().includes(`@${myName.split(" ")[0].toLowerCase()}`)) playMentionSound();
           setMessages(prev => { if (prev.some(m => m.id === row.id)) return prev; return [...prev, newMsg]; });
+          // Mark incoming message as read
+          if (userId && row.sender_id !== userId) {
+            (supabase as any).from("message_reads")
+              .upsert([{ message_id: row.id, user_id: userId }], { onConflict: "message_id,user_id", ignoreDuplicates: true })
+              .then(() => {});
+          }
           setTimeout(() => scrollToBottom(), 80);
         }
       )
@@ -1007,6 +1036,24 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     return () => { supabase.removeChannel(pollSub); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.filter(m => m.poll_data).length, channelId]);
+
+  // ─── Realtime: read receipts ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId || messages.length === 0) return;
+    const ownMsgIds = messages.filter(m => m.sender_id === userId).map(m => m.id);
+    if (ownMsgIds.length === 0) return;
+    const readSub = supabase.channel(`reads:${channelId}:${userId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "message_reads" },
+        (payload) => {
+          const row = payload.new as { message_id: string; user_id: string };
+          if (!ownMsgIds.includes(row.message_id) || row.user_id === userId) return;
+          setReadCounts(prev => ({ ...prev, [row.message_id]: (prev[row.message_id] ?? 0) + 1 }));
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(readSub); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, messages.length, channelId]);
 
   // ─── Presence ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1402,10 +1449,16 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                         </p>
                       )}
 
-                      {/* Timestamp + checkmark */}
+                      {/* Timestamp + read ticks */}
                       <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-end")}>
                         <span className="text-[10px] opacity-60">{formatTime(msg.created_at)}</span>
-                        {isOwn && <span className="text-[10px] opacity-60">✓</span>}
+                        {isOwn && (
+                          <span className="text-[11px] font-bold leading-none tracking-tighter" style={{
+                            color: (readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(255,255,255,0.38)",
+                          }}>
+                            ✓✓
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

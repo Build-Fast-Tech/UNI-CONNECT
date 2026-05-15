@@ -75,18 +75,23 @@ export async function signInAction(data: {
 
   // Check if onboarding is complete
   if (signInData.user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("university_id")
-      .eq("id", signInData.user.id)
-      .single();
+    const cookieStore = await cookies();
+    const alreadyOnboarded = cookieStore.get("uc_onboarded")?.value === "1";
 
-    if (!profile?.university_id) {
-      redirect("/onboarding");
+    if (!alreadyOnboarded) {
+      // First login or cookie cleared — verify onboarding via DB
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("university_id")
+        .eq("id", signInData.user.id)
+        .single();
+
+      if (!profile?.university_id) {
+        redirect("/onboarding");
+      }
     }
 
     // Mark onboarding complete so proxy.ts stops redirecting
-    const cookieStore = await cookies();
     cookieStore.set("uc_onboarded", "1", {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
