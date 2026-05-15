@@ -150,7 +150,7 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
 
 function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: string; sub: string; icon: React.ElementType; color: string }) {
   return (
-    <div className="theme-card p-4 flex items-center gap-3 flex-1">
+    <div className="theme-card p-4 flex items-center gap-3 flex-1 animate-fade-up">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + "22" }}>
         <Icon className="w-4 h-4" style={{ color }} />
       </div>
@@ -283,10 +283,10 @@ function JobPortal({ jobs, loading }: { jobs: Job[]; loading: boolean }) {
       ) : jobs.length === 0 ? (
         <p className="text-xs text-[rgb(var(--muted-fg))] text-center py-4">No jobs available right now</p>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-1 stagger">
           {jobs.slice(0, 3).map(job => (
             <Link key={job.id} href={`/jobs/${job.id}`}
-              className="flex items-start gap-3 p-2 -mx-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors group">
+              className="flex items-start gap-3 p-2 -mx-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-all group animate-fade-up">
               <div className="w-7 h-7 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0 text-xs font-bold text-[rgb(var(--primary))]">
                 {job.company_name.slice(0, 1)}
               </div>
@@ -375,10 +375,10 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 stagger">
           {notes.slice(0, 4).map(note => (
             <Link key={note.id} href={`/notes/${note.id}`}
-              className="p-3 rounded-xl border border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.35)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group cursor-pointer">
+              className="p-3 rounded-xl border border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.35)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group cursor-pointer animate-scale-in">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
                   <FileText className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
@@ -698,12 +698,12 @@ export default function FeedPage() {
   return (
     <div className="relative space-y-4">
       <LiveNowTicker />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Row 1: Hero + Stats */}
         <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} subjectsToReview={subjectsToReview} /></div>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 stagger">
           <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#6366f1" />
           <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#10b981" />
           <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
