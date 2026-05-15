@@ -533,7 +533,7 @@ export default function FeedPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInput, setDateInput] = useState("");
   const [gpa, setGpa]                   = useState<number | null>(null);
-  const [hoursThisWeek, setHoursThisWeek] = useState(0);
+  const [studyMinsThisWeek, setStudyMinsThisWeek] = useState(0);
   const [applications, setApplications] = useState(0);
   const [subjectsToReview, setSubjectsToReview] = useState(0);
 
@@ -543,14 +543,30 @@ export default function FeedPage() {
     const supabase = createClient();
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
     Promise.all([
-      supabase.from("profiles").select("cgpa").eq("id", userId).single(),
+      supabase.from("gpa_assignments").select("grade, max_grade, weight, subject_id").eq("user_id", userId),
+      supabase.from("user_subjects").select("id, credits").eq("user_id", userId),
       supabase.from("study_logs").select("duration_minutes").eq("user_id", userId).gte("timestamp", weekAgo.toISOString()),
       supabase.from("job_applications").select("id", { count: "exact", head: true }).eq("applicant_id", userId),
-    ]).then(([profileRes, logsRes, appsRes]) => {
-      if (profileRes.data?.cgpa) setGpa(Number(profileRes.data.cgpa));
+    ]).then(([assignRes, subsRes, logsRes, appsRes]) => {
+      // Compute GPA from assignments (same logic as /gpa page)
+      const assigns = (assignRes.data ?? []) as { grade: number; max_grade: number; weight: number; subject_id: string }[];
+      const subs = (subsRes.data ?? []) as { id: string; credits: number }[];
+      if (assigns.length > 0 && subs.length > 0) {
+        let num = 0, den = 0;
+        for (const sub of subs) {
+          const subAssigns = assigns.filter(a => a.subject_id === sub.id);
+          if (!subAssigns.length) continue;
+          let n = 0, d = 0;
+          for (const a of subAssigns) { n += (a.grade / a.max_grade) * 100 * a.weight; d += a.weight; }
+          const score = d ? n / d : 0;
+          num += score * sub.credits;
+          den += sub.credits;
+        }
+        if (den > 0) setGpa(Math.round((num / den) * 100) / 100);
+      }
       const rows = (logsRes.data as { duration_minutes: number }[] | null) ?? [];
       const mins = rows.reduce((s, r) => s + r.duration_minutes, 0);
-      setHoursThisWeek(Math.round((mins / 60) * 10) / 10);
+      setStudyMinsThisWeek(mins);
       setApplications(appsRes.count ?? 0);
     });
 
@@ -558,7 +574,7 @@ export default function FeedPage() {
       .channel(`feed-study-${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "study_logs", filter: `user_id=eq.${userId}` }, (payload) => {
         const mins = (payload.new as { duration_minutes: number }).duration_minutes;
-        setHoursThisWeek(prev => Math.round((prev + mins / 60) * 10) / 10);
+        setStudyMinsThisWeek(prev => prev + mins);
       })
       .subscribe();
     return () => { supabase.removeChannel(studyLogSub); };
@@ -685,8 +701,8 @@ export default function FeedPage() {
         {/* Row 1: Hero + Stats */}
         <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} subjectsToReview={subjectsToReview} /></div>
         <div className="flex flex-col gap-4">
-          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades to calculate"} icon={TrendingUp} color="#6366f1" />
-          <StatCard label="Hours Studied"  value={`${hoursThisWeek}h`} sub="this week" icon={Clock} color="#10b981" />
+          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#6366f1" />
+          <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#10b981" />
           <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
         </div>
 
