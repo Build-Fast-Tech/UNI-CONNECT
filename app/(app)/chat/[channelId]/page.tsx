@@ -14,6 +14,7 @@ import { cn, formatRelativeTime, formatTypingNames } from "@/lib/utils";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import { useChatShell } from "@/components/chat/ChatShell";
 import { CameraModal } from "@/components/chat/CameraModal";
+import { useCurrentUser } from "@/components/providers/UserProvider";
 
 const EmojiPicker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
 
@@ -312,6 +313,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const { channelId } = use(params);
   const supabase  = createClient();
   const chatShell = useChatShell();
+  const { userId, fullName: myName, avatarUrl: myAvatar, loaded: userLoaded } = useCurrentUser();
 
   // ── Core state ──────────────────────────────────────────────────────────────
   const [messages, setMessages]         = useState<Message[]>([]);
@@ -319,9 +321,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [input, setInput]               = useState("");
   const [sending, setSending]           = useState(false);
   const [readCounts, setReadCounts]     = useState<Record<string, number>>({});
-  const [userId, setUserId]             = useState<string | null>(null);
-  const [myName, setMyName]             = useState<string>("");
-  const [myAvatar, setMyAvatar]         = useState<string | null>(null);
   const [typingNames, setTypingNames]   = useState<string[]>([]);
   const [onlineCount, setOnlineCount]   = useState(0);
   const [loading, setLoading]           = useState(true);
@@ -882,13 +881,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
   // ─── Initial load ─────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!userLoaded || !userId) return;
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-
-      const [{ data: profile }, { data: chan }, { data: msgs }] = await Promise.all([
-        supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).single(),
+      const [{ data: chan }, { data: msgs }] = await Promise.all([
         supabase.from("channels").select("id, type, name").eq("id", channelId).single(),
         (supabase as any).from("messages").select(`
           id, content, created_at, sender_id, gif_url, sticker_id, poll_data, reply_to_id,
@@ -897,7 +892,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         `).eq("channel_id", channelId).eq("is_deleted", false).order("created_at", { ascending: true }).limit(60),
       ]);
 
-      if (profile) { setMyName(profile.full_name); setMyAvatar(profile.avatar_url); }
       if (chan) setChannel(chan);
       if (msgs) {
         const typed = msgs as unknown as Message[];
@@ -908,12 +902,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         });
         const ids = typed.map(m => m.id);
         const pollIds = typed.filter(m => m.poll_data).map(m => m.id);
-        const ownIds  = typed.filter(m => m.sender_id === user.id).map(m => m.id);
-        await Promise.all([loadReactions(ids), loadPollVotes(pollIds), loadReadCounts(ownIds, user.id)]);
+        const ownIds  = typed.filter(m => m.sender_id === userId).map(m => m.id);
+        await Promise.all([loadReactions(ids), loadPollVotes(pollIds), loadReadCounts(ownIds, userId)]);
         // Mark all visible messages as read
         if (ids.length > 0) {
           (supabase as any).from("message_reads")
-            .upsert(ids.map(id => ({ message_id: id, user_id: user.id })), { onConflict: "message_id,user_id", ignoreDuplicates: true })
+            .upsert(ids.map(id => ({ message_id: id, user_id: userId })), { onConflict: "message_id,user_id", ignoreDuplicates: true })
             .then(() => {});
         }
       }
@@ -921,7 +915,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     };
     init();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
+  }, [channelId, userLoaded, userId]);
 
   useEffect(() => { if (!loading) scrollToBottom(false); }, [loading]);
 
