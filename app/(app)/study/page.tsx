@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, RotateCcw, Users, Copy, Plus, X, LogIn,
   Brain, Coffee, Zap, Timer, BarChart3, Settings, AlertCircle, CheckCircle2,
@@ -428,7 +427,7 @@ export default function StudyPage() {
 
   return (
     <div className="min-h-screen pb-16">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
 
         {/* Header */}
         <div className="flex items-center justify-between pt-2">
@@ -480,14 +479,10 @@ export default function StudyPage() {
 
         {mainTab !== "leaderboard" && (<>
         {/* Timer Settings Panel */}
-        <AnimatePresence>
+        <div className={`accordion-content ${showSettings ? "open" : ""}`}>
+          <div className="accordion-inner">
           {showSettings && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
+            <div>
               <div className="theme-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <p className="font-semibold text-sm flex items-center gap-2">
@@ -527,9 +522,10 @@ export default function StudyPage() {
                   Apply & Reset Timer
                 </button>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+          </div>
+        </div>
 
         {/* Timer card — pomofocus style */}
         <div
@@ -614,10 +610,10 @@ export default function StudyPage() {
               </button>
             </div>
 
-            <AnimatePresence>
+            <div className={`accordion-content ${showAddSubject ? "open" : ""}`}>
+              <div className="accordion-inner">
               {showAddSubject && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden">
+                <div>
                   <div className="p-3 bg-[rgb(var(--muted))] rounded-xl space-y-2">
                     <input list="preset-subjects" value={newSubjectName} onChange={e => setNewSubjectName(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && addSubject()}
@@ -641,9 +637,10 @@ export default function StudyPage() {
                       <button onClick={() => { setShowAddSubject(false); setAddSubjectError(""); }} className="px-3 py-1.5 rounded-lg bg-[rgb(var(--border))] text-sm">Cancel</button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+              </div>
+            </div>
 
             <div className="flex flex-wrap gap-2">
               {subjects.map(s => (
@@ -772,9 +769,10 @@ export default function StudyPage() {
             </div>
 
             {/* Create Group Form */}
-            <AnimatePresence>
+            <div className={`accordion-content ${showCreateGroup ? "open" : ""}`}>
+              <div className="accordion-inner">
               {showCreateGroup && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div>
                   <div className="theme-card p-4 space-y-3">
                     <p className="font-semibold text-sm">Create Study Group</p>
                     <input value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
@@ -802,19 +800,18 @@ export default function StudyPage() {
                         className="px-4 py-2 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+              </div>
+            </div>
 
             {/* Joined group — full detail panel */}
-            <AnimatePresence>
-              {joinedGroupId && (() => {
+            {joinedGroupId && (() => {
                 const group = studyGroups.find(g => g.id === joinedGroupId);
                 if (!group) return null;
                 const lb = groupLeaderboards[joinedGroupId];
                 return (
-                  <motion.div key="group-panel" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                    className="theme-card overflow-hidden ring-2 ring-[rgb(var(--primary)/0.35)]">
+                  <div className="theme-card overflow-hidden ring-2 ring-[rgb(var(--primary)/0.35)] animate-fade-in">
                     {/* Header */}
                     <div className="flex items-center gap-3 px-5 py-4 border-b border-[rgb(var(--border))] bg-[rgb(var(--primary)/0.05)]">
                       <div className="w-9 h-9 rounded-xl bg-[rgb(var(--primary)/0.15)] flex items-center justify-center flex-shrink-0">
@@ -889,10 +886,9 @@ export default function StudyPage() {
                         </div>
                       )}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })()}
-            </AnimatePresence>
 
             {/* Group list — hidden when inside a group */}
             {!joinedGroupId && (
@@ -1006,8 +1002,7 @@ export default function StudyPage() {
                         </div>
                         {/* Step */}
                         <div className="relative w-[88px] h-16 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#94a3b8,#475569)"}}>
-                          <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12"
-                            animate={{x:["-110%","210%"]}} transition={{duration:2.5,repeat:Infinity,repeatDelay:1.5,ease:"linear"}} />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-shimmer" />
                           <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-white/40 select-none">2</span>
                         </div>
                       </div>
@@ -1032,8 +1027,7 @@ export default function StudyPage() {
                         </div>
                         {/* Step — tallest */}
                         <div className="relative w-[104px] h-24 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#fbbf24,#b45309)"}}>
-                          <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12"
-                            animate={{x:["-110%","210%"]}} transition={{duration:1.8,repeat:Infinity,repeatDelay:0.8,ease:"linear"}} />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-fast" />
                           <span className="absolute inset-0 flex items-center justify-center text-4xl font-black text-white/40 select-none">1</span>
                         </div>
                       </div>
@@ -1054,8 +1048,7 @@ export default function StudyPage() {
                         </div>
                         {/* Step */}
                         <div className="relative w-[88px] h-12 rounded-t-2xl overflow-hidden" style={{background:"linear-gradient(160deg,#f97316,#9a3412)"}}>
-                          <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -skew-x-12"
-                            animate={{x:["-110%","210%"]}} transition={{duration:2.2,repeat:Infinity,repeatDelay:2,ease:"linear"}} />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-shimmer" />
                           <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-white/40 select-none">3</span>
                         </div>
                       </div>
@@ -1097,7 +1090,7 @@ export default function StudyPage() {
             })()}
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }
