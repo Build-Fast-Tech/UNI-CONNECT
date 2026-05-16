@@ -39,8 +39,9 @@ function Confetti({ active }: { active: boolean }) {
 function highlight(code: string) {
   return code
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/(#include\s*&lt;[^&]*&gt;)/g, '<span class="pk-preprocessor">$1</span>')
     .replace(/(\/\/[^\n]*)/g, '<span class="pk-comment">$1</span>')
-    .replace(/\b(int|void|class|struct|string|auto|bool|char|double|float|long|short|vector|stack|queue|map|set|while|for|if|else|return|public|private|protected|virtual|new|delete|cout|cin|endl|true|false|nullptr|using|namespace|std|include)\b/g, '<span class="pk-keyword">$1</span>')
+    .replace(/\b(int|void|class|struct|string|auto|bool|char|double|float|long|short|vector|stack|queue|map|set|while|for|if|else|return|public|private|protected|virtual|new|delete|cout|cin|endl|true|false|nullptr|using|namespace|std|include|main|do|break|continue|switch|case|default|typename|template|const|static|friend|operator|override|explicit|this|size_t|pair|sort|min|max|swap|push|pop|front|back|begin|end|reverse)\b/g, '<span class="pk-keyword">$1</span>')
     .replace(/"([^"]*)"/g, '<span class="pk-string">"$1"</span>')
     .replace(/\b(\d+)\b/g, '<span class="pk-number">$1</span>');
 }
@@ -148,30 +149,42 @@ function VisualTrace({ steps, currentStep }: { steps: TraceStep[]; currentStep: 
 }
 
 /* ── Code Display with line highlight ───────────────────────────── */
+const BOILERPLATE_HEADER = ["#include <bits/stdc++.h>", "using namespace std;", "", "int main() {"];
+const BOILERPLATE_FOOTER = ["    return 0;", "}"];
+const HEADER_COUNT = BOILERPLATE_HEADER.length;
+
 function CodeDisplay({ code, activeLine }: { code: string; activeLine?: number }) {
-  const lines = code.split("\n");
+  const codeLines = code.split("\n").map(l => "    " + l);
+  const allLines = [...BOILERPLATE_HEADER, ...codeLines, ...BOILERPLATE_FOOTER];
+  const displayActiveLine = activeLine !== undefined ? activeLine + HEADER_COUNT : undefined;
+
   return (
     <div className="flex overflow-x-auto" style={{ background: "#0F051D" }}>
       <div className="px-3 py-4 select-none shrink-0" style={{ borderRight: "1px solid rgba(255,255,255,0.05)" }}>
-        {lines.map((_, i) => (
+        {allLines.map((_, i) => (
           <div key={i} className="text-xs font-mono leading-6 text-right w-6"
-            style={{ color: activeLine === i + 1 ? "#FF79C6" : "#4a4070" }}>
+            style={{ color: displayActiveLine === i + 1 ? "#FF79C6" : "#4a4070" }}>
             {i + 1}
           </div>
         ))}
       </div>
       <div className="flex-1">
-        {lines.map((line, i) => (
-          <div key={i} className="leading-6 transition-colors duration-200"
-            style={{
-              background: activeLine === i + 1 ? "rgba(108,63,212,0.15)" : "transparent",
-              borderLeft: activeLine === i + 1 ? "2px solid #BD93F9" : "2px solid transparent",
-            }}>
-            <pre className="px-4 text-sm font-mono"
-              style={{ color: "#E2E8F0" }}
-              dangerouslySetInnerHTML={{ __html: highlight(line) }} />
-          </div>
-        ))}
+        {allLines.map((line, i) => {
+          const isBoilerplate = i < HEADER_COUNT || i >= HEADER_COUNT + codeLines.length;
+          const isActive = displayActiveLine === i + 1;
+          return (
+            <div key={i} className="leading-6 transition-colors duration-200"
+              style={{
+                background: isActive ? "rgba(108,63,212,0.15)" : "transparent",
+                borderLeft: isActive ? "2px solid #BD93F9" : "2px solid transparent",
+                opacity: isBoilerplate ? 0.4 : 1,
+              }}>
+              <pre className="px-4 text-sm font-mono"
+                style={{ color: "#E2E8F0" }}
+                dangerouslySetInnerHTML={{ __html: highlight(line) }} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
