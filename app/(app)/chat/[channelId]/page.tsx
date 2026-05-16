@@ -1373,98 +1373,136 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                       </div>
                     )}
 
-                    {/* The bubble */}
-                    <div
-                      className={cn(
-                        "relative px-3 py-2 rounded-2xl shadow-sm",
-                        isOwn
-                          ? "bg-[rgb(var(--primary)/0.85)] text-[rgb(var(--primary-fg))] rounded-tr-sm"
-                          : "bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--fg))] rounded-tl-sm"
-                      )}
-                    >
-                      {/* Reply preview inside bubble */}
-                      {msg.reply_to_id && (
-                        <button
-                          onClick={() => scrollToMessage(msg.reply_to_id!)}
+                    {/* The bubble — only for text/poll; media renders bare */}
+                    {(() => {
+                      const isVoice   = msg.gif_url && (msg.content === "🎤 Voice note" || msg.content === "🎵 Audio");
+                      const isPhoto   = msg.gif_url && msg.content === "📷 Photo";
+                      const isVideo   = msg.gif_url && msg.content === "🎥 Video";
+                      const isGif     = msg.gif_url && !isVoice && !isPhoto && !isVideo && !msg.poll_data;
+                      const isSticker = !!msg.sticker_id && !msg.poll_data;
+                      const isBare    = isVoice || isPhoto || isVideo || isGif || isSticker;
+
+                      const Timestamp = () => (
+                        <div className="flex items-center gap-0.5 justify-end mt-1">
+                          <span className="text-[9px] opacity-40">{formatTime(msg.created_at)}</span>
+                          {isOwn && (
+                            <svg width="14" height="8" viewBox="0 0 14 8" fill="none" style={{ flexShrink: 0 }}>
+                              <path d="M1 4L3.5 6.5L8 1" stroke={(readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(120,120,120,0.5)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M5 4L7.5 6.5L12 1" stroke={(readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(120,120,120,0.5)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                      );
+
+                      if (isBare) {
+                        return (
+                          <div className="relative">
+                            {isVoice && (
+                              <div className="flex items-center gap-2 px-1">
+                                <div className="w-7 h-7 rounded-full bg-[rgb(var(--primary)/0.12)] flex items-center justify-center flex-shrink-0">
+                                  <Mic className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
+                                </div>
+                                <audio
+                                  src={msg.gif_url!}
+                                  controls
+                                  preload="metadata"
+                                  style={{ height: "32px", width: "200px" }}
+                                />
+                              </div>
+                            )}
+                            {isPhoto && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={msg.gif_url!}
+                                alt="photo"
+                                loading="lazy"
+                                className="max-w-[260px] max-h-72 rounded-2xl object-cover cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                onClick={() => setLightboxUrl(msg.gif_url!)}
+                              />
+                            )}
+                            {isVideo && (
+                              <video src={msg.gif_url!} controls className="max-w-[260px] max-h-72 rounded-2xl shadow-sm" />
+                            )}
+                            {isGif && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={msg.gif_url!} alt="GIF" loading="lazy" className="max-w-[220px] max-h-[180px] rounded-2xl object-cover" />
+                            )}
+                            {isSticker && (
+                              msg.sticker_id!.startsWith("http") || msg.sticker_id!.startsWith("data:") ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={msg.sticker_id!} alt="sticker" loading="lazy" className="w-28 h-28 object-contain" />
+                              ) : (
+                                <span className="text-5xl">{msg.sticker_id}</span>
+                              )
+                            )}
+                            <Timestamp />
+                          </div>
+                        );
+                      }
+
+                      // Text / poll — minimal bubble
+                      return (
+                        <div
                           className={cn(
-                            "flex flex-col mb-2 pl-2 border-l-2 text-left w-full",
-                            isOwn ? "border-white/50" : "border-[rgb(var(--primary))]"
+                            "relative px-3 py-2 rounded-2xl",
+                            isOwn
+                              ? "bg-[rgb(var(--primary)/0.82)] text-[rgb(var(--primary-fg))] rounded-tr-sm"
+                              : "bg-[rgb(var(--card))] border border-[rgb(var(--border)/0.6)] text-[rgb(var(--fg))] rounded-tl-sm"
                           )}
                         >
-                          <span className={cn("text-[10px] font-semibold leading-tight", isOwn ? "opacity-80" : "text-[rgb(var(--primary))]")}>
-                            {msg.replied_msg?.sender?.full_name ?? "Message"}
-                          </span>
-                          <span className={cn("text-[11px] truncate max-w-[180px]", isOwn ? "opacity-70" : "opacity-60")}>
-                            {msg.replied_msg?.content
-                              ? msg.replied_msg.content.slice(0, 60) + (msg.replied_msg.content.length > 60 ? "…" : "")
-                              : "Original message"}
-                          </span>
-                        </button>
-                      )}
-
-                      {/* Poll card */}
-                      {msg.poll_data ? (
-                        <PollCard
-                          messageId={msg.id}
-                          pollData={msg.poll_data}
-                          votes={allPollVotes[msg.id] ?? {}}
-                          myVote={myPollVotes[msg.id]}
-                          onVote={handlePollVote}
-                          isOwn={isOwn}
-                        />
-                      ) : msg.sticker_id ? (
-                        msg.sticker_id.startsWith("http") || msg.sticker_id.startsWith("data:") ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={msg.sticker_id} alt="sticker" loading="lazy" className="w-28 h-28 object-contain rounded-xl" />
-                        ) : (
-                          <span className="text-5xl">{msg.sticker_id}</span>
-                        )
-                      ) : msg.gif_url ? (
-                        msg.content === "🎤 Voice note" || msg.content === "🎵 Audio" ? (
-                          <div className="flex items-center gap-2 py-1 min-w-[200px]">
-                            <Mic className="w-4 h-4 opacity-70 flex-shrink-0" />
-                            <audio src={msg.gif_url} controls style={{ height: "36px", width: "100%", maxWidth: "240px" }} />
-                          </div>
-                        ) : msg.content === "📷 Photo" ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setLightboxUrl(msg.gif_url!)} />
-                        ) : msg.content === "🎥 Video" ? (
-                          <video src={msg.gif_url} controls className="max-w-xs max-h-64 rounded-xl" />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={msg.gif_url} alt="GIF" loading="lazy" className="max-w-[240px] max-h-[180px] rounded-xl object-cover" />
-                        )
-                      ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                          {msg.content.split(/(@\S+)/g).map((part, pi) =>
-                            part.startsWith("@") ? (
-                              <span
-                                key={pi}
-                                className={cn(
-                                  "font-semibold px-1 rounded",
-                                  myName && part.slice(1).toLowerCase() === myName.split(" ")[0].toLowerCase()
-                                    ? isOwn ? "bg-white/20" : "bg-[rgb(var(--primary)/0.2)] text-[rgb(var(--primary))]"
-                                    : isOwn ? "opacity-80" : "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]"
-                                )}
-                              >
-                                {part}
+                          {/* Reply preview */}
+                          {msg.reply_to_id && (
+                            <button
+                              onClick={() => scrollToMessage(msg.reply_to_id!)}
+                              className={cn(
+                                "flex flex-col mb-2 pl-2 border-l-2 text-left w-full",
+                                isOwn ? "border-white/50" : "border-[rgb(var(--primary))]"
+                              )}
+                            >
+                              <span className={cn("text-[10px] font-semibold leading-tight", isOwn ? "opacity-80" : "text-[rgb(var(--primary))]")}>
+                                {msg.replied_msg?.sender?.full_name ?? "Message"}
                               </span>
-                            ) : part
+                              <span className={cn("text-[11px] truncate max-w-[180px]", isOwn ? "opacity-70" : "opacity-60")}>
+                                {msg.replied_msg?.content
+                                  ? msg.replied_msg.content.slice(0, 60) + (msg.replied_msg.content.length > 60 ? "…" : "")
+                                  : "Original message"}
+                              </span>
+                            </button>
                           )}
-                        </p>
-                      )}
 
-                      {/* Timestamp + read ticks */}
-                      <div className={cn("flex items-center gap-0.5 mt-1", isOwn ? "justify-end" : "justify-end")}>
-                        <span className="text-[9px] opacity-50">{formatTime(msg.created_at)}</span>
-                        {isOwn && (
-                          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" style={{ flexShrink: 0 }}>
-                            <path d="M1 4L3.5 6.5L8 1" stroke={(readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(255,255,255,0.35)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 4L7.5 6.5L12 1" stroke={(readCounts[msg.id] ?? 0) > 0 ? "#53BDEB" : "rgba(255,255,255,0.35)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                    </div>
+                          {msg.poll_data ? (
+                            <PollCard
+                              messageId={msg.id}
+                              pollData={msg.poll_data}
+                              votes={allPollVotes[msg.id] ?? {}}
+                              myVote={myPollVotes[msg.id]}
+                              onVote={handlePollVote}
+                              isOwn={isOwn}
+                            />
+                          ) : (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              {msg.content.split(/(@\S+)/g).map((part, pi) =>
+                                part.startsWith("@") ? (
+                                  <span
+                                    key={pi}
+                                    className={cn(
+                                      "font-semibold px-1 rounded",
+                                      myName && part.slice(1).toLowerCase() === myName.split(" ")[0].toLowerCase()
+                                        ? isOwn ? "bg-white/20" : "bg-[rgb(var(--primary)/0.2)] text-[rgb(var(--primary))]"
+                                        : isOwn ? "opacity-80" : "text-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.08)]"
+                                    )}
+                                  >
+                                    {part}
+                                  </span>
+                                ) : part
+                              )}
+                            </p>
+                          )}
+
+                          <Timestamp />
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Reaction pills below bubble */}
