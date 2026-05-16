@@ -388,6 +388,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const attachMenuRef   = useRef<HTMLDivElement>(null);
   const [showCamera,    setShowCamera]    = useState(false);
+  const [lightboxUrl,   setLightboxUrl]   = useState<string | null>(null);
 
   // Voice recording
   const [isRecording,   setIsRecording]   = useState(false);
@@ -1419,13 +1420,13 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                         )
                       ) : msg.gif_url ? (
                         msg.content === "🎤 Voice note" ? (
-                          <div className="flex items-center gap-2 py-1">
+                          <div className="flex items-center gap-2 py-1 min-w-[200px]">
                             <Mic className="w-4 h-4 opacity-70 flex-shrink-0" />
-                            <audio src={msg.gif_url} controls className="h-8" style={{ maxWidth: "220px" }} />
+                            <audio src={msg.gif_url} controls style={{ height: "36px", width: "100%", maxWidth: "240px" }} />
                           </div>
                         ) : msg.content === "📎 Photo" ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.gif_url!, "_blank")} />
+                          <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setLightboxUrl(msg.gif_url!)} />
                         ) : msg.content === "🎥 Video" ? (
                           <video src={msg.gif_url} controls className="max-w-xs max-h-64 rounded-xl" />
                         ) : (
@@ -1864,6 +1865,29 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
           onClose={() => setShowCamera(false)}
           onSend={sendCameraPhoto}
         />
+      )}
+
+      {/* Image lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Full size"
+            className="max-w-[95vw] max-h-[90vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
       )}
     </>
   );
