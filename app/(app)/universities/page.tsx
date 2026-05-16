@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, GraduationCap, ExternalLink, Star } from "lucide-react";
+import { Search, MapPin, GraduationCap, ExternalLink, Star, Users } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,20 @@ export default function UniversitiesPage() {
   const [province, setProvince]         = useState("All");
   // Map of university_id → { avg, count }
   const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
+  // Map of university_id → number of profiles signed up
+  const [memberCounts, setMemberCounts] = useState<Record<string, number>>({});
+
+  const fetchMemberCounts = async () => {
+    const { data } = await (supabase as any)
+      .from("profiles")
+      .select("university_id")
+      .not("university_id", "is", null);
+    const counts: Record<string, number> = {};
+    (data || []).forEach((p: { university_id: string }) => {
+      counts[p.university_id] = (counts[p.university_id] || 0) + 1;
+    });
+    setMemberCounts(counts);
+  };
 
   useEffect(() => {
     supabase.from("universities").select("*")
@@ -46,6 +60,21 @@ export default function UniversitiesPage() {
         });
         setRatings(result);
       });
+
+    // Initial member-count fetch
+    fetchMemberCounts();
+
+    // Realtime subscription: refresh counts when any profile is inserted/updated/deleted
+    const channel = supabase
+      .channel("universities-member-counts")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => { fetchMemberCounts(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -114,7 +143,7 @@ export default function UniversitiesPage() {
             <section>
               <h2 className="text-sm font-semibold text-[rgb(var(--muted-fg))] uppercase tracking-wider mb-3">Featured</h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {featured.map((uni, i) => <UniversityCard key={uni.id} uni={uni} index={i} featured rating={ratings[uni.id]} />)}
+                {featured.map((uni, i) => <UniversityCard key={uni.id} uni={uni} index={i} featured rating={ratings[uni.id]} memberCount={memberCounts[uni.id] || 0} />)}
               </div>
             </section>
           )}
@@ -126,7 +155,7 @@ export default function UniversitiesPage() {
               )}
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(search !== "" || province !== "All" ? filtered : rest).map((uni, i) => (
-                  <UniversityCard key={uni.id} uni={uni} index={i} rating={ratings[uni.id]} />
+                  <UniversityCard key={uni.id} uni={uni} index={i} rating={ratings[uni.id]} memberCount={memberCounts[uni.id] || 0} />
                 ))}
               </div>
             </section>
@@ -161,8 +190,8 @@ function StarDisplay({ avg, count }: { avg: number; count: number }) {
   );
 }
 
-function UniversityCard({ uni, index, featured = false, rating }: {
-  uni: University; index: number; featured?: boolean; rating?: { avg: number; count: number };
+function UniversityCard({ uni, index, featured = false, rating, memberCount = 0 }: {
+  uni: University; index: number; featured?: boolean; rating?: { avg: number; count: number }; memberCount?: number;
 }) {
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.04, 0.4) }}>
@@ -193,6 +222,11 @@ function UniversityCard({ uni, index, featured = false, rating }: {
         )}
 
         <div className="flex items-center gap-3 text-xs text-[rgb(var(--muted-fg))]">
+          <span className="flex items-center gap-1.5">
+            <Users className="w-3 h-3 text-[rgb(var(--primary))]" />
+            <span className="font-semibold text-[rgb(var(--fg))]">{memberCount.toLocaleString()}</span>
+            <span>joined</span>
+          </span>
           {uni.website && (
             <span className="ml-auto flex items-center gap-1 text-[rgb(var(--primary))]">
               <ExternalLink className="w-3 h-3" />
