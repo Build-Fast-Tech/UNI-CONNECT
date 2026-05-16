@@ -50,7 +50,30 @@ export function PermissionsModal() {
 
   useEffect(() => {
     try {
-      if (!localStorage.getItem(STORAGE_KEY)) setVisible(true);
+      // Already dismissed before — never show again
+      if (localStorage.getItem(STORAGE_KEY)) return;
+
+      // Check if all permissions are already granted by the browser.
+      // If so, silently mark as done and skip the modal entirely.
+      const checkExisting = async () => {
+        if (!navigator.permissions) { setVisible(true); return; }
+        try {
+          const [cam, mic, notif] = await Promise.all([
+            navigator.permissions.query({ name: "camera" as PermissionName }),
+            navigator.permissions.query({ name: "microphone" as PermissionName }),
+            "Notification" in window
+              ? Promise.resolve({ state: Notification.permission })
+              : Promise.resolve({ state: "denied" }),
+          ]);
+          if (cam.state === "granted" && mic.state === "granted" && notif.state === "granted") {
+            localStorage.setItem(STORAGE_KEY, "1");
+            return;
+          }
+        } catch {}
+        setVisible(true);
+      };
+
+      checkExisting();
     } catch {}
   }, []);
 
@@ -92,6 +115,14 @@ export function PermissionsModal() {
   ];
 
   const allGranted = items.every(i => perms[i.key] === "granted");
+
+  // Auto-dismiss 1 second after all are granted
+  useEffect(() => {
+    if (allGranted) {
+      const t = setTimeout(dismiss, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [allGranted]);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
