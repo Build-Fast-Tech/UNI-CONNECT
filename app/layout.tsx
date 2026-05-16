@@ -119,6 +119,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="preconnect" href="https://mwpuwgoesgvsvknhqmor.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://mwpuwgoesgvsvknhqmor.supabase.co" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
