@@ -1403,11 +1403,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                                   <Mic className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
                                 </div>
                                 <audio
-                                  src={msg.gif_url!}
                                   controls
-                                  preload="metadata"
+                                  preload="none"
                                   style={{ height: "32px", width: "200px" }}
-                                />
+                                >
+                                  <source src={msg.gif_url!} />
+                                </audio>
                               </div>
                             )}
                             {isPhoto && (
