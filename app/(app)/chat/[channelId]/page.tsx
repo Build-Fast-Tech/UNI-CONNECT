@@ -492,7 +492,8 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg" });
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find(t => MediaRecorder.isTypeSupported(t)) ?? "";
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
@@ -534,7 +535,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const sendVoiceNote = async () => {
     if (!audioBlob || !userId || voiceSending) return;
     setVoiceSending(true);
-    const ext = audioBlob.type.includes("webm") ? "webm" : "ogg";
+    const ext = audioBlob.type.includes("webm") ? "webm" : audioBlob.type.includes("mp4") ? "mp4" : "ogg";
     const path = `voice/${userId}/${Date.now()}.${ext}`;
     const { data, error } = await supabase.storage.from("chat-media").upload(path, audioBlob, { contentType: audioBlob.type, upsert: false });
     if (error) { setSendError("Failed to upload voice note."); setVoiceSending(false); return; }
@@ -1419,12 +1420,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                           <span className="text-5xl">{msg.sticker_id}</span>
                         )
                       ) : msg.gif_url ? (
-                        msg.content === "🎤 Voice note" ? (
+                        msg.content === "🎤 Voice note" || msg.content === "🎵 Audio" ? (
                           <div className="flex items-center gap-2 py-1 min-w-[200px]">
                             <Mic className="w-4 h-4 opacity-70 flex-shrink-0" />
                             <audio src={msg.gif_url} controls style={{ height: "36px", width: "100%", maxWidth: "240px" }} />
                           </div>
-                        ) : msg.content === "📎 Photo" ? (
+                        ) : msg.content === "📷 Photo" ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={msg.gif_url} alt="photo" loading="lazy" className="max-w-xs max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setLightboxUrl(msg.gif_url!)} />
                         ) : msg.content === "🎥 Video" ? (
