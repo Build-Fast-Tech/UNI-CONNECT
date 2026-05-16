@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Search, ChevronRight, Upload, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -127,12 +126,6 @@ export default function OnboardingPage() {
     router.push("/feed");
   };
 
-  const slideVariants = {
-    enter: { x: 40, opacity: 0 },
-    center: { x: 0, opacity: 1 },
-    exit: { x: -40, opacity: 0 },
-  };
-
   return (
     <div className="w-full max-w-lg">
       {/* Progress bar */}
@@ -159,26 +152,17 @@ export default function OnboardingPage() {
           ))}
         </div>
         <div className="h-1 bg-[rgb(var(--muted))] rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-[rgb(var(--primary))] rounded-full"
-            animate={{ width: `${((step - 1) / 2) * 100}%` }}
-            transition={{ duration: 0.4 }}
+          <div
+            className="h-full bg-[rgb(var(--primary))] rounded-full transition-all duration-400"
+            style={{ width: `${((step - 1) / 2) * 100}%` }}
           />
         </div>
       </div>
 
       <div className="theme-card p-8 overflow-hidden">
-        <AnimatePresence mode="wait">
           {/* ── Step 1: University ── */}
           {step === 1 && (
-            <motion.div
-              key="step1"
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-            >
+            <div className="animate-fade-in">
               <h2 className="text-2xl font-bold mb-1">Pick your university</h2>
               <p className="text-sm text-[rgb(var(--muted-fg))] mb-6">
                 This sets your campus identity across UniConnect.
@@ -245,19 +229,12 @@ export default function OnboardingPage() {
               >
                 Continue <ChevronRight className="w-4 h-4" />
               </Button>
-            </motion.div>
+            </div>
           )}
 
           {/* ── Step 2: Branch + Details ── */}
           {step === 2 && (
-            <motion.div
-              key="step2"
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-            >
+            <div className="animate-fade-in">
               <h2 className="text-2xl font-bold mb-1">Your details</h2>
               <p className="text-sm text-[rgb(var(--muted-fg))] mb-6">
                 {selectedUni?.name}
@@ -343,19 +320,12 @@ export default function OnboardingPage() {
                   Continue <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* ── Step 3: Profile ── */}
           {step === 3 && (
-            <motion.div
-              key="step3"
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3 }}
-            >
+            <div className="animate-fade-in">
               <h2 className="text-2xl font-bold mb-1">Your profile</h2>
               <p className="text-sm text-[rgb(var(--muted-fg))] mb-6">
                 A photo and bio are required to complete your profile.
@@ -429,9 +399,8 @@ export default function OnboardingPage() {
                   Enter UniConnect 🚀
                 </Button>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
       </div>
     </div>
   );

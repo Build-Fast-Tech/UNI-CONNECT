@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signInAction } from "@/lib/actions/auth";
@@ -78,12 +77,7 @@ export default function LoginPage() {
   );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="w-full max-w-md"
-    >
+    <div className="w-full max-w-md animate-fade-in-up">
       <div className="theme-card p-8">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
@@ -165,13 +159,9 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.1)] px-3 py-2 rounded-lg"
-            >
+            <p className="text-sm text-[rgb(var(--destructive))] bg-[rgb(var(--destructive)/0.1)] px-3 py-2 rounded-lg animate-fade-in">
               {error}
-            </motion.p>
+            </p>
           )}
 
           <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full">
@@ -186,6 +176,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </motion.div>
+    </div>
   );
 }

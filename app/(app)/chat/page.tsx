@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 import { MessageSquare } from "lucide-react";
 
 export default async function ChatIndexPage() {
