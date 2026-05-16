@@ -8,22 +8,19 @@ import { HowItWorks }         from "@/components/landing/HowItWorks";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { FAQSection }         from "@/components/landing/FAQSection";
 import { CTASection }         from "@/components/landing/CTASection";
-import { LiquidBackground, WaveDivider } from "@/components/landing/LiquidBackground";
+import { FloatingObjects }    from "@/components/landing/FloatingObjects";
 
 export default function HomePage() {
   return (
     <>
-      <LiquidBackground intensity="medium" />
       <MarketingNav />
       <main className="flex-1 relative">
         <HeroSection />
-        <WaveDivider />
+        <FloatingObjects />
         <UniversityTicker />
         <FeaturesSection />
-        <WaveDivider flip />
         <StatsSection />
         <HowItWorks />
-        <WaveDivider />
         <TestimonialsSection />
         <FAQSection />
         <CTASection />
