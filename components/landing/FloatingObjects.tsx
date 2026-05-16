@@ -1,105 +1,48 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-
-interface FloatingItem {
-  id: number;
-  emoji: string;
-  x: number;       // % from left
-  startY: number;  // starting Y offset (vh units, positive = below screen)
-  endY: number;    // ending Y offset (vh units, negative = above viewport)
-  size: number;    // rem
-  delay: number;   // stagger delay (s)
-  rotate: number;  // initial rotation degrees
-  rotateEnd: number;
-  duration: number; // scroll range (fraction of total page)
-  opacity: number;
-}
-
-// Objects start above the viewport and fall to the bottom unevenly as user scrolls.
-// startY = negative vh (above screen), endY = positive vh (off-screen bottom).
-// Each object has a different fall rate so the descent looks organic, not uniform.
-const OBJECTS: FloatingItem[] = [
-  // Books
-  { id: 1,  emoji: "📚", x: 8,  startY: -25,  endY: 130, size: 2.6, delay: 0, rotate: -12, rotateEnd: 24,   duration: 0.9, opacity: 0.45 },
-  { id: 2,  emoji: "📖", x: 82, startY: -40,  endY: 160, size: 3.0, delay: 0, rotate: 15,  rotateEnd: -28,  duration: 1.0, opacity: 0.4 },
-  { id: 3,  emoji: "📗", x: 55, startY: -15,  endY: 110, size: 2.2, delay: 0, rotate: -8,  rotateEnd: 35,   duration: 0.85, opacity: 0.42 },
-  { id: 4,  emoji: "📘", x: 30, startY: -55,  endY: 145, size: 2.4, delay: 0, rotate: 20,  rotateEnd: -32,  duration: 0.95, opacity: 0.45 },
-  { id: 5,  emoji: "📙", x: 70, startY: -30,  endY: 125, size: 2.0, delay: 0, rotate: -5,  rotateEnd: 40,   duration: 0.8, opacity: 0.4 },
-  // Notes / paper
-  { id: 6,  emoji: "📝", x: 18, startY: -20,  endY: 140, size: 2.4, delay: 0, rotate: 10,  rotateEnd: -45,  duration: 0.88, opacity: 0.45 },
-  { id: 7,  emoji: "📄", x: 92, startY: -45,  endY: 115, size: 1.8, delay: 0, rotate: -18, rotateEnd: 26,   duration: 0.82, opacity: 0.38 },
-  { id: 8,  emoji: "📃", x: 45, startY: -65,  endY: 150, size: 2.0, delay: 0, rotate: 8,   rotateEnd: -38,  duration: 0.92, opacity: 0.42 },
-  { id: 9,  emoji: "🗒️", x: 63, startY: -75,  endY: 130, size: 2.2, delay: 0, rotate: -22, rotateEnd: 30,   duration: 0.78, opacity: 0.4 },
-  { id: 10, emoji: "📋", x: 4,  startY: -90,  endY: 165, size: 1.8, delay: 0, rotate: 15,  rotateEnd: -28,  duration: 0.96, opacity: 0.38 },
-  // Pens / pencils
-  { id: 11, emoji: "✏️", x: 38, startY: -35,  endY: 135, size: 2.0, delay: 0, rotate: 45,  rotateEnd: 200,  duration: 0.84, opacity: 0.45 },
-  { id: 12, emoji: "🖊️", x: 76, startY: -60,  endY: 145, size: 1.8, delay: 0, rotate: -45, rotateEnd: -180, duration: 0.88, opacity: 0.42 },
-  { id: 13, emoji: "🖋️", x: 22, startY: -100, endY: 175, size: 2.2, delay: 0, rotate: 30,  rotateEnd: 220,  duration: 0.76, opacity: 0.4 },
-  // Backpack
-  { id: 14, emoji: "🎒", x: 88, startY: -50,  endY: 130, size: 2.8, delay: 0, rotate: -10, rotateEnd: 35,   duration: 0.9, opacity: 0.45 },
-  // Calculator / ruler
-  { id: 15, emoji: "🔢", x: 12, startY: -70,  endY: 140, size: 1.8, delay: 0, rotate: 5,   rotateEnd: -50,  duration: 0.86, opacity: 0.38 },
-  { id: 16, emoji: "📐", x: 50, startY: -110, endY: 180, size: 2.0, delay: 0, rotate: -35, rotateEnd: 90,   duration: 0.72, opacity: 0.4 },
-  // Graduation / star
-  { id: 17, emoji: "🎓", x: 34, startY: -120, endY: 170, size: 2.4, delay: 0, rotate: 0,   rotateEnd: 60,   duration: 0.88, opacity: 0.45 },
-  { id: 18, emoji: "⭐", x: 96, startY: -85,  endY: 130, size: 1.6, delay: 0, rotate: 20,  rotateEnd: -120, duration: 0.8, opacity: 0.35 },
-  // Laptop
-  { id: 19, emoji: "💻", x: 60, startY: -130, endY: 190, size: 2.6, delay: 0, rotate: -8,  rotateEnd: 22,   duration: 0.95, opacity: 0.45 },
-  // Light bulb
-  { id: 20, emoji: "💡", x: 25, startY: -140, endY: 200, size: 2.0, delay: 0, rotate: 0,   rotateEnd: -45,  duration: 1.0, opacity: 0.42 },
+const ITEMS = [
+  { emoji: "📚", x: 7,  duration: 9,  delay: 0,   size: 4.5, rotate: -15 },
+  { emoji: "🎓", x: 22, duration: 12, delay: 3,   size: 5.0, rotate: 8   },
+  { emoji: "✏️", x: 40, duration: 10, delay: 6,   size: 4.0, rotate: 40  },
+  { emoji: "📖", x: 58, duration: 11, delay: 1.5, size: 4.8, rotate: -10 },
+  { emoji: "🖊️", x: 75, duration: 8,  delay: 4.5, size: 3.8, rotate: -35 },
+  { emoji: "🎒", x: 88, duration: 13, delay: 2,   size: 5.2, rotate: 12  },
+  { emoji: "📝", x: 30, duration: 14, delay: 7,   size: 4.2, rotate: -20 },
+  { emoji: "📐", x: 65, duration: 9,  delay: 5,   size: 3.6, rotate: 30  },
 ];
 
-function FloatingObject({ item, scrollProgress }: { item: FloatingItem; scrollProgress: ReturnType<typeof useScroll>["scrollYProgress"] }) {
-  const y = useTransform(
-    scrollProgress,
-    [0, 1],
-    [`${item.startY}vh`, `${item.endY}vh`]
-  );
-  const rotate = useTransform(
-    scrollProgress,
-    [0, 1],
-    [item.rotate, item.rotateEnd]
-  );
-  const opacity = useTransform(
-    scrollProgress,
-    [0, 0.05, 0.85, 1],
-    [0, item.opacity, item.opacity, 0]
-  );
-
-  return (
-    <motion.div
-      className="absolute pointer-events-none select-none"
-      style={{
-        left: `${item.x}%`,
-        top: 0,
-        y,
-        rotate,
-        opacity,
-        fontSize: `${item.size}rem`,
-        filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))",
-        willChange: "transform, opacity",
-      }}
-    >
-      {item.emoji}
-    </motion.div>
-  );
-}
-
 export function FloatingObjects() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll();
-
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 pointer-events-none overflow-hidden"
-      style={{ zIndex: -1 }}
-    >
-      {OBJECTS.map(item => (
-        <FloatingObject key={item.id} item={item} scrollProgress={scrollYProgress} />
-      ))}
-    </div>
+    <>
+      <style>{`
+        @keyframes fall {
+          0%   { transform: translateY(-120px) rotate(var(--r0)); opacity: 0; }
+          8%   { opacity: 0.4; }
+          90%  { opacity: 0.35; }
+          100% { transform: translateY(110vh) rotate(var(--r1)); opacity: 0; }
+        }
+      `}</style>
+      <div
+        className="fixed inset-0 pointer-events-none overflow-hidden"
+        style={{ zIndex: -1 }}
+        aria-hidden
+      >
+        {ITEMS.map((item, i) => (
+          <div
+            key={i}
+            className="absolute top-0 select-none"
+            style={{
+              left: `${item.x}%`,
+              fontSize: `${item.size}rem`,
+              "--r0": `${item.rotate}deg`,
+              "--r1": `${item.rotate + 25}deg`,
+              animation: `fall ${item.duration}s ${item.delay}s ease-in infinite`,
+              willChange: "transform, opacity",
+              filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.25))",
+            } as React.CSSProperties}
+          >
+            {item.emoji}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
