@@ -8,7 +8,6 @@ import { HowItWorks }         from "@/components/landing/HowItWorks";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { FAQSection }         from "@/components/landing/FAQSection";
 import { CTASection }         from "@/components/landing/CTASection";
-import { FloatingObjects }    from "@/components/landing/FloatingObjects";
 
 export default function HomePage() {
   return (
@@ -16,7 +15,6 @@ export default function HomePage() {
       <MarketingNav />
       <main className="flex-1 relative">
         <HeroSection />
-        <FloatingObjects />
         <UniversityTicker />
         <FeaturesSection />
         <StatsSection />
