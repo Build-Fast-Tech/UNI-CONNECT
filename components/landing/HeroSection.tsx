@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,73 +48,40 @@ const FEATURE_TAGS = [
 
 export function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  });
-
-  // Water-like spring smoothing on scroll
-  const smooth = useSpring(scrollYProgress, { stiffness: 80, damping: 30, mass: 0.6 });
-
-  // Each blob has its own scroll-driven trajectory
-  const blob1X     = useTransform(smooth, [0, 1], [0, 180]);
-  const blob1Y     = useTransform(smooth, [0, 1], [0, -120]);
-  const blob1Scale = useTransform(smooth, [0, 0.5, 1], [1, 1.25, 0.8]);
-
-  const blob2X     = useTransform(smooth, [0, 1], [0, -200]);
-  const blob2Y     = useTransform(smooth, [0, 1], [0, 150]);
-  const blob2Scale = useTransform(smooth, [0, 0.5, 1], [1, 0.85, 1.3]);
-
-  const blob3X     = useTransform(smooth, [0, 1], [0, 120]);
-  const blob3Y     = useTransform(smooth, [0, 1], [0, 220]);
-  const blob3Scale = useTransform(smooth, [0, 1], [1, 1.4]);
-
-  // Hero content drifts up + fades as you scroll past
-  const heroY       = useTransform(smooth, [0, 1], [0, -100]);
-  const heroOpacity = useTransform(smooth, [0, 0.6, 1], [1, 0.5, 0]);
 
   return (
     <section ref={sectionRef} className="relative min-h-screen flex items-center pt-20 pb-16 overflow-hidden">
-      {/* Watery scroll-controlled blobs */}
+      {/* CSS-only blobs — GPU composited, no JS scroll listener */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
+        <div
           className="absolute top-1/4 -left-32 w-96 h-96 blob-morph-slow"
           style={{
-            background: `radial-gradient(circle, rgb(var(--primary)/0.35) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgb(var(--primary)/0.3) 0%, transparent 70%)`,
             filter: "blur(40px)",
-            x: blob1X,
-            y: blob1Y,
-            scale: blob1Scale,
+            willChange: "transform",
           }}
         />
-        <motion.div
+        <div
           className="absolute bottom-1/4 -right-32 w-[500px] h-[500px] blob-morph"
           style={{
-            background: `radial-gradient(circle, rgb(var(--accent)/0.28) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgb(var(--accent)/0.22) 0%, transparent 70%)`,
             filter: "blur(50px)",
             animationDelay: "-4s",
-            x: blob2X,
-            y: blob2Y,
-            scale: blob2Scale,
+            willChange: "transform",
           }}
         />
-        <motion.div
+        <div
           className="absolute top-1/2 left-1/2 w-64 h-64 blob-morph-fast"
           style={{
-            background: `radial-gradient(circle, rgb(var(--primary)/0.22) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgb(var(--primary)/0.18) 0%, transparent 70%)`,
             filter: "blur(60px)",
             animationDelay: "-2s",
-            x: blob3X,
-            y: blob3Y,
-            scale: blob3Scale,
+            willChange: "transform",
           }}
         />
       </div>
 
-      <motion.div
-        style={{ y: heroY, opacity: heroOpacity }}
-        className="relative max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center"
-      >
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
         {/* Left: Text */}
         <div className="space-y-8">
           {/* Badge */}
@@ -187,7 +154,6 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="relative flex items-center justify-center"
         >
-          {/* Globe placeholder (R3F globe added in Week 8) */}
           <div className="relative w-80 h-80 lg:w-96 lg:h-96">
             {/* Outer ring */}
             <motion.div
@@ -244,7 +210,7 @@ export function HeroSection() {
             })}
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     </section>
   );
 }

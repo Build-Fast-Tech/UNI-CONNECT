@@ -225,7 +225,8 @@ a[style*="transform"]:active { transform: none; }
 .pk-keyword   { color: #BD93F9; }
 .pk-string    { color: #FFB86C; }
 .pk-number    { color: #FF79C6; }
-.pk-comment   { color: #6272A4; font-style: italic; }
+.pk-comment      { color: #6272A4; font-style: italic; }
+.pk-preprocessor { color: #FF79C6; }
 .pk-function  { color: #50FA7B; }
 .pk-type      { color: #8BE9FD; }
 .pk-operator  { color: #FF79C6; }
