@@ -17,35 +17,38 @@ interface FloatingItem {
   opacity: number;
 }
 
+// Objects start above the viewport and fall to the bottom unevenly as user scrolls.
+// startY = negative vh (above screen), endY = positive vh (off-screen bottom).
+// Each object has a different fall rate so the descent looks organic, not uniform.
 const OBJECTS: FloatingItem[] = [
   // Books
-  { id: 1,  emoji: "📚", x: 8,  startY: 20,  endY: -180, size: 2.8, delay: 0,    rotate: -12, rotateEnd: 8,   duration: 0.9, opacity: 0.9 },
-  { id: 2,  emoji: "📖", x: 82, startY: 10,  endY: -200, size: 3.2, delay: 0,    rotate: 15,  rotateEnd: -5,  duration: 1.0, opacity: 0.85 },
-  { id: 3,  emoji: "📗", x: 55, startY: 30,  endY: -150, size: 2.4, delay: 0,    rotate: -8,  rotateEnd: 12,  duration: 0.85, opacity: 0.8 },
-  { id: 4,  emoji: "📘", x: 30, startY: 50,  endY: -220, size: 2.6, delay: 0,    rotate: 20,  rotateEnd: -10, duration: 0.95, opacity: 0.88 },
-  { id: 5,  emoji: "📙", x: 70, startY: 40,  endY: -170, size: 2.2, delay: 0,    rotate: -5,  rotateEnd: 18,  duration: 0.8, opacity: 0.82 },
+  { id: 1,  emoji: "📚", x: 8,  startY: -25,  endY: 130, size: 2.6, delay: 0, rotate: -12, rotateEnd: 24,   duration: 0.9, opacity: 0.45 },
+  { id: 2,  emoji: "📖", x: 82, startY: -40,  endY: 160, size: 3.0, delay: 0, rotate: 15,  rotateEnd: -28,  duration: 1.0, opacity: 0.4 },
+  { id: 3,  emoji: "📗", x: 55, startY: -15,  endY: 110, size: 2.2, delay: 0, rotate: -8,  rotateEnd: 35,   duration: 0.85, opacity: 0.42 },
+  { id: 4,  emoji: "📘", x: 30, startY: -55,  endY: 145, size: 2.4, delay: 0, rotate: 20,  rotateEnd: -32,  duration: 0.95, opacity: 0.45 },
+  { id: 5,  emoji: "📙", x: 70, startY: -30,  endY: 125, size: 2.0, delay: 0, rotate: -5,  rotateEnd: 40,   duration: 0.8, opacity: 0.4 },
   // Notes / paper
-  { id: 6,  emoji: "📝", x: 18, startY: 15,  endY: -190, size: 2.6, delay: 0,    rotate: 10,  rotateEnd: -15, duration: 0.88, opacity: 0.9 },
-  { id: 7,  emoji: "📄", x: 92, startY: 25,  endY: -160, size: 2.0, delay: 0,    rotate: -18, rotateEnd: 6,   duration: 0.82, opacity: 0.78 },
-  { id: 8,  emoji: "📃", x: 45, startY: 60,  endY: -210, size: 2.2, delay: 0,    rotate: 8,   rotateEnd: -12, duration: 0.92, opacity: 0.85 },
-  { id: 9,  emoji: "🗒️", x: 63, startY: 70,  endY: -180, size: 2.4, delay: 0,    rotate: -22, rotateEnd: 10,  duration: 0.78, opacity: 0.8 },
-  { id: 10, emoji: "📋", x: 4,  startY: 80,  endY: -230, size: 2.0, delay: 0,    rotate: 15,  rotateEnd: -8,  duration: 0.96, opacity: 0.75 },
+  { id: 6,  emoji: "📝", x: 18, startY: -20,  endY: 140, size: 2.4, delay: 0, rotate: 10,  rotateEnd: -45,  duration: 0.88, opacity: 0.45 },
+  { id: 7,  emoji: "📄", x: 92, startY: -45,  endY: 115, size: 1.8, delay: 0, rotate: -18, rotateEnd: 26,   duration: 0.82, opacity: 0.38 },
+  { id: 8,  emoji: "📃", x: 45, startY: -65,  endY: 150, size: 2.0, delay: 0, rotate: 8,   rotateEnd: -38,  duration: 0.92, opacity: 0.42 },
+  { id: 9,  emoji: "🗒️", x: 63, startY: -75,  endY: 130, size: 2.2, delay: 0, rotate: -22, rotateEnd: 30,   duration: 0.78, opacity: 0.4 },
+  { id: 10, emoji: "📋", x: 4,  startY: -90,  endY: 165, size: 1.8, delay: 0, rotate: 15,  rotateEnd: -28,  duration: 0.96, opacity: 0.38 },
   // Pens / pencils
-  { id: 11, emoji: "✏️", x: 38, startY: 35,  endY: -165, size: 2.2, delay: 0,    rotate: 45,  rotateEnd: 20,  duration: 0.84, opacity: 0.9 },
-  { id: 12, emoji: "🖊️", x: 76, startY: 55,  endY: -200, size: 2.0, delay: 0,    rotate: -45, rotateEnd: -20, duration: 0.88, opacity: 0.85 },
-  { id: 13, emoji: "🖋️", x: 22, startY: 90,  endY: -240, size: 2.4, delay: 0,    rotate: 30,  rotateEnd: 10,  duration: 0.76, opacity: 0.82 },
-  // Backpack / school bag
-  { id: 14, emoji: "🎒", x: 88, startY: 45,  endY: -175, size: 3.0, delay: 0,    rotate: -10, rotateEnd: 15,  duration: 0.9, opacity: 0.88 },
+  { id: 11, emoji: "✏️", x: 38, startY: -35,  endY: 135, size: 2.0, delay: 0, rotate: 45,  rotateEnd: 200,  duration: 0.84, opacity: 0.45 },
+  { id: 12, emoji: "🖊️", x: 76, startY: -60,  endY: 145, size: 1.8, delay: 0, rotate: -45, rotateEnd: -180, duration: 0.88, opacity: 0.42 },
+  { id: 13, emoji: "🖋️", x: 22, startY: -100, endY: 175, size: 2.2, delay: 0, rotate: 30,  rotateEnd: 220,  duration: 0.76, opacity: 0.4 },
+  // Backpack
+  { id: 14, emoji: "🎒", x: 88, startY: -50,  endY: 130, size: 2.8, delay: 0, rotate: -10, rotateEnd: 35,   duration: 0.9, opacity: 0.45 },
   // Calculator / ruler
-  { id: 15, emoji: "🔢", x: 12, startY: 65,  endY: -195, size: 2.0, delay: 0,    rotate: 5,   rotateEnd: -20, duration: 0.86, opacity: 0.78 },
-  { id: 16, emoji: "📐", x: 50, startY: 85,  endY: -250, size: 2.2, delay: 0,    rotate: -35, rotateEnd: 0,   duration: 0.72, opacity: 0.8 },
+  { id: 15, emoji: "🔢", x: 12, startY: -70,  endY: 140, size: 1.8, delay: 0, rotate: 5,   rotateEnd: -50,  duration: 0.86, opacity: 0.38 },
+  { id: 16, emoji: "📐", x: 50, startY: -110, endY: 180, size: 2.0, delay: 0, rotate: -35, rotateEnd: 90,   duration: 0.72, opacity: 0.4 },
   // Graduation / star
-  { id: 17, emoji: "🎓", x: 34, startY: 100, endY: -260, size: 2.6, delay: 0,    rotate: 0,   rotateEnd: 15,  duration: 0.88, opacity: 0.85 },
-  { id: 18, emoji: "⭐", x: 96, startY: 75,  endY: -185, size: 1.8, delay: 0,    rotate: 20,  rotateEnd: -20, duration: 0.8, opacity: 0.7 },
-  // Laptop / computer
-  { id: 19, emoji: "💻", x: 60, startY: 110, endY: -280, size: 2.8, delay: 0,    rotate: -8,  rotateEnd: 8,   duration: 0.95, opacity: 0.88 },
-  // Light bulb (ideas!)
-  { id: 20, emoji: "💡", x: 25, startY: 120, endY: -300, size: 2.2, delay: 0,    rotate: 0,   rotateEnd: -10, duration: 1.0, opacity: 0.82 },
+  { id: 17, emoji: "🎓", x: 34, startY: -120, endY: 170, size: 2.4, delay: 0, rotate: 0,   rotateEnd: 60,   duration: 0.88, opacity: 0.45 },
+  { id: 18, emoji: "⭐", x: 96, startY: -85,  endY: 130, size: 1.6, delay: 0, rotate: 20,  rotateEnd: -120, duration: 0.8, opacity: 0.35 },
+  // Laptop
+  { id: 19, emoji: "💻", x: 60, startY: -130, endY: 190, size: 2.6, delay: 0, rotate: -8,  rotateEnd: 22,   duration: 0.95, opacity: 0.45 },
+  // Light bulb
+  { id: 20, emoji: "💡", x: 25, startY: -140, endY: 200, size: 2.0, delay: 0, rotate: 0,   rotateEnd: -45,  duration: 1.0, opacity: 0.42 },
 ];
 
 function FloatingObject({ item, scrollProgress }: { item: FloatingItem; scrollProgress: ReturnType<typeof useScroll>["scrollYProgress"] }) {
@@ -70,12 +73,12 @@ function FloatingObject({ item, scrollProgress }: { item: FloatingItem; scrollPr
       className="absolute pointer-events-none select-none"
       style={{
         left: `${item.x}%`,
-        bottom: 0,
+        top: 0,
         y,
         rotate,
         opacity,
         fontSize: `${item.size}rem`,
-        filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.4))",
+        filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))",
         willChange: "transform, opacity",
       }}
     >
@@ -92,7 +95,7 @@ export function FloatingObjects() {
     <div
       ref={containerRef}
       className="fixed inset-0 pointer-events-none overflow-hidden"
-      style={{ zIndex: 1 }}
+      style={{ zIndex: -1 }}
     >
       {OBJECTS.map(item => (
         <FloatingObject key={item.id} item={item} scrollProgress={scrollYProgress} />
