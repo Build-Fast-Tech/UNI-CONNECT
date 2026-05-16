@@ -118,7 +118,7 @@ function SidebarContent({
       <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[rgb(var(--muted-fg))]">Workspace</p>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto" data-lenis-prevent>
         {NAV_ITEMS.map(item => {
           /* ── Expandable item (Career Center) ── */
           if (item.children) {

@@ -256,7 +256,7 @@ function ChannelList({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-1.5 pb-3 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-1.5 pb-3 space-y-0.5" data-lenis-prevent>
         {globalChannel && (
           <ChannelRow
             channel={globalChannel} icon={iconFor(globalChannel)}
