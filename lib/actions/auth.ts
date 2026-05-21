@@ -48,8 +48,9 @@ export async function signUpAction(data: {
       }
       return { error: error.message };
     }
-    return {};
+    redirect("/verify");
   } catch (e: unknown) {
+    if ((e as any)?.digest?.startsWith("NEXT_REDIRECT")) throw e;
     return { error: (e as Error)?.message ?? String(e) };
   }
 }
