@@ -42,7 +42,7 @@ types/database.ts     # Generated Supabase database types (636 lines)
 ## Auth flow
 - **OAuth** (Google/GitHub): `signInWithOAuth()` → Supabase PKCE → `/auth/callback` → `exchangeCodeForSession(code)` → cookie-based session
 - **Email/password**: `signInAction()` server action → on success, checks `uc_onboarded` cookie or DB → redirects to `/feed` or `/onboarding`
-- **Middleware**: `lib/supabase/middleware.ts` exports `updateSession()`, wired via root `middleware.ts`. Protects app routes (`/feed`, `/notes`, etc.) by redirecting unauthenticated users to `/login`, and redirects authenticated users away from auth routes (`/login`, `/signup`, `/verify`) to `/feed`. Onboarding is excluded from the redirect.
+- **Middleware**: `proxy.ts` (Next.js 16 proxy convention) imports `updateSession()` from `lib/supabase/middleware.ts`. Protects app routes redirecting unauthenticated to `/login`, and redirects authenticated away from auth routes to `/feed`. Onboarding is excluded from redirect.
 
 ## Styling conventions
 - Theme variables use `rgb(var(--name))` pattern, defined in `globals.css` as raw RGB values
