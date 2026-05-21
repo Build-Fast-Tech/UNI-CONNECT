@@ -47,6 +47,7 @@ export async function GET(request: Request) {
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
+    console.error("Auth callback error:", error.message);
     return NextResponse.redirect(
       `${origin}/verify?error=${encodeURIComponent(error.message)}`
     );
@@ -56,11 +57,12 @@ export async function GET(request: Request) {
   if (token_hash) {
     const { error } = await supabase.auth.verifyOtp({
       token_hash,
-      type: type as "email",
+      type: type as any,
     });
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
+    console.error("OTP verification error:", error.message);
     return NextResponse.redirect(
       `${origin}/verify?error=${encodeURIComponent(error.message)}`
     );
