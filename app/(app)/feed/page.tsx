@@ -54,8 +54,8 @@ function LiveNowTicker() {
 
   return (
     <div className="theme-card p-3 flex items-center gap-3 overflow-hidden">
-      <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold uppercase tracking-wider flex-shrink-0">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      <div className="flex items-center gap-1.5 text-[rgb(var(--accent))] text-xs font-bold uppercase tracking-wider flex-shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))] animate-pulse" />
         LIVE
       </div>
       <div className="flex-1 overflow-x-auto flex gap-6" style={{ scrollbarWidth: "none" }}>
@@ -95,7 +95,7 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
   return (
     <div
       className="relative overflow-hidden rounded-2xl p-6 flex flex-col justify-between min-h-[186px]"
-      style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 35%, #4f46e5 65%, #818cf8 100%)" }}
+      style={{ background: "linear-gradient(135deg, #1c1c1e 0%, #2a2218 35%, #3d3020 65%, #6b5540 100%)" }}
     >
       {/* existing decorative circles */}
       <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
@@ -116,7 +116,7 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
           <p className="text-white/60 text-xs mb-3">Set your semester end date to see countdown</p>
         )}
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/ai" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-700 font-semibold text-sm hover:bg-white/90 transition-colors shadow-md">
+          <Link href="/ai" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-[#3d3020] font-semibold text-sm hover:bg-white/90 transition-colors shadow-md">
             Start Learning <ArrowRight className="w-4 h-4" />
           </Link>
           <Link href="/notes" className="px-4 py-2 rounded-xl border border-white/30 text-white text-sm font-medium hover:bg-white/10 transition-colors">
@@ -230,18 +230,15 @@ function CommHub({
         </Link>
       </div>
 
-      <div className="flex items-center gap-1 px-4 pb-3 border-b border-[rgb(var(--border))]">
+      <div className="glass-tab-bar mx-4 mb-3">
         {CHAT_TABS.map((t, i) => (
           <button key={t} onClick={() => setActiveTab(i)}
-            className={cn("px-3 py-1 rounded-lg text-xs font-medium transition-colors",
-              activeTab === i
-                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
-                : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
+            className={`glass-tab ${activeTab === i ? "active" : ""}`}>
             {t}
           </button>
         ))}
-        <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />LIVE
+        <span className="flex items-center gap-1 text-[10px] text-[rgb(var(--accent))] font-semibold px-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))] animate-pulse" />LIVE
         </span>
       </div>
 
@@ -316,7 +313,7 @@ function CVWidget() {
         <p className="font-semibold text-sm">CV Upload</p>
         <span className="text-[10px] text-[rgb(var(--muted-fg))]">Required for 3 Apps</span>
       </div>
-      <Link href="/cvs"
+       <Link href="/cv-center"
         className="flex flex-col items-center py-5 border-2 border-dashed border-[rgb(var(--border))] rounded-xl hover:border-[rgb(var(--primary)/0.4)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group">
         <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center mb-2">
           <Upload className="w-5 h-5 text-[rgb(var(--primary))]" />
@@ -349,13 +346,10 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
         </Link>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto pb-2 mb-3" style={{ scrollbarWidth: "none" }}>
+      <div className="glass-chip-bar pb-2 mb-3">
         {NOTE_CATS.map((c, i) => (
           <button key={c} onClick={() => setActiveTab(i)}
-            className={cn("px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0",
-              activeTab === i
-                ? "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]"
-                : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))]")}>
+            className={`glass-chip ${activeTab === i ? "active" : ""}`}>
             {c}
           </button>
         ))}
@@ -424,12 +418,20 @@ function CalendarWidget({ userId }: { userId: string | null }) {
   }, [userId]);
 
   const labelFor = (dateStr: string) => {
+    if (!dateStr) return "UPCOMING";
     const today    = new Date(); today.setHours(0,0,0,0);
     const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
     const d = new Date(dateStr + "T00:00:00");
+    
+    if (isNaN(d.getTime())) return "UPCOMING";
     if (d.getTime() === today.getTime())    return "TODAY";
     if (d.getTime() === tomorrow.getTime()) return "TOMORROW";
-    return d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+    
+    try {
+      return d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+    } catch {
+      return "UPCOMING";
+    }
   };
 
   return (
@@ -489,8 +491,8 @@ function UniAIWidget({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <p className="text-sm font-semibold leading-tight">UniAI</p>
-            <p className="text-[10px] text-emerald-400 uppercase font-semibold tracking-wide flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />Your AI Tutor · Online
+            <p className="text-[10px] text-[rgb(var(--accent))] uppercase font-semibold tracking-wide flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--accent))] animate-pulse" />Your AI Tutor · Online
             </p>
           </div>
         </div>
@@ -618,18 +620,18 @@ export default function FeedPage() {
     (async () => {
       // 1. Global channel
       const { data: globalChan } = await supabase
-        .from("channels").select("id").eq("type", "global").single();
+        .from("channels").select("id").eq("type", "global").maybeSingle();
       if (globalChan) {
         fetchMsgs(globalChan.id).then(setGlobalMsgs);
       }
 
       // 2. University channel
       if (universityId) {
-        const { data: uniChan } = await supabase
-          .from("channels").select("id")
-          .eq("type", "university")
-          .eq("university_id", universityId)
-          .single();
+          const { data: uniChan } = await supabase
+            .from("channels").select("id")
+            .eq("type", "university")
+            .eq("university_id", universityId)
+            .maybeSingle();
         if (uniChan) {
           fetchMsgs(uniChan.id).then(setUniMsgs);
         }
