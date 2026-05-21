@@ -32,40 +32,83 @@ interface Notification {
   created_at: string;
 }
 
+interface RecentMsg {
+  id: string;
+  content: string | null;
+  created_at: string;
+  sender_id: string;
+  sender: { full_name: string; avatar_url: string | null } | null;
+}
+
 function NotificationDropdown({ userId }: { userId: string | null }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [recentMsgs, setRecentMsgs] = useState<RecentMsg[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
     const supabase = createClient();
-    supabase
-      .from("notifications")
-      .select("id, type, payload, is_read, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(5)
-      .then(({ data }) => {
-        setNotifications((data as Notification[]) ?? []);
-        setLoading(false);
-      });
+
+    (async () => {
+      const [{ data: notifs }, { data: dms }] = await Promise.all([
+        supabase
+          .from("notifications")
+          .select("id, type, payload, is_read, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("channels")
+          .select("id")
+          .eq("type", "dm")
+          .or(`dm_user_a.eq.${userId},dm_user_b.eq.${userId}`),
+      ]);
+
+      setNotifications((notifs as Notification[]) ?? []);
+
+      if (dms && dms.length > 0) {
+        const channelIds = dms.map(c => c.id);
+        const { data: msgs } = await supabase
+          .from("messages")
+          .select("id, content, created_at, sender_id, sender:profiles!sender_id(full_name, avatar_url)")
+          .in("channel_id", channelIds)
+          .neq("sender_id", userId)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        setRecentMsgs((msgs as unknown as RecentMsg[]) ?? []);
+      }
+
+      setLoading(false);
+    })();
   }, [userId]);
 
-  function notifIcon(type: string) {
-    const icons: Record<string, string> = {
-      message: "💬", job_application: "💼", note_upvote: "⭐",
-      follow: "👋", system: "🔔",
-    };
-    return icons[type] ?? "🔔";
+  const items: { id: string; type: "system" | "dm"; icon: string; primary: string; secondary: string; time: string; isNew: boolean; href?: string }[] = [];
+
+  for (const n of notifications) {
+    const p = (n.payload as Record<string, string>) || {};
+    let text = p.message ?? n.type.replace(/_/g, " ");
+    if (n.type === "note_upvote") text = `Upvoted your note: ${p.title ?? ""}`;
+    if (n.type === "job_application") text = `Application: ${p.job_title ?? ""}`;
+    items.push({ id: `sys-${n.id}`, type: "system", icon: "🔔", primary: text, secondary: "", time: n.created_at, isNew: !n.is_read });
   }
 
-  function notifText(n: Notification): string {
-    const p = n.payload as Record<string, string>;
-    if (n.type === "message") return p.message ?? "You have a new message";
-    if (n.type === "note_upvote") return `Someone upvoted your note: ${p.title ?? ""}`;
-    if (n.type === "job_application") return `Application update: ${p.job_title ?? ""}`;
-    return p.message ?? n.type.replace(/_/g, " ");
+  for (const m of recentMsgs) {
+    const sender = m.sender;
+    items.push({
+      id: `dm-${m.id}`,
+      type: "dm",
+      icon: sender?.avatar_url ?? "",
+      primary: sender?.full_name ?? "Someone",
+      secondary: m.content ?? "",
+      time: m.created_at,
+      isNew: true,
+      href: `/chat/${m.sender_id}`,
+    });
   }
+
+  items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  const display = items.slice(0, 8);
 
   return (
     <div className="p-0">
@@ -76,28 +119,44 @@ function NotificationDropdown({ userId }: { userId: string | null }) {
         <div className="p-4 space-y-3">
           {[1,2,3].map(i => <div key={i} className="h-10 rounded-xl bg-[rgb(var(--muted))] animate-pulse" />)}
         </div>
-      ) : notifications.length === 0 ? (
+      ) : display.length === 0 ? (
         <div className="px-4 py-8 text-center">
           <p className="text-2xl mb-2">🔔</p>
           <p className="text-sm text-[rgb(var(--muted-fg))]">No notifications yet</p>
         </div>
       ) : (
         <div>
-          {notifications.map(n => (
-            <div key={n.id} className={cn(
+          {display.map(item => (
+            <div key={item.id} className={cn(
               "flex items-start gap-3 px-4 py-3 hover:bg-[rgb(var(--muted))] transition-colors cursor-default",
-              !n.is_read && "bg-[rgb(var(--primary)/0.05)]"
+              item.isNew && "bg-[rgb(var(--primary)/0.05)]"
             )}>
-              <span className="text-xl flex-shrink-0">{notifIcon(n.type)}</span>
+              {item.type === "dm" && item.icon ? (
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <img src={item.icon} alt="" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <span className="text-lg flex-shrink-0">{item.icon}</span>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm leading-snug">{notifText(n)}</p>
+                <p className="text-sm leading-snug">
+                  {item.type === "dm" && <span className="font-semibold">{item.primary}</span>}
+                  {item.type === "dm" && <span className="text-[rgb(var(--muted-fg))]">: </span>}
+                  <span className={item.type === "dm" ? "text-[rgb(var(--muted-fg))]" : ""}>{item.secondary || item.primary}</span>
+                </p>
                 <p className="text-[11px] text-[rgb(var(--muted-fg))] mt-0.5">
-                  {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}
-                  {" · "}
-                  {new Date(n.created_at).toLocaleDateString("en-PK", { month: "short", day: "numeric" })}
+                  {(() => {
+                    const d = new Date(item.time);
+                    if (isNaN(d.getTime())) return "Recent";
+                    try {
+                      return `${d.toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })} · ${d.toLocaleDateString("en-PK", { month: "short", day: "numeric" })}`;
+                    } catch {
+                      return "Recent";
+                    }
+                  })()}
                 </p>
               </div>
-              {!n.is_read && <span className="w-2 h-2 rounded-full bg-[rgb(var(--primary))] flex-shrink-0 mt-1.5" />}
+              {item.isNew && <span className="w-2 h-2 rounded-full bg-[rgb(var(--primary))] flex-shrink-0 mt-1.5" />}
             </div>
           ))}
           <div className="px-4 py-3 border-t border-[rgb(var(--border))]">
