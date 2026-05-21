@@ -21,6 +21,9 @@ const csp = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  turbopack: {
+    root: __dirname,
+  },
   reactStrictMode: true,
   images: {
     remotePatterns: [
@@ -28,12 +31,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "media*.giphy.com" },
     ],
-  },
-  // Tree-shake lucide-react so only used icons are bundled
-  modularizeImports: {
-    "lucide-react": {
-      transform: "lucide-react/dist/esm/icons/{{kebabCase member}}",
-    },
   },
   async headers() {
     return [
