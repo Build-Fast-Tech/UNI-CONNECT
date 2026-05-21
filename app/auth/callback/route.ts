@@ -11,6 +11,10 @@ export async function GET(request: Request) {
   const errorParam = searchParams.get("error");
   const errorDesc  = searchParams.get("error_description");
 
+  // Validate redirect against allowlist to prevent open redirect
+  const allowedPaths = ["/onboarding", "/feed", "/profile", "/notes", "/chat", "/study", "/jobs", "/clubs", "/societies", "/inbox", "/calendar", "/gpa", "/coding", "/ai", "/feedback"];
+  const safeNext = allowedPaths.includes(next) ? next : "/onboarding";
+
   // Supabase redirected here with an error (e.g. link already used / expired)
   if (errorParam) {
     const msg = errorDesc ?? errorParam;
@@ -34,8 +38,11 @@ export async function GET(request: Request) {
           .eq("id", user.id)
           .single();
 
-        const response = NextResponse.redirect(`${origin}${next}`);
-        if (profile?.university_id) {
+        const isAlreadyOnboarded = !!profile?.university_id;
+        const finalNext = isAlreadyOnboarded ? "/feed" : safeNext;
+        const response = NextResponse.redirect(`${origin}${finalNext}`);
+
+        if (isAlreadyOnboarded) {
           // User already onboarded — set cookie so middleware doesn't redirect them
           response.cookies.set("uc_onboarded", "1", {
             path: "/",
@@ -45,7 +52,7 @@ export async function GET(request: Request) {
         }
         return response;
       }
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}${safeNext}`);
     }
     console.error("Auth callback error:", error.message);
     return NextResponse.redirect(
@@ -60,7 +67,7 @@ export async function GET(request: Request) {
       type: type as any,
     });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}${safeNext}`);
     }
     console.error("OTP verification error:", error.message);
     return NextResponse.redirect(
