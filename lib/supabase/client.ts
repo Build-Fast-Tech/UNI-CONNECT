@@ -2,18 +2,27 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 
 /**
- * Browser Supabase client.
+ * Module-level singleton browser Supabase client.
  *
- * @supabase/ssr's createBrowserClient already stores the PKCE code verifier
- * in cookies (not localStorage), so it works correctly across browser contexts
- * including mobile WebViews and OAuth redirects in new tabs.
+ * CRITICAL: Every call to createBrowserClient() sets up internal auth-state
+ * listeners. Calling it during a React render phase (even inside useMemo)
+ * triggers state updates on other components mid-render → React error #310
+ * "Cannot update a component while rendering a different component."
  *
- * Do NOT add cookieOptions here — it would affect the auth session cookie too
- * and could cause users to be unexpectedly logged out.
+ * The fix: create ONE client at module load time. All components share this
+ * single instance. It is only ever initialised once per page load.
+ *
+ * Do NOT add cookieOptions — it would affect the auth session cookie and
+ * could cause users to be unexpectedly logged out.
  */
+let _client: ReturnType<typeof createBrowserClient<Database>> | null = null;
+
 export function createClient() {
-  return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  if (!_client) {
+    _client = createBrowserClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return _client;
 }
