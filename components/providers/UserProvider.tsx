@@ -13,6 +13,9 @@ export interface CurrentUser {
   universityId: string | null;
   username: string | null;
   loaded: boolean;
+  /** true if the profile row fetch failed — components should not make
+   *  routing decisions based on universityId when this is true */
+  profileError: boolean;
 }
 
 const DEFAULT_STATE: CurrentUser = {
@@ -25,6 +28,7 @@ const DEFAULT_STATE: CurrentUser = {
   universityId: null,
   username: null,
   loaded: false,
+  profileError: false,
 };
 
 const UserContext = createContext<CurrentUser>(DEFAULT_STATE);
@@ -60,15 +64,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("full_name, avatar_url, role, university_id, username")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (cancelled) return;
 
-      const fullName = profile?.full_name ?? "";
+      if (profileError) {
+        // Network / DB error — mark loaded so the UI doesn't spin forever,
+        // but set profileError so OnboardingGuard skips routing decisions.
+        setState({
+          ...DEFAULT_STATE,
+          userId: user.id,
+          email: user.email ?? null,
+          loaded: true,
+          profileError: true,
+        });
+        return;
+      }
+
+      const fullName = profile?.full_name ?? user.user_metadata?.full_name ?? "";
       setState({
         userId: user.id,
         fullName,
@@ -79,6 +96,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         universityId: profile?.university_id ?? null,
         username: profile?.username ?? null,
         loaded: true,
+        profileError: false,
       });
     })();
 
