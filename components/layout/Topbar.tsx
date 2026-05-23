@@ -317,7 +317,7 @@ export function Topbar({ onMenuClick, unreadCount, markAllRead }: TopbarProps) {
             )}
           />
           {open && (
-            <div className="absolute top-full left-0 right-0 min-w-[280px] mt-1.5 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 overflow-hidden">
+            <div className="absolute top-full right-0 md:left-0 md:right-0 mt-1.5 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-xl z-50 overflow-hidden w-[85vw] max-w-sm md:w-full">
               {searching && <p className="text-xs text-[rgb(var(--muted-fg))] px-4 py-3">Searching…</p>}
               {!searching && results.length === 0 && query.trim() && (
                 <p className="text-xs text-[rgb(var(--muted-fg))] px-4 py-3">No results for &ldquo;{query}&rdquo;</p>

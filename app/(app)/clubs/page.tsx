@@ -153,6 +153,7 @@ export default function ClubsEventsPage() {
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
   const [hasMoreEvents, setHasMoreEvents] = useState(true);
   const [eventsPage, setEventsPage] = useState(0);
+  const [eventSubTab, setEventSubTab] = useState<"all" | "posts" | "events">("all");
 
   // Create post state
   const [adminSocieties, setAdminSocieties] = useState<AdminSociety[]>([]);
@@ -204,13 +205,11 @@ export default function ClubsEventsPage() {
   }, [userId]);
 
   const fetchEvents = async (page: number, append = false) => {
-    if (joinedIds.size === 0) { setEvents([]); setEventsLoading(false); setHasMoreEvents(false); return; }
     setEventsLoading(true);
     const PAGE_SIZE = 10;
     const { data, error } = await (supabase as any)
       .from("society_posts")
       .select("id, title, content, post_type, event_date, image_url, image_urls, likes, created_at, society:societies!society_id(id, name, logo_url), author:profiles!author_id(full_name, avatar_url)")
-      .in("society_id", Array.from(joinedIds))
       .order("created_at", { ascending: false })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (!error && data) {
@@ -223,7 +222,7 @@ export default function ClubsEventsPage() {
 
   useEffect(() => {
     if (tab === "events") { setEventsPage(0); fetchEvents(0, false); }
-  }, [tab, joinedIds]);
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== "events" || !hasMoreEvents) return;
@@ -331,7 +330,11 @@ export default function ClubsEventsPage() {
       (e.title ?? "").toLowerCase().includes(eventSearch.toLowerCase()) ||
       e.content.toLowerCase().includes(eventSearch.toLowerCase()) ||
       (e.society?.name ?? "").toLowerCase().includes(eventSearch.toLowerCase());
-    return matchSearch && (!showUpcomingOnly || isUpcoming(e.event_date));
+    const matchSubTab =
+      eventSubTab === "all" ? true :
+      eventSubTab === "posts" ? (e.post_type !== "event") :
+      (e.post_type === "event");
+    return matchSearch && matchSubTab && (!showUpcomingOnly || isUpcoming(e.event_date));
   });
 
   /* ── shared create-post form (used in events tab) ── */
@@ -658,6 +661,43 @@ export default function ClubsEventsPage() {
                     : "border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.4)] hover:text-[rgb(var(--fg))]"
                 )}>
                 <Clock className="w-4 h-4" /> Upcoming
+              </button>
+            </div>
+
+            {/* Sub-tabs: All, Posts, Events */}
+            <div className="flex p-1 gap-1 rounded-xl bg-[rgb(var(--muted)/0.45)] border border-[rgb(var(--border))] w-fit">
+              <button
+                onClick={() => setEventSubTab("all")}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  eventSubTab === "all"
+                    ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] shadow-sm"
+                    : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+                )}
+              >
+                All Feed
+              </button>
+              <button
+                onClick={() => setEventSubTab("posts")}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  eventSubTab === "posts"
+                    ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] shadow-sm"
+                    : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+                )}
+              >
+                Posts
+              </button>
+              <button
+                onClick={() => setEventSubTab("events")}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  eventSubTab === "events"
+                    ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] shadow-sm"
+                    : "text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]"
+                )}
+              >
+                Events
               </button>
             </div>
 

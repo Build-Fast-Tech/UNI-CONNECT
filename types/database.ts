@@ -585,9 +585,9 @@ export type Database = {
         Relationships: [];
       };
       society_members: {
-        Row: { id: string; society_id: string; user_id: string; role: string; joined_at: string; };
-        Insert: { id?: string; society_id: string; user_id: string; role?: string; joined_at?: string; };
-        Update: { role?: string; };
+        Row: { id: string; society_id: string; user_id: string; role: string; joined_at: string; status: "pending" | "approved"; };
+        Insert: { id?: string; society_id: string; user_id: string; role?: string; joined_at?: string; status?: "pending" | "approved"; };
+        Update: { role?: string; status?: "pending" | "approved"; };
         Relationships: [];
       };
       society_posts: {
@@ -614,6 +614,26 @@ export type Database = {
           event_date: string; color?: string; notify_before_minutes?: number; created_at?: string;
         };
         Update: { title?: string; description?: string | null; event_date?: string; color?: string; notify_before_minutes?: number; };
+        Relationships: [];
+      };
+      friend_requests: {
+        Row: {
+          id: string;
+          sender_id: string;
+          receiver_id: string;
+          status: "pending" | "accepted" | "declined";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sender_id: string;
+          receiver_id: string;
+          status?: "pending" | "accepted" | "declined";
+          created_at?: string;
+        };
+        Update: {
+          status?: "pending" | "accepted" | "declined";
+        };
         Relationships: [];
       };
     };
