@@ -38,9 +38,9 @@ const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || "";
 const projectRefMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
 const projectRef = projectRefMatch ? projectRefMatch[1] : "mwpuwgoesgvsvknhqmor";
 
-const connectionString = `postgresql://postgres:${encodeURIComponent(dbPassword)}@db.${projectRef}.supabase.co:5432/postgres`;
+const connectionString = `postgresql://postgres.${projectRef}:${encodeURIComponent(dbPassword)}@aws-1-ap-south-1.pooler.supabase.com:6543/postgres`;
 
-console.log(`Connecting to database for project: ${projectRef}...`);
+console.log(`Connecting to database pooler for project: ${projectRef}...`);
 
 const client = new pg.Client({
   connectionString,
