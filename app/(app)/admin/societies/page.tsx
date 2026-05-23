@@ -22,6 +22,7 @@ interface Society {
   member_count: number;
   rejection_note: string | null;
   created_at: string;
+  admin_id: string | null;
   university: { name: string; short_name: string } | null;
   admin: { full_name: string; email: string } | null;
 }
@@ -75,7 +76,7 @@ export default function AdminSocietiesPage() {
       .from("societies")
       .select(`
         id, name, description, official_email, category, status,
-        member_count, rejection_note, created_at,
+        member_count, rejection_note, created_at, admin_id,
         university:universities!university_id(name, short_name),
         admin:profiles!admin_id(full_name, email)
       `)
