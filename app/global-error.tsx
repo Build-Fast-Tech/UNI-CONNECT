@@ -52,6 +52,23 @@ export default function GlobalError({
             An unexpected error occurred. This is usually temporary — try
             reloading the page.
           </p>
+          {/* Show error detail so it can be reported */}
+          {error?.message && (
+            <p style={{
+              marginTop: "12px",
+              fontSize: "11px",
+              color: "#f97316",
+              fontFamily: "monospace",
+              background: "#1a1a1a",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              maxWidth: "360px",
+              wordBreak: "break-word",
+            }}>
+              {error.message}
+              {error.digest && <><br /><span style={{ color: "#666" }}>digest: {error.digest}</span></>}
+            </p>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: "10px" }}>
