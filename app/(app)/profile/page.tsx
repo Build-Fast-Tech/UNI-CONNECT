@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -28,6 +28,8 @@ export default function MyProfilePage() {
   const [editingLinks, setEditingLinks] = useState(false);
   const [savingLinks, setSavingLinks] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isEmployer, setIsEmployer] = useState(false);
+  const [isSocietyHead, setIsSocietyHead] = useState(false);
 
   // Edit state
   const [bio, setBio] = useState("");
@@ -66,6 +68,18 @@ export default function MyProfilePage() {
                 .then(({ data: br }) => setBranch(br))
             : Promise.resolve(),
         ]);
+
+        // Check if employer (role === "employer" or has posted jobs)
+        if (data.role === "employer") {
+          setIsEmployer(true);
+        } else {
+          (supabase as any).from("jobs").select("id", { count: "exact", head: true }).eq("employer_id", data.id)
+            .then(({ count }: any) => { if ((count ?? 0) > 0) setIsEmployer(true); });
+        }
+
+        // Check if society head
+        (supabase as any).from("societies").select("id", { count: "exact", head: true }).eq("admin_id", data.id).eq("status", "approved")
+          .then(({ count }: any) => { if ((count ?? 0) > 0) setIsSocietyHead(true); });
       }
       setLoadingDone(true);
     })();
@@ -309,14 +323,33 @@ export default function MyProfilePage() {
               {university.city}
             </span>
           )}
-          <span className={cn(
-            "flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full capitalize",
-            profile.role === "admin" ? "bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent))]" :
-            profile.role === "moderator" ? "bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success))]" :
-            "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]"
-          )}>
-            {profile.role}
-          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {profile.role === "admin" && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent))] font-medium capitalize">
+                Admin
+              </span>
+            )}
+            {profile.role === "moderator" && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success))] font-medium capitalize">
+                Moderator
+              </span>
+            )}
+            {isEmployer && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium capitalize">
+                Employer
+              </span>
+            )}
+            {isSocietyHead && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-medium capitalize">
+                Society Head
+              </span>
+            )}
+            {profile.role !== "admin" && profile.role !== "moderator" && !isEmployer && !isSocietyHead && (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] capitalize">
+                Student
+              </span>
+            )}
+          </div>
         </div>
       </motion.div>
 

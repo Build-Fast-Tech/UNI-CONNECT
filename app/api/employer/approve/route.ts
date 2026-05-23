@@ -59,12 +59,20 @@ export async function POST(req: Request) {
       })
       .eq("id", applicationId);
 
-    // If approving and user exists, update their role
+    // If approving and user exists, update their role if they are not already an admin
     if (action === "approve" && app.user_id) {
-      await supabase
+      const { data: targetProfile } = await supabase
         .from("profiles")
-        .update({ role: "employer" } as any)
-        .eq("id", app.user_id);
+        .select("role")
+        .eq("id", app.user_id)
+        .single();
+
+      if (targetProfile?.role !== "admin") {
+        await supabase
+          .from("profiles")
+          .update({ role: "employer" } as any)
+          .eq("id", app.user_id);
+      }
     }
 
     // Email the applicant — all DB values are HTML-escaped since older rows
