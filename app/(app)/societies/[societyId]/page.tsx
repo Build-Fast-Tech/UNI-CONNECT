@@ -10,10 +10,10 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 
 interface Society {
   id: string; name: string; description: string | null;
-  category: string; member_count: number; admin_id: string | null;
+  category: string; member_count: number; follower_count: number; admin_id: string | null;
   logo_url: string | null; cover_url: string | null; visibility: string;
   university: { name: string; short_name: string } | null;
-  admin: { full_name: string } | null;
+  admin: { id: string; full_name: string; avatar_url: string | null; username: string | null; } | null;
 }
 
 interface Post {
@@ -47,6 +47,20 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const [society, setSociety] = useState<Society | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [followers, setFollowers] = useState<Member[]>([]);
+
+  const fetchFollowers = async () => {
+    const { data } = await (supabase as any)
+      .from("society_followers")
+      .select("id, profile:profiles!user_id(id, full_name, avatar_url, username)")
+      .eq("society_id", societyId);
+    if (data) {
+      const mapped = (data as any[])
+        .filter(f => f.profile)
+        .map(f => f.profile as Member);
+      setFollowers(mapped);
+    }
+  };
   const [tab, setTab] = useState("Posts");
   const [isMember, setIsMember] = useState(false);
   const [memberStatus, setMemberStatus] = useState<"pending" | "approved" | null>(null);
@@ -83,9 +97,9 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   useEffect(() => {
     (async () => {
       const [{ data: soc }, { data: postsData }] = await Promise.all([
-        supabase
+        (supabase as any)
           .from("societies")
-          .select("id,name,description,category,member_count,logo_url,cover_url,admin_id,visibility,university:universities!university_id(name,short_name),admin:profiles!admin_id(full_name)")
+          .select("id,name,description,category,member_count,follower_count,logo_url,cover_url,admin_id,visibility,university:universities!university_id(name,short_name),admin:profiles!admin_id(id,full_name,avatar_url,username)")
           .eq("id", societyId)
           .single(),
         supabase
@@ -119,6 +133,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
         setMemberStatus(mem ? (mem.status as "pending" | "approved") : null);
       }
       await fetchSocietyMembers();
+      await fetchFollowers();
       setLoading(false);
     })();
 
@@ -138,6 +153,22 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
               .maybeSingle();
             setIsMember(!!mem && mem.status === "approved");
             setMemberStatus(mem ? (mem.status as "pending" | "approved") : null);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "society_followers", filter: `society_id=eq.${societyId}` },
+        async () => {
+          await fetchFollowers();
+          // Update local follower count
+          const { data: countData } = await (supabase as any)
+            .from("societies")
+            .select("follower_count")
+            .eq("id", societyId)
+            .single();
+          if (countData) {
+            setSociety(s => s ? { ...s, follower_count: (countData as any).follower_count } : s);
           }
         }
       )
@@ -173,11 +204,14 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
     if (isFollowing) {
       await (supabase as any).from("society_followers").delete().eq("society_id", societyId).eq("user_id", userId);
       setIsFollowing(false);
+      setSociety(s => s ? { ...s, follower_count: Math.max(0, s.follower_count - 1) } : s);
     } else {
       await (supabase as any).from("society_followers").insert({ society_id: societyId, user_id: userId });
       setIsFollowing(true);
+      setSociety(s => s ? { ...s, follower_count: (s.follower_count || 0) + 1 } : s);
     }
     setFollowLoading(false);
+    await fetchFollowers();
   };
 
   const toggleJoin = async () => {
@@ -351,7 +385,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
             </span>
           )}
           <span className="text-white/70 text-xs flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg">
-            <Users className="w-3.5 h-3.5" />{society.member_count}
+            <Users className="w-3.5 h-3.5" />{society.follower_count || 0} followers
           </span>
         </div>
       </div>
@@ -370,7 +404,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
               {followLoading ? "…" : isFollowing ? "Following" : "Follow"}
             </button>
           )}
-          {/* Join / Leave */}
+          {/* Apply to Post */}
           {society.admin_id !== userId && (
             <button onClick={toggleJoin} disabled={joinLoading}
               className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-50",
@@ -384,12 +418,12 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                 memberStatus === "approved" ? (
                   <>
                     <UserMinus className="w-4 h-4" />
-                    Leave
+                    Remove Posting Access
                   </>
                 ) : memberStatus === "pending" ? (
                   <>
                     <Clock className="w-4 h-4 animate-pulse" />
-                    Pending Approval
+                    Pending Posting Access
                   </>
                 ) : (
                   <>
@@ -423,7 +457,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl bg-[rgb(var(--muted))] w-fit">
-        {(isAdmin ? [...TABS, "Society Users"] : TABS).map(t => (
+        {[...TABS, "Society Users"].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn(
               "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors",
@@ -566,84 +600,121 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
 
       {/* Members */}
       {tab === "Members" && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {members.map((m, i) => (
-            <div key={i} className="theme-card p-4 flex flex-col items-center gap-2 text-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold overflow-hidden">
-                {m.avatar_url
-                  ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                  : m.full_name.charAt(0)}
-              </div>
-              <div>
-                <p className="text-sm font-medium">{m.full_name}</p>
-                {m.username && (
-                  <p className="text-xs text-[rgb(var(--primary))] font-mono">@{m.username}</p>
-                )}
-              </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 animate-fade-in">
+          {followers.length === 0 ? (
+            <div className="col-span-full theme-card p-10 text-center text-sm text-[rgb(var(--muted-fg))]">
+              No followers yet.
             </div>
-          ))}
+          ) : (
+            followers.map((m, i) => (
+              <div key={i} className="theme-card p-4 flex flex-col items-center gap-2 text-center">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold overflow-hidden">
+                  {m.avatar_url
+                    ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : m.full_name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{m.full_name}</p>
+                  {m.username && (
+                    <p className="text-xs text-[rgb(var(--primary))] font-mono">@{m.username}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* Society Users (Admin only review tab) */}
-      {tab === "Society Users" && isAdmin && (
+      {/* Society Users */}
+      {tab === "Society Users" && (
         <div className="space-y-6 animate-fade-in">
-          {/* Pending Requests Section */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-[rgb(var(--primary))] tracking-wide uppercase px-1">
-              Pending Requests ({societyMembers.filter(m => m.status === "pending").length})
-            </h3>
-            {societyMembers.filter(m => m.status === "pending").length === 0 ? (
-              <div className="theme-card p-8 text-center text-xs text-[rgb(var(--muted-fg))]">
-                No pending requests.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {societyMembers.filter(m => m.status === "pending").map((m) => (
-                  <div key={m.id} className="theme-card p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
-                        {m.profile?.avatar_url ? (
-                          <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          m.profile?.full_name?.charAt(0) ?? "?"
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{m.profile?.full_name}</p>
-                        {m.profile?.username && (
-                          <p className="text-xs text-[rgb(var(--muted-fg))]">@{m.profile.username}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => approveMember(m.id)}
-                        className="text-xs px-3.5 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-semibold hover:opacity-90 transition-opacity"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => rejectMember(m.id)}
-                        className="text-xs px-3.5 py-1.5 rounded-lg border border-[rgb(var(--border))] text-red-400 hover:bg-red-500/10 hover:border-transparent transition-colors"
-                      >
-                        Decline
-                      </button>
-                    </div>
+          {/* Society Head (Always Visible) */}
+          {society.admin && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[rgb(var(--primary))] tracking-wide uppercase px-1">
+                Society Head
+              </h3>
+              <div className="theme-card p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                    {society.admin.avatar_url ? (
+                      <img src={society.admin.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      society.admin.full_name.charAt(0)
+                    )}
                   </div>
-                ))}
+                  <div>
+                    <p className="text-sm font-semibold">{society.admin.full_name}</p>
+                    {society.admin.username && (
+                      <p className="text-xs text-[rgb(var(--muted-fg))]">@{society.admin.username}</p>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]">
+                  Admin / Head
+                </span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Active Members Section */}
+          {/* Pending Requests Section (Admin only) */}
+          {isAdmin && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[rgb(var(--primary))] tracking-wide uppercase px-1">
+                Pending Requests ({societyMembers.filter(m => m.status === "pending").length})
+              </h3>
+              {societyMembers.filter(m => m.status === "pending").length === 0 ? (
+                <div className="theme-card p-8 text-center text-xs text-[rgb(var(--muted-fg))]">
+                  No pending requests.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {societyMembers.filter(m => m.status === "pending").map((m) => (
+                    <div key={m.id} className="theme-card p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                          {m.profile?.avatar_url ? (
+                            <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            m.profile?.full_name?.charAt(0) ?? "?"
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{m.profile?.full_name}</p>
+                          {m.profile?.username && (
+                            <p className="text-xs text-[rgb(var(--muted-fg))]">@{m.profile.username}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => approveMember(m.id)}
+                          className="text-xs px-3.5 py-1.5 rounded-lg bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-semibold hover:opacity-90 transition-opacity"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => rejectMember(m.id)}
+                          className="text-xs px-3.5 py-1.5 rounded-lg border border-[rgb(var(--border))] text-red-400 hover:bg-red-500/10 hover:border-transparent transition-colors"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Active Members Section (Society Managers / Officers) */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-[rgb(var(--muted-fg))] tracking-wide uppercase px-1">
-              Active Members ({societyMembers.filter(m => m.status === "approved" && m.user_id !== society.admin_id).length})
+              Society Users / Managers ({societyMembers.filter(m => m.status === "approved" && m.user_id !== society.admin_id).length})
             </h3>
             {societyMembers.filter(m => m.status === "approved" && m.user_id !== society.admin_id).length === 0 ? (
               <div className="theme-card p-8 text-center text-xs text-[rgb(var(--muted-fg))]">
-                No active members.
+                No active managers.
               </div>
             ) : (
               <div className="space-y-2">
@@ -664,12 +735,14 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => kickMember(m.id)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-red-400 hover:border-red-500/30 transition-colors"
-                    >
-                      Remove
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => kickMember(m.id)}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] hover:text-red-400 hover:border-red-500/30 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
