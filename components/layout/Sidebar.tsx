@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
+import { createClient } from "@/lib/supabase/client";
 
 
 interface NavChild { href: string; icon: React.ElementType; label: string; }
@@ -68,10 +69,13 @@ interface SidebarProps { mobileOpen: boolean; onClose: () => void; unreadCount: 
 
 
 function SidebarContent({
-  isAdmin, isActive, onLinkClick, showCloseButton, onClose,
+  isAdmin, isEmployer, isSocietyHead, isActive, onLinkClick, showCloseButton, onClose,
   unreadCount, markAllRead, fullName, initials, avatarUrl,
+  pendingEmployers, pendingSocieties, pendingFeedback,
 }: {
   isAdmin: boolean;
+  isEmployer: boolean;
+  isSocietyHead: boolean;
   isActive: (href: string, label: string) => boolean;
   onLinkClick?: () => void;
   showCloseButton?: boolean;
@@ -81,6 +85,9 @@ function SidebarContent({
   fullName: string;
   initials: string;
   avatarUrl: string | null;
+  pendingEmployers: number;
+  pendingSocieties: number;
+  pendingFeedback: number;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -111,7 +118,20 @@ function SidebarContent({
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate leading-tight">{fullName || "Student"}</p>
-            <p className="text-[11px] text-[rgb(var(--muted-fg))]">Student</p>
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {isAdmin && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-red-500/15 text-red-400 leading-tight">Admin</span>
+              )}
+              {isEmployer && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 leading-tight">Employer</span>
+              )}
+              {isSocietyHead && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/15 text-violet-400 leading-tight">Society Head</span>
+              )}
+              {!isAdmin && !isEmployer && !isSocietyHead && (
+                <span className="text-[11px] text-[rgb(var(--muted-fg))]">Student</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -222,6 +242,7 @@ function SidebarContent({
       <div className="px-2 pt-2 border-t border-[rgb(var(--border))] mt-1 space-y-0.5">
         {isAdmin && (
           <>
+            <p className="px-4 mb-1 mt-2 text-[10px] font-semibold uppercase tracking-widest text-[rgb(var(--muted-fg))]">Admin Panel</p>
             <Link
               href="/admin/employers"
               onClick={onLinkClick}
@@ -234,6 +255,11 @@ function SidebarContent({
             >
               <ShieldCheck className="w-5 h-5 flex-shrink-0" />
               Employers
+              {pendingEmployers > 0 && (
+                <span className="ml-auto w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  {pendingEmployers > 9 ? "9+" : pendingEmployers}
+                </span>
+              )}
             </Link>
             <Link
               href="/admin/societies"
@@ -247,6 +273,11 @@ function SidebarContent({
             >
               <Building className="w-5 h-5 flex-shrink-0" />
               Societies
+              {pendingSocieties > 0 && (
+                <span className="ml-auto w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  {pendingSocieties > 9 ? "9+" : pendingSocieties}
+                </span>
+              )}
             </Link>
             <Link
               href="/admin/feedback"
@@ -260,6 +291,11 @@ function SidebarContent({
             >
               <MessageSquarePlus className="w-5 h-5 flex-shrink-0" />
               Feedback
+              {pendingFeedback > 0 && (
+                <span className="ml-auto w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                  {pendingFeedback > 9 ? "9+" : pendingFeedback}
+                </span>
+              )}
             </Link>
           </>
         )}
@@ -291,6 +327,34 @@ export function Sidebar({ mobileOpen, onClose, unreadCount, markAllRead }: Sideb
   const pathname = usePathname();
   const { role, userId, fullName, initials, avatarUrl } = useCurrentUser();
   const isAdmin = role === "admin";
+  const supabase = useMemo(() => createClient(), []);
+
+  // Check if user has employer badge (role is employer, or they've posted jobs)
+  const [isEmployer, setIsEmployer] = useState(role === "employer");
+  // Check if user is a society head
+  const [isSocietyHead, setIsSocietyHead] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from("societies").select("id").eq("admin_id", userId).eq("status", "approved").limit(1)
+      .then(({ data }) => setIsSocietyHead((data?.length ?? 0) > 0));
+    // Check if user has posted any jobs (employer badge)
+    (supabase as any).from("jobs").select("id", { count: "exact", head: true }).eq("employer_id", userId)
+      .then(({ count }: any) => { if ((count ?? 0) > 0) setIsEmployer(true); });
+  }, [userId, supabase]);
+
+  // Admin: fetch pending counts
+  const [pendingEmployers, setPendingEmployers] = useState(0);
+  const [pendingSocieties, setPendingSocieties] = useState(0);
+  const [pendingFeedback, setPendingFeedback] = useState(0);
+  useEffect(() => {
+    if (!isAdmin) return;
+    (supabase as any).from("employer_applications").select("id", { count: "exact", head: true }).eq("status", "pending")
+      .then(({ count }: any) => setPendingEmployers(count ?? 0));
+    (supabase as any).from("societies").select("id", { count: "exact", head: true }).eq("status", "pending")
+      .then(({ count }: any) => setPendingSocieties(count ?? 0));
+    (supabase as any).from("feedback").select("id", { count: "exact", head: true }).eq("status", "pending")
+      .then(({ count }: any) => setPendingFeedback(count ?? 0));
+  }, [isAdmin, supabase]);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -306,7 +370,10 @@ export function Sidebar({ mobileOpen, onClose, unreadCount, markAllRead }: Sideb
     return pathname === href || (href !== "/feed" && pathname.startsWith(href));
   };
 
-  const shared = { isAdmin, isActive, unreadCount, markAllRead, fullName, initials, avatarUrl };
+  const shared = {
+    isAdmin, isEmployer, isSocietyHead, isActive, unreadCount, markAllRead,
+    fullName, initials, avatarUrl, pendingEmployers, pendingSocieties, pendingFeedback,
+  };
 
   return (
     <>

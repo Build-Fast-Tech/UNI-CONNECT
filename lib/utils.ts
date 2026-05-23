@@ -24,7 +24,7 @@ export function formatBytes(bytes: number): string {
 
 export const THEMES = [
   { id: "dark",  label: "Dark",  color: "#000000" },
-  { id: "light", label: "Light", color: "#A57841" },
+  { id: "light", label: "Light", color: "#FFFFFF" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
