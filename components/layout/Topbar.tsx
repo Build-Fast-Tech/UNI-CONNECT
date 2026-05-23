@@ -5,7 +5,7 @@ import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn } from "@/lib/utils";
-import { useInboxNotifications } from "@/lib/hooks/useInboxNotifications";
+
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
