@@ -1,12 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserProvider } from "@/components/providers/UserProvider";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { UsernameSetupModal } from "@/components/ui/UsernameSetupModal";
 import { useCurrentUser } from "@/components/providers/UserProvider";
 import { LayoutErrorBoundary } from "./LayoutErrorBoundary";
+
+/**
+ * OnboardingGuard — runs inside AppShell (after UserProvider has loaded the profile).
+ *
+ * This is the last-resort safety net for the auth routing:
+ *   - The /auth/callback route checks university_id server-side and should route new
+ *     users to /onboarding. But if anything goes wrong (caching, PKCE race, etc.),
+ *     a student with no university_id who lands on an app route will be silently
+ *     redirected here before they see any protected content.
+ *   - Employers (role !== "student") never get redirected.
+ *   - Only fires once the profile is fully loaded (loaded === true), so there is no
+ *     false-positive during the initial render when universityId is still null.
+ */
+function OnboardingGuard() {
+  const { userId, universityId, loaded, role } = useCurrentUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loaded) return;           // wait for profile fetch to complete
+    if (!userId) return;           // unauthenticated — middleware handles this
+    if (role !== "student") return; // employers / admins don't need onboarding
+    if (!universityId) {
+      // Student has no university set → they haven't completed onboarding
+      router.replace("/onboarding");
+    }
+  }, [loaded, userId, universityId, role, router]);
+
+  return null;
+}
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -19,6 +49,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Guard: silently redirect students who skipped onboarding */}
+      <OnboardingGuard />
+
       {/* Wrap Sidebar in its own boundary — crashes here don't kill the page */}
       <LayoutErrorBoundary>
         <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
