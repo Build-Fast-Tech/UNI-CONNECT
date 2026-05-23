@@ -60,7 +60,10 @@ export default function LoginPage() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/feed`,
+        // No ?next= param — /auth/callback checks university_id and decides:
+        // new user (no university_id) → /onboarding
+        // returning user → /feed
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (oauthError) {

@@ -39,19 +39,17 @@ export async function GET(request: Request) {
           .maybeSingle(); // maybeSingle() returns null (not an error) when no row exists yet
 
         const isAlreadyOnboarded = !!profile?.university_id;
-        const finalNext = isAlreadyOnboarded ? "/feed" : safeNext;
-        const response = NextResponse.redirect(`${origin}${finalNext}`);
 
-        if (isAlreadyOnboarded) {
-          // User already onboarded — set cookie so middleware doesn't redirect them
-          response.cookies.set("uc_onboarded", "1", {
-            path: "/",
-            maxAge: 60 * 60 * 24 * 365,
-            sameSite: "lax",
-          });
-        }
-        return response;
+        // Non-onboarded users ALWAYS go to /onboarding regardless of ?next=.
+        // Onboarded users respect ?next= so they land on the page they tried
+        // to access before logging in (defaults to /feed).
+        const destination = isAlreadyOnboarded
+          ? (safeNext !== "/onboarding" ? safeNext : "/feed")
+          : "/onboarding";
+
+        return NextResponse.redirect(`${origin}${destination}`);
       }
+      // User object not available — fall back to safeNext
       return NextResponse.redirect(`${origin}${safeNext}`);
     }
     console.error("Auth callback error:", error.message);
