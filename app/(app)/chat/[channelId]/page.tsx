@@ -1382,9 +1382,10 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                       const isVoice   = msg.gif_url && (msg.content === "🎤 Voice note" || msg.content === "🎵 Audio");
                       const isPhoto   = msg.gif_url && msg.content === "📷 Photo";
                       const isVideo   = msg.gif_url && msg.content === "🎥 Video";
-                      const isGif     = msg.gif_url && !isVoice && !isPhoto && !isVideo && !msg.poll_data;
+                      const isDoc     = msg.gif_url && ["📎 File", "📄 PDF", "📝 Document", "📊 Presentation", "📊 Spreadsheet"].includes(msg.content);
+                      const isGif     = msg.gif_url && !isVoice && !isPhoto && !isVideo && !isDoc && !msg.poll_data;
                       const isSticker = !!msg.sticker_id && !msg.poll_data;
-                      const isBare    = isVoice || isPhoto || isVideo || isGif || isSticker;
+                      const isBare    = isVoice || isPhoto || isVideo || isGif || isSticker || isDoc;
 
                       const Timestamp = () => (
                         <div className="flex items-center gap-0.5 justify-end mt-1">
@@ -1427,6 +1428,45 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
                             )}
                             {isVideo && (
                               <video src={msg.gif_url!} controls className="max-w-[260px] max-h-72 rounded-2xl shadow-sm" />
+                            )}
+                            {isDoc && (
+                              <a
+                                href={msg.gif_url!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={cn(
+                                  "flex items-center gap-3 px-3 py-2.5 rounded-2xl max-w-[280px] transition-colors",
+                                  isOwn
+                                    ? "bg-[rgb(var(--primary)/0.82)] hover:bg-[rgb(var(--primary)/0.9)]"
+                                    : "bg-[rgb(var(--card))] border border-[rgb(var(--border)/0.6)] hover:bg-[rgb(var(--muted))]"
+                                )}
+                              >
+                                <div className={cn(
+                                  "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                                  isOwn ? "bg-white/20" : "bg-[rgb(var(--primary)/0.12)]"
+                                )}>
+                                  <FileText className={cn("w-5 h-5", isOwn ? "text-white" : "text-[rgb(var(--primary))]")} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("text-sm font-medium truncate", isOwn ? "text-[rgb(var(--primary-fg))]" : "text-[rgb(var(--fg))]")}>
+                                    {(() => {
+                                      try {
+                                        const url = new URL(msg.gif_url!);
+                                        const segments = url.pathname.split("/");
+                                        const raw = segments[segments.length - 1];
+                                        // Remove timestamp prefix (e.g. "1716523456_report.pdf")
+                                        const name = raw.replace(/^\d+_/, "").replace(/_/g, " ");
+                                        return decodeURIComponent(name);
+                                      } catch {
+                                        return msg.content;
+                                      }
+                                    })()}
+                                  </p>
+                                  <p className={cn("text-[11px]", isOwn ? "text-white/60" : "text-[rgb(var(--muted-fg))]")}>
+                                    {msg.content} · Tap to open
+                                  </p>
+                                </div>
+                              </a>
                             )}
                             {isGif && (
                               // eslint-disable-next-line @next/next/no-img-element
