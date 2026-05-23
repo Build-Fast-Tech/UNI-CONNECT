@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -79,7 +79,10 @@ export interface InboxNotifications {
 }
 
 export function useInboxNotifications(userId: string | null): InboxNotifications {
-  const supabase = createClient();
+  // useMemo so createClient() is stable across renders — this hook is called
+  // from Topbar (layout level) where crashes escape the (app)/error.tsx boundary
+  // and propagate to global-error.tsx, showing a blank/broken error screen.
+  const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const dmChannelIdsRef = useRef<Set<string>>(new Set());

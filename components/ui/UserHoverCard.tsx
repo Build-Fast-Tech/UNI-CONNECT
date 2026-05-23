@@ -2,7 +2,7 @@
 
 import * as HoverCard from "@radix-ui/react-hover-card";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { User, MessageSquare, GraduationCap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ interface Props {
 
 export function UserHoverCard({ userId, name, avatarUrl, uniShort, children, myId }: Props) {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [starting, setStarting] = useState(false);
 
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
