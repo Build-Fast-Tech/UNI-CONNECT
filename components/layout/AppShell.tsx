@@ -6,6 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { UsernameSetupModal } from "@/components/ui/UsernameSetupModal";
 import { useCurrentUser } from "@/components/providers/UserProvider";
+import { LayoutErrorBoundary } from "./LayoutErrorBoundary";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -18,13 +19,22 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      {/* Wrap Sidebar in its own boundary — crashes here don't kill the page */}
+      <LayoutErrorBoundary>
+        <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      </LayoutErrorBoundary>
+
       <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${showModal ? "pointer-events-none select-none" : ""}`}>
-        <Topbar onMenuClick={() => setMobileNavOpen(true)} />
+        {/* Wrap Topbar in its own boundary */}
+        <LayoutErrorBoundary>
+          <Topbar onMenuClick={() => setMobileNavOpen(true)} />
+        </LayoutErrorBoundary>
+
         <main className="flex-1 overflow-y-auto p-4 sm:p-6" data-lenis-prevent>
           {children}
         </main>
       </div>
+
       {showModal && (
         <UsernameSetupModal
           userId={userId}
