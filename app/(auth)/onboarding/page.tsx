@@ -46,6 +46,17 @@ export default function OnboardingPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState("");
 
+  // Guard: if already onboarded, skip to /feed
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("profiles").select("university_id").eq("id", user.id).maybeSingle().then(({ data }) => {
+        if (data?.university_id) router.replace("/feed");
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     supabase
       .from("universities")
@@ -80,7 +91,6 @@ export default function OnboardingPage() {
 
   const handleComplete = async () => {
     setError("");
-    if (!avatarFile && !avatarPreview) { setError("Please upload a profile picture."); return; }
     if (!bio.trim()) { setError("Please write a short bio."); return; }
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
