@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 /* ─── Theme Variables ─────────────────────────────────────────── */
-/* Dark — pure black with white text */
+/*
+ * Two token layers:
+ *   1. Legacy raw-RGB vars (--bg, --fg, etc.) — kept for backward compat.
+ *   2. Semantic hex vars (--background, --surface, etc.) — new design system.
+ *      Use these in new components: bg-background, text-primary, etc.
+ */
+
+/* ── Dark theme (default) ─────────────────────────────────────── */
 :root[data-theme="dark"],
 :root {
+  /* Legacy vars */
   --bg: 0 0 0;
   --fg: 255 255 255;
   --muted: 18 18 18;
@@ -19,10 +27,19 @@
   --ring: 99 102 241;
   --destructive: 239 68 68;
   --success: 34 197 94;
+
+  /* ── Semantic design-system vars (Dark) ── */
+  --color-background:    #121212;   /* Matte Black */
+  --color-surface:       #1A1A1A;   /* Elevated Dark */
+  --color-text-primary:  #F5F5F5;   /* Soft White */
+  --color-text-secondary:#9E9E9E;   /* Neutral Gray */
+  --color-accent:        #FFFFFF;   /* Crisp White — high-contrast focus */
+  --color-border:        #2D2D2D;   /* Subtle Dark Gray */
 }
 
-/* Light — warm brass dark theme (#A57841) */
+/* ── Light theme ──────────────────────────────────────────────── */
 :root[data-theme="light"] {
+  /* Legacy vars */
   --bg: 12 9 5;
   --fg: 248 240 220;
   --muted: 28 22 12;
@@ -38,6 +55,14 @@
   --ring: 165 120 65;
   --destructive: 239 68 68;
   --success: 34 197 94;
+
+  /* ── Semantic design-system vars (Light) ── */
+  --color-background:    #F7F7F5;   /* Warm Off-White */
+  --color-surface:       #FFFFFF;   /* Pure White */
+  --color-text-primary:  #2C2F2D;   /* Deep Charcoal */
+  --color-text-secondary:#6B7270;   /* Muted Slate */
+  --color-accent:        #738C75;   /* Muted Sage Green */
+  --color-border:        #E6E6E4;   /* Soft Gray */
 }
 
 
