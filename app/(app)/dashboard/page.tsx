@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { RecentNotes } from "./components/RecentNotes";
-import { StudyGroups } from "./components/StudyGroups";
-import { UpcomingDeadlines } from "./components/UpcomingDeadlines";
+import { RecentNotes } from "./components/RecentNotes.tsx";
+import { StudyGroups } from "./components/StudyGroups.tsx";
+import { UpcomingDeadlines } from "./components/UpcomingDeadlines.tsx";
 
 export default function Dashboard() {
   return (
