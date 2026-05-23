@@ -22,7 +22,10 @@ interface Result {
 
 interface TopbarProps {
   onMenuClick?: () => void;
+  unreadCount: number;
+  markAllRead: () => void;
 }
+
 
 interface Notification {
   id: string;
@@ -175,10 +178,9 @@ function greeting() {
   return "Good evening";
 }
 
-export function Topbar({ onMenuClick }: TopbarProps) {
+export function Topbar({ onMenuClick, unreadCount, markAllRead }: TopbarProps) {
   const router = useRouter();
   const { userId, avatarUrl, initials, fullName } = useCurrentUser();
-  const { unreadCount, markAllRead } = useInboxNotifications(userId);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [searching, setSearching] = useState(false);

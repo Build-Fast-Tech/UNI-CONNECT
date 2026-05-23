@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/UserProvider";
-import { useInboxNotifications } from "@/lib/hooks/useInboxNotifications";
+
 
 interface NavChild { href: string; icon: React.ElementType; label: string; }
 interface NavItem {
@@ -64,7 +64,8 @@ const BOTTOM_ITEMS = [
   { href: "/profile/settings", icon: Settings,          label: "Settings" },
 ];
 
-interface SidebarProps { mobileOpen: boolean; onClose: () => void; }
+interface SidebarProps { mobileOpen: boolean; onClose: () => void; unreadCount: number; markAllRead: () => void; }
+
 
 function SidebarContent({
   isAdmin, isActive, onLinkClick, showCloseButton, onClose,
@@ -286,11 +287,10 @@ function SidebarContent({
   );
 }
 
-export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+export function Sidebar({ mobileOpen, onClose, unreadCount, markAllRead }: SidebarProps) {
   const pathname = usePathname();
   const { role, userId, fullName, initials, avatarUrl } = useCurrentUser();
   const isAdmin = role === "admin";
-  const { unreadCount, markAllRead } = useInboxNotifications(userId);
 
   useEffect(() => {
     if (mobileOpen) {
