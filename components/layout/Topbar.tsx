@@ -251,10 +251,10 @@ export function Topbar({ onMenuClick, unreadCount, markAllRead }: TopbarProps) {
 
   const TYPE_LABEL: Record<string, string> = { note: "Note", job: "Job", university: "University", user: "Person" };
   const TYPE_COLOR: Record<string, string> = {
-    note: "bg-blue-500/10 text-blue-500",
-    job: "bg-green-500/10 text-green-600",
+    note: "bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]",
+    job: "bg-[rgb(var(--success)/0.12)] text-[rgb(var(--success))]",
     university: "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]",
-    user: "bg-violet-500/10 text-violet-400",
+    user: "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",
   };
 
   return (
@@ -333,7 +333,7 @@ export function Topbar({ onMenuClick, unreadCount, markAllRead }: TopbarProps) {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{r.title}</p>
-                    <p className={cn("text-xs truncate", r.type === "user" ? "text-blue-400 font-mono" : "text-[rgb(var(--muted-fg))]")}>{r.sub}</p>
+                    <p className={cn("text-xs truncate", r.type === "user" ? "text-[rgb(var(--muted-fg))] font-mono" : "text-[rgb(var(--muted-fg))]")}>{r.sub}</p>
                   </div>
                 </Link>
               ))}
