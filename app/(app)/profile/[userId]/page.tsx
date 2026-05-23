@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import {
   BookOpen, GitBranch, Link2, Globe, GraduationCap,
   MapPin, Calendar, ExternalLink, UserCheck, MessageCircle,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -32,6 +33,9 @@ export default function PublicProfilePage({
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [isEmployer, setIsEmployer] = useState(false);
   const [isSocietyHead, setIsSocietyHead] = useState(false);
+  const [friendship, setFriendship] = useState<{ id: string; sender_id: string; receiver_id: string; status: string } | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -41,6 +45,19 @@ export default function PublicProfilePage({
       ]);
 
       if (user?.id === userId) setIsOwnProfile(true);
+
+      if (user) {
+        setCurrentUserId(user.id);
+        if (user.id !== userId) {
+          const { data: friendData } = await supabase
+            .from("friend_requests")
+            .select("id, sender_id, receiver_id, status")
+            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${user.id})`)
+            .maybeSingle();
+
+          setFriendship(friendData as any);
+        }
+      }
 
       if (profileData) {
         setProfile(profileData);
@@ -70,6 +87,45 @@ export default function PublicProfilePage({
       setLoading(false);
     })();
   }, [userId]);
+  const handleAddFriend = async () => {
+    if (!currentUserId || actionLoading) return;
+    setActionLoading(true);
+    const { data } = await supabase
+      .from("friend_requests")
+      .insert({
+        sender_id: currentUserId,
+        receiver_id: userId,
+        status: "pending"
+      })
+      .select()
+      .single();
+    if (data) setFriendship(data as any);
+    setActionLoading(false);
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!friendship || actionLoading) return;
+    setActionLoading(true);
+    const { data } = await supabase
+      .from("friend_requests")
+      .update({ status: "accepted" })
+      .eq("id", friendship.id)
+      .select()
+      .single();
+    if (data) setFriendship(data as any);
+    setActionLoading(false);
+  };
+
+  const handleCancelOrRemove = async () => {
+    if (!friendship || actionLoading) return;
+    setActionLoading(true);
+    await supabase
+      .from("friend_requests")
+      .delete()
+      .eq("id", friendship.id);
+    setFriendship(null);
+    setActionLoading(false);
+  };
 
   if (loading) {
     return (
@@ -138,11 +194,63 @@ export default function PublicProfilePage({
                   </button>
                 </Link>
               ) : (
-                <Link href={`/inbox?dm=${userId}`}>
-                  <button className="flex items-center gap-1.5 text-xs bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity">
-                    <MessageCircle className="w-3.5 h-3.5" /> Message
-                  </button>
-                </Link>
+                <div className="flex gap-2">
+                  {/* Friend Request Button */}
+                  {(() => {
+                    if (!friendship) {
+                      return (
+                        <button
+                          onClick={handleAddFriend}
+                          disabled={actionLoading}
+                          className="flex items-center gap-1.5 text-xs border border-[rgb(var(--primary)/0.3)] text-[rgb(var(--primary))] px-3 py-1.5 rounded-lg hover:bg-[rgb(var(--primary)/0.08)] transition-colors disabled:opacity-50"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Add Friend
+                        </button>
+                      );
+                    }
+                    if (friendship.status === "pending") {
+                      if (friendship.sender_id === currentUserId) {
+                        return (
+                          <button
+                            onClick={handleCancelOrRemove}
+                            disabled={actionLoading}
+                            className="flex items-center gap-1.5 text-xs border border-[rgb(var(--border))] text-[rgb(var(--muted-fg))] px-3 py-1.5 rounded-lg hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-50"
+                          >
+                            Cancel Request
+                          </button>
+                        );
+                      } else {
+                        return (
+                          <button
+                            onClick={handleAcceptRequest}
+                            disabled={actionLoading}
+                            className="flex items-center gap-1.5 text-xs bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                          >
+                            Accept Request
+                          </button>
+                        );
+                      }
+                    }
+                    if (friendship.status === "accepted") {
+                      return (
+                        <button
+                          onClick={handleCancelOrRemove}
+                          disabled={actionLoading}
+                          className="flex items-center gap-1.5 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 hover:border-transparent transition-colors disabled:opacity-50"
+                        >
+                          Friends
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <Link href={`/inbox?dm=${userId}`}>
+                    <button className="flex items-center gap-1.5 text-xs bg-[rgb(var(--muted))] text-[rgb(var(--fg))] px-3 py-1.5 rounded-lg hover:bg-[rgb(var(--border))] transition-colors">
+                      <MessageCircle className="w-3.5 h-3.5 text-[rgb(var(--muted-fg))]" /> Message
+                    </button>
+                  </Link>
+                </div>
               )}
             </div>
 

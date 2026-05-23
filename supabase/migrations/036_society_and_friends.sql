@@ -93,13 +93,32 @@ CREATE POLICY "friend_requests_delete"
 
 -- Enable realtime subscriptions for friend_requests
 ALTER TABLE public.friend_requests REPLICA IDENTITY FULL;
-PUBLISH_TO_REALTIME:
+ALTER TABLE public.society_members REPLICA IDENTITY FULL;
+
 DO $$
 BEGIN
+  -- Add friend_requests
   IF NOT EXISTS (
     SELECT 1 FROM pg_publication_tables 
     WHERE pubname = 'supabase_realtime' AND tablename = 'friend_requests'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.friend_requests;
   END IF;
+
+  -- Add society_members
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'society_members'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.society_members;
+  END IF;
 END $$;
+
+-- ─── 3. Jobs Delete RLS Policy ──────────────────────────────────────────────
+DROP POLICY IF EXISTS "jobs_delete_policy" ON public.jobs;
+CREATE POLICY "jobs_delete_policy"
+  ON public.jobs FOR DELETE
+  USING (
+    employer_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  );
