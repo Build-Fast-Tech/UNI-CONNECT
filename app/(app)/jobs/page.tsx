@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Briefcase, MapPin, Calendar, Plus,
-  Clock, Building2, ExternalLink, Zap,
+  Clock, Building2, ExternalLink, Zap, LogIn,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -106,6 +106,9 @@ export default function JobsPage() {
   const featured = filtered.filter(j => j.is_featured);
   const rest = filtered.filter(j => !j.is_featured);
 
+  const { role } = useCurrentUser();
+  const isEmployerOrAdmin = role === "employer" || role === "admin";
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
@@ -120,15 +123,29 @@ export default function JobsPage() {
             {loading ? "Loading…" : `${jobs.length} active opening${jobs.length !== 1 ? "s" : ""} for Pakistani students`}
           </p>
         </div>
-        <Link
-          href="/jobs/post"
-          className={cn(
-            "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium flex-shrink-0",
-            "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity active:scale-95"
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isEmployerOrAdmin ? (
+            <Link
+              href="/jobs/post"
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium",
+                "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90 transition-opacity active:scale-95"
+              )}
+            >
+              <Plus className="w-4 h-4" /> Post a Job
+            </Link>
+          ) : (
+            <Link
+              href="/employer/apply"
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium",
+                "border border-[rgb(var(--border))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))] transition-colors active:scale-95"
+              )}
+            >
+              <LogIn className="w-4 h-4" /> Employer Login
+            </Link>
           )}
-        >
-          <Plus className="w-4 h-4" /> Post a Job
-        </Link>
+        </div>
       </motion.div>
 
       {/* Search + filter */}

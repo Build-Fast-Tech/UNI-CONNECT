@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -435,10 +435,19 @@ export default function ClubsEventsPage() {
           <h1 className="text-2xl font-bold">Clubs & Events</h1>
           <p className="text-sm text-[rgb(var(--muted-fg))] mt-0.5">Join societies and stay on top of campus events</p>
         </div>
-        <Link href="/societies/register"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity self-start sm:self-auto flex-shrink-0">
-          <Plus className="w-4 h-4" /> Register Society
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+          {(isPlatformAdmin || adminSocieties.length > 0) ? (
+            <Link href="/societies/register"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity">
+              <Plus className="w-4 h-4" /> Register Society
+            </Link>
+          ) : (
+            <Link href="/societies/register"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[rgb(var(--border))] text-[rgb(var(--fg))] text-sm font-medium hover:bg-[rgb(var(--muted))] transition-colors">
+              <Building2 className="w-4 h-4" /> Society Login
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* ── Tabs ── */}

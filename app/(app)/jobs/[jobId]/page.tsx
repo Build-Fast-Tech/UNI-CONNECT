@@ -4,10 +4,12 @@ import { useState, useEffect, use } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, MapPin, Clock, Building2, Calendar,
-  Send, ExternalLink, Briefcase, Users, Zap,
+  Send, ExternalLink, Briefcase, Users, Zap, Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useCurrentUser } from "@/components/providers/UserProvider";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
@@ -40,10 +42,13 @@ function daysLeft(deadline: string | null) {
 export default function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = use(params);
   const supabase = createClient();
+  const router = useRouter();
+  const { userId, role } = useCurrentUser();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [applied, setApplied] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -120,6 +125,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
 
   const dl = daysLeft(job.deadline);
   const isClosed = job.status !== "active" || (dl?.label === "Deadline passed");
+  const canDelete = (userId && job.employer_id === userId) || role === "admin";
+
+  const handleDelete = async () => {
+    if (!canDelete || deleting) return;
+    if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
+    setDeleting(true);
+    await (supabase as any).from("jobs").delete().eq("id", job.id);
+    router.push("/jobs");
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -146,6 +160,20 @@ export default function JobDetailPage({ params }: { params: Promise<{ jobId: str
             <span className="text-xs px-2 py-1 rounded-full bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent))] font-medium flex-shrink-0">
               Featured
             </span>
+          )}
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all",
+                "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20",
+                deleting && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
           )}
         </div>
 
