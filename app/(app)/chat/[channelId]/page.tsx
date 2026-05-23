@@ -665,16 +665,18 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       e.target.value = "";
       if (!file) return;
 
-      // Enforce type per kind
       if (kind === "photo" && !file.type.startsWith("image/") && !file.type.startsWith("video/")) {
         setSendError("Only image or video files allowed here."); return;
       }
       if (kind === "audio" && !file.type.startsWith("audio/")) {
         setSendError("Only audio files allowed here."); return;
       }
-      // For docs: block image/audio/video (those have dedicated upload slots)
-      if (kind === "doc" && (file.type.startsWith("image/") || file.type.startsWith("audio/") || file.type.startsWith("video/"))) {
-        setSendError("Use Photos or Audio attachment for media files. This slot is for documents (PDF, Word, Excel, etc.)"); return;
+      // Doc: reject only media types that have dedicated upload slots
+      if (kind === "doc" && (file.type.startsWith("image/") || file.type.startsWith("video/"))) {
+        setSendError("Use Photos & Videos for image/video files."); return;
+      }
+      if (kind === "doc" && file.type.startsWith("audio/")) {
+        setSendError("Use Audio attachment for audio files."); return;
       }
 
       if (file.size > 50 * 1024 * 1024) { setSendError("Max file size is 50 MB"); return; }
@@ -1558,8 +1560,6 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
         {/* Hidden file inputs */}
         <input ref={fileInputRef}   type="file" accept="image/*,video/*" className="hidden" onChange={handlePhotoSelect} />
-        <input ref={docFileRef}    type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.rar,application/*,text/plain" className="hidden" onChange={handleDocSelect} />
-        <input ref={audioFileRef}  type="file" accept="audio/*" className="hidden" onChange={handleAudioSelect} />
         <input ref={stickerFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePackFileSelect} />
 
         {/* Emoji picker */}
@@ -1786,7 +1786,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         {sendError && <p className="text-xs text-[rgb(var(--destructive))] mb-2 px-1">{sendError}</p>}
 
         {/* Hidden file inputs */}
-        <input ref={docFileRef}   type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={handleDocSelect} />
+        <input ref={docFileRef}   type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.rar,.7z,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.*,text/plain" className="hidden" onChange={handleDocSelect} />
         <input ref={audioFileRef} type="file" accept="audio/*" className="hidden" onChange={handleAudioSelect} />
 
         {/* ── WhatsApp-style attachment menu ─────────────────────────────────── */}
