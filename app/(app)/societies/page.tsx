@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 interface University { id: string; name: string; short_name: string; }
 interface Society {
   id: string; name: string; description: string | null;
-  category: string; member_count: number; logo_url: string | null;
+  category: string; member_count: number; follower_count: number; logo_url: string | null;
   visibility: string;
   university: { name: string; short_name: string } | null;
 }
@@ -80,9 +80,9 @@ export default function SocietiesPage() {
     setLoading(true);
     let q = supabase
       .from("societies")
-      .select("id, name, description, category, member_count, logo_url, visibility, university:universities!university_id(name, short_name)")
+      .select("id, name, description, category, member_count, follower_count, logo_url, visibility, university:universities!university_id(name, short_name)")
       .eq("status", "approved")
-      .order("member_count", { ascending: false });
+      .order("follower_count", { ascending: false });
     if (selectedUni !== "all") q = q.eq("university_id", selectedUni);
     q.then(({ data }) => { setSocieties((data as unknown as Society[]) ?? []); setLoading(false); });
   }, [selectedUni]);
@@ -414,13 +414,13 @@ export default function SocietiesPage() {
 
                 <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
                   <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
-                    <Users className="w-3.5 h-3.5" /> {s.member_count} members
+                    <Users className="w-3.5 h-3.5" /> {s.follower_count || 0} followers
                     {s.visibility === "private" && <Lock className="w-3 h-3 ml-1 text-amber-400" />}
                   </span>
                   <div className="flex items-center gap-2">
-                    {joinedIds.has(s.id) && (
+                    {followedIds.has(s.id) && (
                       <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
-                        <Star className="w-3.5 h-3.5 fill-current" /> Joined
+                        <Star className="w-3.5 h-3.5 fill-current" /> Following
                       </span>
                     )}
                     <Link href={`/societies/${s.id}`}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Search, Briefcase, MapPin, Calendar, Plus,
@@ -49,12 +50,55 @@ function daysLeft(deadline: string | null) {
 
 export default function JobsPage() {
   const supabase = createClient();
+  const router = useRouter();
   const { userId } = useCurrentUser();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Job["type"] | "all">("all");
   const [cvSkills, setCvSkills] = useState<string[]>([]);
+  const [verifyingEmployer, setVerifyingEmployer] = useState(false);
+  const [employerError, setEmployerError] = useState<string | null>(null);
+
+  const handleEmployerLogin = async () => {
+    if (!userId) {
+      router.push("/login?redirect=/jobs/post");
+      return;
+    }
+    setVerifyingEmployer(true);
+    setEmployerError(null);
+    try {
+      const { data: profile } = await supabase.from("profiles").select("role, email").eq("id", userId).maybeSingle();
+      let hasAccess = profile?.role === "employer" || profile?.role === "admin";
+
+      if (!hasAccess && profile) {
+        // Check if there is an approved employer application by user_id or email
+        const { data: app } = await (supabase as any)
+          .from("employer_applications")
+          .select("id")
+          .or(`user_id.eq.${userId},email.eq.${profile.email}`)
+          .eq("status", "approved")
+          .maybeSingle();
+
+        if (app) {
+          // Sync profile role
+          await supabase.from("profiles").update({ role: "employer" }).eq("id", userId);
+          hasAccess = true;
+        }
+      }
+
+      if (hasAccess) {
+        window.location.href = "/jobs/post";
+      } else {
+        setEmployerError("No approved employer access found for your account.");
+        setVerifyingEmployer(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setEmployerError("Verification failed. Please try again.");
+      setVerifyingEmployer(false);
+    }
+  };
 
   useEffect(() => {
     supabase
@@ -135,15 +179,27 @@ export default function JobsPage() {
               <Plus className="w-4 h-4" /> Post a Job
             </Link>
           ) : (
-            <Link
-              href="/employer/apply"
-              className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium",
-                "border border-[rgb(var(--border))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))] transition-colors active:scale-95"
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                onClick={handleEmployerLogin}
+                disabled={verifyingEmployer}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium",
+                  "border border-[rgb(var(--border))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--muted))] transition-all duration-200 active:scale-95 disabled:opacity-50"
+                )}
+              >
+                <LogIn className="w-4 h-4" />
+                {verifyingEmployer ? "Verifying Access…" : "Employer Login"}
+              </button>
+              {employerError && (
+                <span className="text-[10px] text-red-400 max-w-[220px] text-right leading-tight">
+                  {employerError}{" "}
+                  <Link href="/employer/apply" className="underline text-[rgb(var(--primary))] font-semibold">
+                    Apply here
+                  </Link>
+                </span>
               )}
-            >
-              <LogIn className="w-4 h-4" /> Employer Login
-            </Link>
+            </div>
           )}
         </div>
       </motion.div>
