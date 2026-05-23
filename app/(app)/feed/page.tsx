@@ -398,11 +398,11 @@ function LibraryWidget({ notes, loading, activeTab, setActiveTab }: {
 }
 
 function CalendarWidget({ userId }: { userId: string | null }) {
-  const supabase = createClient();
   const [events, setEvents] = useState<CalEvent[]>([]);
 
   useEffect(() => {
     if (!userId) return;
+    const supabase = createClient();
     const today = new Date().toISOString().split("T")[0];
     const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
     (supabase as any)

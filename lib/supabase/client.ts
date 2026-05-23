@@ -4,27 +4,16 @@ import type { Database } from "@/types/database";
 /**
  * Browser Supabase client.
  *
- * Uses a cookie-based storage adapter (instead of the default localStorage)
- * so the PKCE code verifier is available cross-context — including:
- *  - Mobile WebViews that open a system browser for OAuth
- *  - OAuth redirects that land in a fresh tab
+ * @supabase/ssr's createBrowserClient already stores the PKCE code verifier
+ * in cookies (not localStorage), so it works correctly across browser contexts
+ * including mobile WebViews and OAuth redirects in new tabs.
  *
- * Cookies are sent with every HTTP request, so the /auth/callback route
- * can always retrieve the verifier regardless of browser context.
+ * Do NOT add cookieOptions here — it would affect the auth session cookie too
+ * and could cause users to be unexpectedly logged out.
  */
 export function createClient() {
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookieOptions: {
-        // SameSite=Lax lets the cookie travel with top-level cross-site navigations
-        // (exactly what happens during an OAuth redirect back to your site).
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60, // 1 hour — PKCE verifier only needs to last the auth flow
-        path: "/",
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
