@@ -395,14 +395,14 @@ export default function OnboardingPage() {
                   {error}
                 </p>
               )}
-              <div className="flex gap-3">
-                <Button variant="outline" size="lg" className="flex-1" onClick={() => setStep(2)}>
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
+                <Button variant="outline" size="lg" className="w-full sm:flex-1" onClick={() => setStep(2)}>
                   Back
                 </Button>
                 <Button
                   variant="primary"
                   size="lg"
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                   loading={loading}
                   onClick={handleComplete}
                 >

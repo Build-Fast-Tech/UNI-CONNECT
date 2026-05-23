@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, MessageSquare, Briefcase, BookOpen, Bot, Users,
   CalendarDays, GraduationCap, FileUser, ChevronDown, ChevronRight,
-  Settings, X, ShieldCheck, User, MessageSquarePlus, Info,
+  Settings, X, ShieldCheck, User, MessageSquarePlus, Info, UserCheck,
   Timer, BarChart3, TrendingUp, Building, Inbox, Code2, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/ai",           icon: Bot,           label: "UniAI Tutor", isNew: true },
   { href: "/universities", icon: GraduationCap, label: "Universities" },
   { href: "/clubs",        icon: Users,         label: "Clubs & Events" },
+  { href: "/friends",      icon: UserCheck,     label: "Friends" },
   { href: "/calendar",     icon: CalendarDays,  label: "Calendar" },
 ];
 

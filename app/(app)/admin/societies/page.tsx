@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -102,6 +102,15 @@ export default function AdminSocietiesPage() {
   const approve = async (id: string) => {
     if (!userId) return;
     setProcessing(id);
+    const soc = societies.find(s => s.id === id);
+    if (soc && soc.admin_id) {
+      await supabase.from("society_members").insert({
+        society_id: id,
+        user_id: soc.admin_id,
+        role: "creator",
+        status: "approved"
+      });
+    }
     await supabase.from("societies").update({
       status: "approved",
       reviewed_by: userId,
