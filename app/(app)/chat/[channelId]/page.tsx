@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, use, useCallback } from "react";
+import { useState, useEffect, useRef, use, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import {
   Send, Globe, Building2, MessageCircle, Smile,
@@ -311,7 +311,8 @@ function PollCard({ messageId, pollData, votes, myVote, onVote, isOwn }: PollCar
 
 export default function ChatChannelPage({ params }: { params: Promise<{ channelId: string }> }) {
   const { channelId } = use(params);
-  const supabase  = createClient();
+  // useMemo so createClient() is not called on every render (React 19 error #310)
+  const supabase  = useMemo(() => createClient(), []);
   const chatShell = useChatShell();
   const { userId, fullName: myName, avatarUrl: myAvatar, loaded: userLoaded } = useCurrentUser();
 
@@ -1746,10 +1747,15 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
         {mediaPreview && (
           <div className="mb-2 p-2 bg-[rgb(var(--muted))] rounded-xl flex items-center gap-3">
             {mediaPreview.file.type.startsWith("video/") ? (
-              <video src={mediaPreview.url} className="w-16 h-16 rounded-lg object-cover" />
-            ) : (
+              <video src={mediaPreview.url} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+            ) : mediaPreview.file.type.startsWith("image/") ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={mediaPreview.url} alt="" className="w-16 h-16 rounded-lg object-cover" />
+              <img src={mediaPreview.url} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+            ) : (
+              // Document / audio — show a file icon instead of broken img
+              <div className="w-16 h-16 rounded-lg bg-[rgb(var(--primary)/0.1)] flex items-center justify-center flex-shrink-0">
+                <FileText className="w-7 h-7 text-[rgb(var(--primary))]" />
+              </div>
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium truncate">{mediaPreview.file.name}</p>
