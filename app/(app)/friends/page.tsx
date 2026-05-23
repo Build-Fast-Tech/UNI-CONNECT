@@ -110,6 +110,7 @@ export default function FriendsPage() {
 
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
+      if (!userId) return;
       const usernameQuery = query.startsWith("@") ? query.slice(1) : query;
       const { data } = await supabase
         .from("profiles")
