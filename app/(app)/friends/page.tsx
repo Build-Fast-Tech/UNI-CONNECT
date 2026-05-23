@@ -93,6 +93,21 @@ export default function FriendsPage() {
   useEffect(() => {
     if (loaded && userId) {
       fetchData();
+
+      const channel = supabase
+        .channel(`friends-realtime-${userId}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "friend_requests" },
+          () => {
+            fetchData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [userId, loaded]);
 

@@ -121,6 +121,45 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       await fetchSocietyMembers();
       setLoading(false);
     })();
+
+    const channel = supabase
+      .channel(`society-${societyId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "society_members", filter: `society_id=eq.${societyId}` },
+        async () => {
+          await fetchSocietyMembers();
+          if (userId) {
+            const { data: mem } = await supabase
+              .from("society_members")
+              .select("id, status")
+              .eq("society_id", societyId)
+              .eq("user_id", userId)
+              .maybeSingle();
+            setIsMember(!!mem && mem.status === "approved");
+            setMemberStatus(mem ? (mem.status as "pending" | "approved") : null);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "society_posts", filter: `society_id=eq.${societyId}` },
+        async () => {
+          const { data: postsData } = await supabase
+            .from("society_posts")
+            .select("id,title,content,type,post_type,event_date,is_pinned,likes,created_at,image_url,image_urls,author:profiles!author_id(full_name,avatar_url)")
+            .eq("society_id", societyId)
+            .order("is_pinned", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(50);
+          setPosts((postsData as unknown as Post[]) ?? []);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [societyId, userId]);
 
   const deletePost = async (postId: string) => {
