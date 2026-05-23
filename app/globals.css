@@ -3,66 +3,83 @@
 /* ─── Theme Variables ─────────────────────────────────────────── */
 /*
  * Two token layers:
- *   1. Legacy raw-RGB vars (--bg, --fg, etc.) — kept for backward compat.
- *   2. Semantic hex vars (--background, --surface, etc.) — new design system.
- *      Use these in new components: bg-background, text-primary, etc.
+ *   1. Legacy raw-RGB vars (--bg, --fg, etc.) — used by existing components via rgb(var(--x)).
+ *   2. Semantic hex vars (--color-background, etc.) — for new components via Tailwind utilities.
+ *
+ * IMPORTANT: --primary is now Sage Green (light) / Pure White (dark) — NO blue anywhere.
  */
 
 /* ── Dark theme (default) ─────────────────────────────────────── */
 :root[data-theme="dark"],
 :root {
-  /* Legacy vars */
-  --bg: 0 0 0;
-  --fg: 255 255 255;
-  --muted: 18 18 18;
-  --muted-fg: 145 145 145;
-  --primary: 99 102 241;
-  --primary-fg: 255 255 255;
-  --accent: 245 158 11;
-  --accent-fg: 0 0 0;
-  --border: 255 255 255 / 0.08;
-  --card: 8 8 8;
-  --card-border: 255 255 255 / 0.06;
-  --input: 14 14 14;
-  --ring: 99 102 241;
-  --destructive: 239 68 68;
-  --success: 34 197 94;
+  /* Backgrounds */
+  --bg:      18 18 18;     /* #121212 Matte Black */
+  --card:    26 26 26;     /* #1A1A1A Elevated Dark surface */
+  --muted:   45 45 45;     /* #2D2D2D subtle surface lift */
+  --input:   26 26 26;
 
-  /* ── Semantic design-system vars (Dark) ── */
-  --color-background:    #121212;   /* Matte Black */
-  --color-surface:       #1A1A1A;   /* Elevated Dark */
-  --color-text-primary:  #F5F5F5;   /* Soft White */
-  --color-text-secondary:#9E9E9E;   /* Neutral Gray */
-  --color-accent:        #FFFFFF;   /* Crisp White — high-contrast focus */
-  --color-border:        #2D2D2D;   /* Subtle Dark Gray */
+  /* Text */
+  --fg:      245 245 245;  /* #F5F5F5 Soft White */
+  --muted-fg:158 158 158;  /* #9E9E9E Neutral Gray */
+
+  /* Accent / primary  — white (high contrast on dark) */
+  --primary:    255 255 255; /* #FFFFFF Crisp White */
+  --primary-fg: 18 18 18;   /* dark text on white buttons */
+  --accent:     255 255 255;
+  --accent-fg:  18 18 18;
+
+  /* Borders & rings */
+  --border:       45 45 45;   /* #2D2D2D */
+  --card-border:  45 45 45;
+  --ring:         255 255 255;
+
+  /* Status */
+  --destructive: 239 68 68;
+  --success:     34 197 94;
+
+  /* ── Semantic hex vars (Dark) ── */
+  --color-background:     #121212;
+  --color-surface:        #1A1A1A;
+  --color-text-primary:   #F5F5F5;
+  --color-text-secondary: #9E9E9E;
+  --color-accent:         #FFFFFF;
+  --color-border:         #2D2D2D;
 }
 
 /* ── Light theme ──────────────────────────────────────────────── */
 :root[data-theme="light"] {
-  /* Legacy vars */
-  --bg: 12 9 5;
-  --fg: 248 240 220;
-  --muted: 28 22 12;
-  --muted-fg: 168 146 108;
-  --primary: 165 120 65;
-  --primary-fg: 0 0 0;
-  --accent: 210 165 90;
-  --accent-fg: 0 0 0;
-  --border: 165 120 65 / 0.18;
-  --card: 18 14 8;
-  --card-border: 165 120 65 / 0.12;
-  --input: 24 18 10;
-  --ring: 165 120 65;
-  --destructive: 239 68 68;
-  --success: 34 197 94;
+  /* Backgrounds */
+  --bg:    247 247 245;  /* #F7F7F5 Warm Off-White */
+  --card:  255 255 255;  /* #FFFFFF Pure White surface */
+  --muted: 230 230 228;  /* #E6E6E4 Soft Gray lift */
+  --input: 255 255 255;
 
-  /* ── Semantic design-system vars (Light) ── */
-  --color-background:    #F7F7F5;   /* Warm Off-White */
-  --color-surface:       #FFFFFF;   /* Pure White */
-  --color-text-primary:  #2C2F2D;   /* Deep Charcoal */
-  --color-text-secondary:#6B7270;   /* Muted Slate */
-  --color-accent:        #738C75;   /* Muted Sage Green */
-  --color-border:        #E6E6E4;   /* Soft Gray */
+  /* Text */
+  --fg:      44 47 45;   /* #2C2F2D Deep Charcoal */
+  --muted-fg:107 114 112;/* #6B7270 Muted Slate */
+
+  /* Accent / primary — Sage Green */
+  --primary:    115 140 117; /* #738C75 Muted Sage Green */
+  --primary-fg: 255 255 255; /* white text on green buttons */
+  --accent:     115 140 117;
+  --accent-fg:  255 255 255;
+
+  /* Borders & rings */
+  --border:      230 230 228; /* #E6E6E4 */
+  --card-border: 230 230 228;
+  --ring:        115 140 117;
+
+  /* Status */
+  --destructive: 239 68 68;
+  --success:     34 197 94;
+
+  /* ── Semantic hex vars (Light) ── */
+  --color-background:     #F7F7F5;
+  --color-surface:        #FFFFFF;
+  --color-text-primary:   #2C2F2D;
+  --color-text-secondary: #6B7270;
+  --color-accent:         #738C75;
+  --color-border:         #E6E6E4;
 }
 
 
