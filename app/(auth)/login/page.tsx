@@ -57,13 +57,15 @@ export default function LoginPage() {
     setError("");
     setOauthLoading(provider);
     const supabase = createClient();
+    // Use canonical production URL so OAuth always returns to the app,
+    // not a Vercel preview URL or a different origin.
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        // No ?next= param — /auth/callback checks university_id and decides:
-        // new user (no university_id) → /onboarding
-        // returning user → /feed
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
       },
     });
     if (oauthError) {

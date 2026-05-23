@@ -91,9 +91,12 @@ function NotificationDropdown({ userId }: { userId: string | null }) {
   for (const n of notifications) {
     const p = (n.payload as Record<string, string>) || {};
     let text = p.message ?? n.type.replace(/_/g, " ");
-    if (n.type === "note_upvote") text = `Upvoted your note: ${p.title ?? ""}`;
-    if (n.type === "job_application") text = `Application: ${p.job_title ?? ""}`;
-    items.push({ id: `sys-${n.id}`, type: "system", icon: "🔔", primary: text, secondary: "", time: n.created_at, isNew: !n.is_read });
+    let href = "/inbox";
+    if (n.type === "note_upvote") { text = `Upvoted your note: ${p.title ?? ""}`; href = p.note_id ? `/notes/${p.note_id}` : "/notes"; }
+    if (n.type === "job_application") { text = `Application: ${p.job_title ?? ""}`; href = p.job_id ? `/jobs/${p.job_id}` : "/jobs"; }
+    if (n.type === "new_follower") { text = `${p.name ?? "Someone"} followed you`; href = p.user_id ? `/profile/${p.user_id}` : "/profile"; }
+    if (n.type === "comment") { text = `New comment on your post`; href = p.note_id ? `/notes/${p.note_id}` : "/feed"; }
+    items.push({ id: `sys-${n.id}`, type: "system", icon: "🔔", primary: text, secondary: "", time: n.created_at, isNew: !n.is_read, href });
   }
 
   for (const m of recentMsgs) {
@@ -130,10 +133,14 @@ function NotificationDropdown({ userId }: { userId: string | null }) {
       ) : (
         <div>
           {display.map(item => (
-            <div key={item.id} className={cn(
-              "flex items-start gap-3 px-4 py-3 hover:bg-[rgb(var(--muted))] transition-colors cursor-default",
-              item.isNew && "bg-[rgb(var(--primary)/0.05)]"
-            )}>
+            <Link
+              key={item.id}
+              href={item.href ?? "/inbox"}
+              className={cn(
+                "flex items-start gap-3 px-4 py-3 hover:bg-[rgb(var(--muted))] transition-colors cursor-pointer",
+                item.isNew && "bg-[rgb(var(--primary)/0.05)]"
+              )}
+            >
               {item.type === "dm" && item.icon ? (
                 <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center flex-shrink-0 mt-0.5">
                   <img src={item.icon} alt="" className="w-full h-full object-cover" />
@@ -160,7 +167,7 @@ function NotificationDropdown({ userId }: { userId: string | null }) {
                 </p>
               </div>
               {item.isNew && <span className="w-2 h-2 rounded-full bg-[rgb(var(--primary))] flex-shrink-0 mt-1.5" />}
-            </div>
+            </Link>
           ))}
           <div className="px-4 py-3 border-t border-[rgb(var(--border))]">
             <Link href="/inbox" className="text-xs text-[rgb(var(--primary))] hover:underline">View all notifications →</Link>

@@ -672,11 +672,12 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
       if (kind === "audio" && !file.type.startsWith("audio/")) {
         setSendError("Only audio files allowed here."); return;
       }
+      // For docs: block image/audio/video (those have dedicated upload slots)
       if (kind === "doc" && (file.type.startsWith("image/") || file.type.startsWith("audio/") || file.type.startsWith("video/"))) {
-        setSendError("Use Photos or Audio attachment for media files."); return;
+        setSendError("Use Photos or Audio attachment for media files. This slot is for documents (PDF, Word, Excel, etc.)"); return;
       }
 
-      if (file.size > 20 * 1024 * 1024) { setSendError("Max file size is 20 MB"); return; }
+      if (file.size > 50 * 1024 * 1024) { setSendError("Max file size is 50 MB"); return; }
       setMediaPreview({ file, url: URL.createObjectURL(file) });
     };
 
@@ -1557,6 +1558,8 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
 
         {/* Hidden file inputs */}
         <input ref={fileInputRef}   type="file" accept="image/*,video/*" className="hidden" onChange={handlePhotoSelect} />
+        <input ref={docFileRef}    type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.rar,application/*,text/plain" className="hidden" onChange={handleDocSelect} />
+        <input ref={audioFileRef}  type="file" accept="audio/*" className="hidden" onChange={handleAudioSelect} />
         <input ref={stickerFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePackFileSelect} />
 
         {/* Emoji picker */}
