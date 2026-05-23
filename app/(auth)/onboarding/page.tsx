@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, ChevronRight, Upload, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ const STEP_LABELS = ["University", "Details", "Profile"];
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);

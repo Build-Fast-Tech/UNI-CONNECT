@@ -36,7 +36,7 @@ export async function GET(request: Request) {
           .from("profiles")
           .select("university_id")
           .eq("id", user.id)
-          .single();
+          .maybeSingle(); // maybeSingle() returns null (not an error) when no row exists yet
 
         const isAlreadyOnboarded = !!profile?.university_id;
         const finalNext = isAlreadyOnboarded ? "/feed" : safeNext;
