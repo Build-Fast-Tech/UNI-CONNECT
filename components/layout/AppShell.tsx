@@ -81,7 +81,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Last-resort safety net: redirect students who skipped onboarding */}
-      <OnboardingGuard />
+      {loaded && <OnboardingGuard />}
 
       <LayoutErrorBoundary>
         <Sidebar

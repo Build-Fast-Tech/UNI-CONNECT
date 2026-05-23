@@ -84,7 +84,6 @@ export function PermissionsModal() {
 
   const requestCamera = async () => {
     setPerms(p => ({ ...p, camera: "asking" }));
-    setPerms(p => ({ ...p, camera: "asking" }));
     const result = await tryGetMedia({ video: true });
     setPerms(p => ({ ...p, camera: result }));
   };
@@ -106,6 +105,16 @@ export function PermissionsModal() {
     }
   };
 
+  // Move allGranted + auto-dismiss BEFORE the early return so hook count is stable
+  const allGranted = perms.camera === "granted" && perms.mic === "granted" && perms.notifications === "granted";
+
+  useEffect(() => {
+    if (allGranted) {
+      const t = setTimeout(dismiss, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [allGranted]);
+
   if (!visible) return null;
 
   const items = [
@@ -113,16 +122,6 @@ export function PermissionsModal() {
     { key: "mic" as const,           icon: Mic,    bg: "bg-orange-500", label: "Microphone",    desc: "Send voice notes in conversations", onAllow: requestMic },
     { key: "notifications" as const, icon: Bell,   bg: "bg-blue-500",   label: "Notifications", desc: "Get notified about new messages",   onAllow: requestNotifications },
   ];
-
-  const allGranted = items.every(i => perms[i.key] === "granted");
-
-  // Auto-dismiss 1 second after all are granted
-  useEffect(() => {
-    if (allGranted) {
-      const t = setTimeout(dismiss, 1000);
-      return () => clearTimeout(t);
-    }
-  }, [allGranted]);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-4">
