@@ -9,12 +9,12 @@ type ThemeContextType = {
 };
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "midnight",
+  theme: "dark",
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>("midnight");
+  const [theme, setThemeState] = useState<ThemeId>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

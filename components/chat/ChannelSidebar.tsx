@@ -113,7 +113,8 @@ interface UserSearchResult {
 }
 
 function UserSearch({ onLinkClick, myId }: { onLinkClick?: () => void; myId: string | null }) {
-  const supabase = createClient();
+  // useMemo so createClient() is not called on every render (React 19 error #310)
+  const supabase = useMemo(() => createClient(), []);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -299,7 +300,8 @@ function ChannelList({
 }
 
 export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarProps) {
-  const supabase = createClient();
+  // useMemo so createClient() is not called on every render (React 19 error #310)
+  const supabase = useMemo(() => createClient(), []);
   const [myId, setMyId]                   = useState<string | null>(null);
   const [globalChannel, setGlobalChannel] = useState<Channel | null>(null);
   const [uniChannels, setUniChannels]     = useState<Channel[]>([]);
