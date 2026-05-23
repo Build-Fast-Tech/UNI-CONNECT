@@ -42,8 +42,6 @@ const nextConfig: NextConfig = {
           { key: "X-DNS-Prefetch-Control",       value: "on" },
           { key: "Referrer-Policy",              value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy",           value: "camera=(self), microphone=(self), geolocation=(), interest-cohort=()" },
-          { key: "Cross-Origin-Opener-Policy",   value: "same-origin" },
-          { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
           ...(isProd
             ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]
             : []),
