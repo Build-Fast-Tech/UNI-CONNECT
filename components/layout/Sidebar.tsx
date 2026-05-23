@@ -342,18 +342,60 @@ export function Sidebar({ mobileOpen, onClose, unreadCount, markAllRead }: Sideb
       .then(({ count }: any) => { if ((count ?? 0) > 0) setIsEmployer(true); });
   }, [userId, supabase]);
 
-  // Admin: fetch pending counts
+  // Admin: fetch pending counts with real-time subscriptions
   const [pendingEmployers, setPendingEmployers] = useState(0);
   const [pendingSocieties, setPendingSocieties] = useState(0);
   const [pendingFeedback, setPendingFeedback] = useState(0);
   useEffect(() => {
     if (!isAdmin) return;
-    (supabase as any).from("employer_applications").select("id", { count: "exact", head: true }).eq("status", "pending")
-      .then(({ count }: any) => setPendingEmployers(count ?? 0));
-    (supabase as any).from("societies").select("id", { count: "exact", head: true }).eq("status", "pending")
-      .then(({ count }: any) => setPendingSocieties(count ?? 0));
-    (supabase as any).from("feedback").select("id", { count: "exact", head: true }).eq("status", "pending")
-      .then(({ count }: any) => setPendingFeedback(count ?? 0));
+
+    const fetchEmployers = () => {
+      (supabase as any).from("employer_applications").select("id", { count: "exact", head: true }).eq("status", "pending")
+        .then(({ count }: any) => setPendingEmployers(count ?? 0));
+    };
+
+    const fetchSocieties = () => {
+      (supabase as any).from("societies").select("id", { count: "exact", head: true }).eq("status", "pending")
+        .then(({ count }: any) => setPendingSocieties(count ?? 0));
+    };
+
+    const fetchFeedback = () => {
+      (supabase as any).from("feedback").select("id", { count: "exact", head: true }).eq("status", "pending")
+        .then(({ count }: any) => setPendingFeedback(count ?? 0));
+    };
+
+    // Initial fetch
+    fetchEmployers();
+    fetchSocieties();
+    fetchFeedback();
+
+    // Real-time subscriptions
+    const empChan = supabase
+      .channel("sidebar-pending-employers")
+      .on("postgres_changes", { event: "*", schema: "public", table: "employer_applications" }, () => {
+        fetchEmployers();
+      })
+      .subscribe();
+
+    const socChan = supabase
+      .channel("sidebar-pending-societies")
+      .on("postgres_changes", { event: "*", schema: "public", table: "societies" }, () => {
+        fetchSocieties();
+      })
+      .subscribe();
+
+    const fbChan = supabase
+      .channel("sidebar-pending-feedback")
+      .on("postgres_changes", { event: "*", schema: "public", table: "feedback" }, () => {
+        fetchFeedback();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(empChan);
+      supabase.removeChannel(socChan);
+      supabase.removeChannel(fbChan);
+    };
   }, [isAdmin, supabase]);
 
   useEffect(() => {
