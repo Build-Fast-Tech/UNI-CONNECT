@@ -78,13 +78,13 @@ export default function SocietiesPage() {
 
   useEffect(() => {
     setLoading(true);
-    let q = supabase
+    let q = (supabase as any)
       .from("societies")
       .select("id, name, description, category, member_count, follower_count, logo_url, visibility, university:universities!university_id(name, short_name)")
       .eq("status", "approved")
       .order("follower_count", { ascending: false });
     if (selectedUni !== "all") q = q.eq("university_id", selectedUni);
-    q.then(({ data }) => { setSocieties((data as unknown as Society[]) ?? []); setLoading(false); });
+    q.then(({ data }: { data: Society[] | null }) => { setSocieties((data as unknown as Society[]) ?? []); setLoading(false); });
   }, [selectedUni]);
 
   useEffect(() => {
@@ -400,23 +400,26 @@ export default function SocietiesPage() {
                   </div>
                 )}
 
-                <div className="flex-1">
-                  <Link href={`/societies/${s.id}`}>
-                    <h3 className="font-semibold group-hover:text-[rgb(var(--primary))] transition-colors">{s.name}</h3>
-                  </Link>
+                <Link href={`/societies/${s.id}`} className="flex-1 block">
+                  <h3 className="font-semibold group-hover:text-[rgb(var(--primary))] transition-colors">{s.name}</h3>
                   {s.university && (
                     <p className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1 mt-0.5">
                       <Building2 className="w-3 h-3" />{s.university.short_name}
                     </p>
                   )}
                   {s.description && <p className="text-xs text-[rgb(var(--muted-fg))] mt-1.5 line-clamp-2">{s.description}</p>}
-                </div>
+                </Link>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
-                  <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
-                    <Users className="w-3.5 h-3.5" /> {s.follower_count || 0} followers
-                    {s.visibility === "private" && <Lock className="w-3 h-3 ml-1 text-amber-400" />}
-                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
+                      <Users className="w-3.5 h-3.5" /> {s.follower_count || 0} followers
+                      {s.visibility === "private" && <Lock className="w-3 h-3 ml-1 text-amber-400" />}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
+                      <Star className="w-3.5 h-3.5" /> {s.member_count || 0} society users
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     {followedIds.has(s.id) && (
                       <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">

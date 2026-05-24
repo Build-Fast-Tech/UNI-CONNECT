@@ -78,6 +78,18 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const [postImages, setPostImages] = useState<File[]>([]);
   const [postPreviews, setPostPreviews] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Event composer
+  const [showEvent, setShowEvent] = useState(false);
+  const [eventContent, setEventContent] = useState("");
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventPosting, setEventPosting] = useState(false);
+  const [eventImages, setEventImages] = useState<File[]>([]);
+  const [eventPreviews, setEventPreviews] = useState<string[]>([]);
+  const eventFileRef = useRef<HTMLInputElement>(null);
+  // Delete
+  const [deletingSOC, setDeletingSOC] = useState(false);
+  const [confirmDeleteSOC, setConfirmDeleteSOC] = useState(false);
 
   const fetchSocietyMembers = async () => {
     const { data } = await supabase
@@ -196,6 +208,55 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
   const deletePost = async (postId: string) => {
     await (supabase as any).from("society_posts").delete().eq("id", postId);
     setPosts(p => p.filter(post => post.id !== postId));
+  };
+
+  const deleteSociety = async () => {
+    if (!societyId) return;
+    setDeletingSOC(true);
+    await supabase.from("societies").delete().eq("id", societyId);
+    router.push("/societies");
+  };
+
+  const handleEventImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).slice(0, 30 - eventImages.length);
+    setEventImages(p => [...p, ...files]);
+    setEventPreviews(p => [...p, ...files.map(f => URL.createObjectURL(f))]);
+    e.target.value = "";
+  };
+  const removeEventImage = (i: number) => {
+    URL.revokeObjectURL(eventPreviews[i]);
+    setEventImages(p => p.filter((_, idx) => idx !== i));
+    setEventPreviews(p => p.filter((_, idx) => idx !== i));
+  };
+
+  const createEvent = async () => {
+    if (!eventContent.trim() || !userId) return;
+    setEventPosting(true);
+    const imageUrls: string[] = [];
+    for (const file of eventImages) {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("society-posts").upload(path, file);
+      if (!upErr) imageUrls.push(supabase.storage.from("society-posts").getPublicUrl(path).data.publicUrl);
+    }
+    const { data } = await (supabase as any)
+      .from("society_posts")
+      .insert({
+        society_id: societyId,
+        author_id: userId,
+        content: eventContent.trim(),
+        title: eventTitle.trim() || null,
+        type: "event",
+        post_type: "event",
+        event_date: eventDate || null,
+        image_url: imageUrls[0] ?? null,
+        image_urls: imageUrls,
+      })
+      .select("id,title,content,type,post_type,event_date,is_pinned,likes,created_at,image_url,image_urls,author:profiles!author_id(full_name,avatar_url)")
+      .single();
+    if (data) setPosts(p => [data as unknown as Post, ...p]);
+    setEventContent(""); setEventTitle(""); setEventDate(""); setEventImages([]); setEventPreviews([]);
+    setShowEvent(false); setEventPosting(false);
   };
 
   const toggleFollow = async () => {
@@ -350,10 +411,12 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
 
   const isEventPost = (p: Post) => p.post_type === "event" || p.type === "event";
   const displayedPosts = tab === "Posts"
-    ? posts
+    ? posts.filter(p => !isEventPost(p))
     : tab === "Events"
       ? posts.filter(isEventPost)
       : [];
+  const canPost = isMember || isAdmin || isPlatformAdmin;
+  const approvedManagerCount = societyMembers.filter(m => m.status === "approved").length;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
@@ -386,6 +449,9 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
           )}
           <span className="text-white/70 text-xs flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg">
             <Users className="w-3.5 h-3.5" />{society.follower_count || 0} followers
+          </span>
+          <span className="text-white/70 text-xs flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg">
+            <CheckCircle className="w-3.5 h-3.5" />{approvedManagerCount} society users
           </span>
         </div>
       </div>
@@ -444,10 +510,44 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
           )}
           {/* Admin badge */}
           {isAdmin && (
-            <span className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-xl bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]">
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-[rgb(var(--primary)/0.12)] text-[rgb(var(--primary))]">
               You are the Admin
             </span>
           )}
+          {/* Delete Society (admin/platform admin only) */}
+          {(isAdmin || isPlatformAdmin) && (
+            <button
+              onClick={() => setConfirmDeleteSOC(true)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete Society
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Delete Society Confirm Modal */}
+      {confirmDeleteSOC && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-sm theme-card p-6 space-y-4">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+                <Trash2 className="w-7 h-7 text-red-400" />
+              </div>
+              <h2 className="text-lg font-bold">Delete Society?</h2>
+              <p className="text-sm text-[rgb(var(--muted-fg))]">
+                This will permanently delete <strong>{society.name}</strong> and all its posts, members, and followers. This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDeleteSOC(false)} className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm">Cancel</button>
+              <button onClick={deleteSociety} disabled={deletingSOC}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                {deletingSOC ? <span className="animate-spin">⟳</span> : "Delete"}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 
@@ -469,7 +569,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
       </div>
 
       {/* Post composer */}
-      {(isMember || isAdmin || isPlatformAdmin) && tab === "Posts" && (
+      {canPost && tab === "Posts" && (
         <div className="theme-card overflow-hidden">
           {!showPost ? (
             <button onClick={() => setShowPost(true)}
@@ -477,7 +577,7 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
               <div className="w-8 h-8 rounded-full bg-[rgb(var(--primary)/0.1)] flex items-center justify-center">
                 <ImageIcon className="w-4 h-4 text-[rgb(var(--primary))]" />
               </div>
-              <span className="text-sm text-[rgb(var(--muted-fg))] flex-1 text-left">Share something with the society…</span>
+              <span className="text-sm text-[rgb(var(--muted-fg))] flex-1 text-left">Share a post with the society…</span>
               <Plus className="w-4 h-4 text-[rgb(var(--muted-fg))]" />
             </button>
           ) : (
@@ -486,8 +586,6 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                 className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
               <textarea value={newContent} onChange={e => setNewContent(e.target.value)} rows={3} placeholder="What's on your mind?"
                 className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] resize-none" />
-
-              {/* Image previews */}
               {postPreviews.length > 0 && (
                 <div className="grid grid-cols-5 gap-1.5">
                   {postPreviews.map((src, i) => (
@@ -507,7 +605,6 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
                   )}
                 </div>
               )}
-
               <div className="flex items-center gap-2">
                 <button onClick={() => fileRef.current?.click()} disabled={postImages.length >= 30}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors disabled:opacity-40">
@@ -524,6 +621,67 @@ export default function SocietyPage({ params }: { params: Promise<{ societyId: s
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagePick} />
+        </div>
+      )}
+
+      {/* Event composer */}
+      {canPost && tab === "Events" && (
+        <div className="theme-card overflow-hidden">
+          {!showEvent ? (
+            <button onClick={() => setShowEvent(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[rgb(var(--muted)/0.5)] transition-colors">
+              <div className="w-8 h-8 rounded-full bg-[rgb(var(--primary)/0.1)] flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-[rgb(var(--primary))]" />
+              </div>
+              <span className="text-sm text-[rgb(var(--muted-fg))] flex-1 text-left">Create an event…</span>
+              <Plus className="w-4 h-4 text-[rgb(var(--muted-fg))]" />
+            </button>
+          ) : (
+            <div className="p-4 space-y-3">
+              <input value={eventTitle} onChange={e => setEventTitle(e.target.value)} placeholder="Event title (optional)"
+                className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+              <textarea value={eventContent} onChange={e => setEventContent(e.target.value)} rows={3} placeholder="Describe the event…"
+                className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] resize-none" />
+              <div>
+                <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Event Date &amp; Time (optional)</label>
+                <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)}
+                  className="w-full bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]" />
+              </div>
+              {eventPreviews.length > 0 && (
+                <div className="grid grid-cols-5 gap-1.5">
+                  {eventPreviews.map((src, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-[rgb(var(--muted))]">
+                      <img src={src} alt="" className="w-full h-full object-cover" />
+                      <button onClick={() => removeEventImage(i)}
+                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {eventImages.length < 30 && (
+                    <button onClick={() => eventFileRef.current?.click()}
+                      className="aspect-square rounded-lg border-2 border-dashed border-[rgb(var(--border))] flex items-center justify-center text-[rgb(var(--muted-fg))] hover:border-[rgb(var(--primary)/0.4)] hover:text-[rgb(var(--primary))] transition-colors">
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <button onClick={() => eventFileRef.current?.click()} disabled={eventImages.length >= 30}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors disabled:opacity-40">
+                  <ImageIcon className="w-3.5 h-3.5" /> Add Photos {eventImages.length > 0 && `(${eventImages.length}/30)`}
+                </button>
+                <div className="flex-1" />
+                <button onClick={() => { setShowEvent(false); setEventImages([]); setEventPreviews([]); }}
+                  className="px-3 py-1.5 rounded-xl text-xs text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--muted))]">Cancel</button>
+                <button onClick={createEvent} disabled={!eventContent.trim() || eventPosting}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-semibold disabled:opacity-40 hover:opacity-90">
+                  {eventPosting ? "Posting…" : <><Send className="w-3.5 h-3.5" /> Post Event</>}
+                </button>
+              </div>
+            </div>
+          )}
+          <input ref={eventFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleEventImagePick} />
         </div>
       )}
 
