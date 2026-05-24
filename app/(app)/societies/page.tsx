@@ -353,16 +353,17 @@ export default function SocietiesPage() {
                 transition={{ delay: Math.min(i * 0.04, 0.3) }}
                 className="theme-card p-5 flex flex-col gap-3 hover:border-[rgb(var(--primary)/0.3)] transition-colors group relative"
               >
-                <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xl font-bold overflow-hidden">
+                <Link href={`/societies/${s.id}`} className="absolute inset-0 z-0 rounded-2xl" />
+                <div className="flex items-start justify-between relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--accent))] flex items-center justify-center text-white text-xl font-bold overflow-hidden pointer-events-none">
                     {s.logo_url ? <img src={s.logo_url} alt="" className="w-full h-full object-cover rounded-2xl" /> : s.name.charAt(0)}
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 pointer-events-none">
                     <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize", CAT_COLORS[s.category] ?? CAT_COLORS.general)}>
                       {s.category}
                     </span>
                     {canManage && (
-                      <div className="relative" onClick={e => e.stopPropagation()}>
+                      <div className="relative pointer-events-auto" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}
                           className="p-1 rounded-lg hover:bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] transition-colors"
@@ -386,7 +387,7 @@ export default function SocietiesPage() {
 
                 {/* Delete confirm */}
                 {confirmDelete === s.id && (
-                  <div className="absolute inset-0 z-10 rounded-2xl bg-[rgb(var(--card)/0.97)] flex flex-col items-center justify-center gap-3 p-4 border border-red-500/30">
+                  <div className="absolute inset-0 z-20 rounded-2xl bg-[rgb(var(--card)/0.97)] flex flex-col items-center justify-center gap-3 p-4 border border-red-500/30">
                     <Trash2 className="w-8 h-8 text-red-400" />
                     <p className="text-sm font-semibold text-center">Delete <span className="text-red-400">{s.name}</span>?</p>
                     <p className="text-xs text-[rgb(var(--muted-fg))] text-center">This removes all members and posts. Cannot be undone.</p>
@@ -400,7 +401,7 @@ export default function SocietiesPage() {
                   </div>
                 )}
 
-                <Link href={`/societies/${s.id}`} className="flex-1 block">
+                <div className="flex-1 block relative z-10 pointer-events-none">
                   <h3 className="font-semibold group-hover:text-[rgb(var(--primary))] transition-colors">{s.name}</h3>
                   {s.university && (
                     <p className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1 mt-0.5">
@@ -408,9 +409,9 @@ export default function SocietiesPage() {
                     </p>
                   )}
                   {s.description && <p className="text-xs text-[rgb(var(--muted-fg))] mt-1.5 line-clamp-2">{s.description}</p>}
-                </Link>
+                </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))]">
+                <div className="flex items-center justify-between pt-2 border-t border-[rgb(var(--border))] relative z-10 pointer-events-none">
                   <div className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs text-[rgb(var(--muted-fg))]">
                       <Users className="w-3.5 h-3.5" /> {s.follower_count || 0} followers
@@ -420,16 +421,12 @@ export default function SocietiesPage() {
                       <Star className="w-3.5 h-3.5" /> {s.member_count || 0} society users
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 pointer-events-auto">
                     {followedIds.has(s.id) && (
                       <span className="flex items-center gap-1 text-xs text-emerald-400 font-medium">
                         <Star className="w-3.5 h-3.5 fill-current" /> Following
                       </span>
                     )}
-                    <Link href={`/societies/${s.id}`}
-                      className="text-xs px-3 py-1 rounded-lg bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))] font-medium hover:bg-[rgb(var(--primary)/0.2)] transition-colors">
-                      Open →
-                    </Link>
                   </div>
                 </div>
               </motion.div>
