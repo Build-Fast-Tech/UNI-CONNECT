@@ -36,13 +36,13 @@ export function HowItWorks() {
         animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-center mb-16"
       >
-        <h2 className="text-4xl sm:text-5xl font-bold mb-4">How it works</h2>
-        <p className="text-lg text-[rgb(var(--muted-fg))]">Up and running in under 30 seconds.</p>
+        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white/95">How it works</h2>
+        <p className="text-lg text-white/35">Up and running in under 30 seconds.</p>
       </motion.div>
 
       <div className="relative flex flex-col md:flex-row gap-8 items-start">
         {/* Connecting line (desktop) */}
-        <div className="hidden md:block absolute top-10 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-gradient-to-r from-transparent via-[rgb(var(--primary)/0.4)] to-transparent" />
+        <div className="hidden md:block absolute top-10 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
         {STEPS.map((step, i) => (
           <motion.div
@@ -54,15 +54,15 @@ export function HowItWorks() {
           >
             {/* Icon */}
             <div className="relative mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-[rgb(var(--primary)/0.1)] border border-[rgb(var(--primary)/0.2)] flex items-center justify-center">
-                <step.icon className="w-8 h-8 text-[rgb(var(--primary))]" />
+              <div className="glass-panel w-20 h-20 !rounded-2xl flex items-center justify-center">
+                <step.icon className="w-8 h-8 text-purple-400/70" />
               </div>
-              <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-xs font-bold flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-[0_0_15px_rgba(130,80,220,0.3)]">
                 {i + 1}
               </span>
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-[rgb(var(--fg))]">{step.title}</h3>
-            <p className="text-sm text-[rgb(var(--muted-fg))] leading-relaxed max-w-xs">{step.desc}</p>
+            <h3 className="text-lg font-semibold mb-2 text-white/85">{step.title}</h3>
+            <p className="text-sm text-white/35 leading-relaxed max-w-xs">{step.desc}</p>
           </motion.div>
         ))}
       </div>

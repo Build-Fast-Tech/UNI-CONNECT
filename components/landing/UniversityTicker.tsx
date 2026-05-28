@@ -8,21 +8,25 @@ const UNIVERSITIES = [
 ];
 
 export function UniversityTicker() {
-  const doubled = [...UNIVERSITIES, ...UNIVERSITIES];
+  const quadrupled = [...UNIVERSITIES, ...UNIVERSITIES, ...UNIVERSITIES, ...UNIVERSITIES];
 
   return (
-    <section id="universities" className="py-12 border-y border-[rgb(var(--border))] overflow-hidden bg-[rgb(var(--muted)/0.3)]">
-      <div className="flex gap-8 animate-marquee whitespace-nowrap">
-        {doubled.map((uni, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-2 text-sm font-medium text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))] transition-colors cursor-default flex-shrink-0"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[rgb(var(--primary)/0.6)]" />
-            {uni}
-          </span>
-        ))}
+    <section id="universities" className="py-10 overflow-hidden relative">
+      <div className="section-divider mb-10" />
+      <div className="liquid-marquee relative">
+        <div className="flex gap-10 animate-marquee whitespace-nowrap" style={{ animationDuration: "50s" }}>
+          {quadrupled.map((uni, i) => (
+            <span
+              key={i}
+              className="liquid-marquee-text inline-flex items-center gap-2.5 text-sm font-medium text-white/25 hover:text-white/60 transition-all duration-300 cursor-default flex-shrink-0"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400/40" />
+              {uni}
+            </span>
+          ))}
+        </div>
       </div>
+      <div className="section-divider mt-10" />
     </section>
   );
 }
