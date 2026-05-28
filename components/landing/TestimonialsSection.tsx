@@ -35,34 +35,54 @@ export function TestimonialsSection() {
         animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-center mb-16"
       >
-        <h2 className="text-4xl sm:text-5xl font-bold mb-4">Loved by students</h2>
-        <p className="text-lg text-[rgb(var(--muted-fg))]">From NUST to NED, students are connecting.</p>
+        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white/95">Loved by students</h2>
+        <p className="text-lg text-white/35">From NUST to NED, students are connecting.</p>
       </motion.div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {TESTIMONIALS.map((t, i) => (
           <motion.div
             key={t.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ delay: i * 0.15 }}
-            whileHover={{ scale: 1.02, rotate: 0 }}
-            className="theme-card p-6 hover:border-[rgb(var(--primary)/0.3)] transition-all duration-300"
-            style={{ transformOrigin: "center" }}
+            initial={{ opacity: 0, scale: 0.6, y: 30, filter: "blur(12px)" }}
+            animate={inView ? { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" } : {}}
+            transition={{
+              delay: i * 0.15,
+              duration: 0.7,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            whileHover={{ y: -4 }}
+            className="glass-panel glass-panel-glow p-6 transition-all duration-300"
           >
-            <p className="text-sm text-[rgb(var(--muted-fg))] leading-relaxed mb-6 italic">
+            <p className="text-sm text-white/45 leading-relaxed mb-6 italic">
               &ldquo;{t.quote}&rdquo;
             </p>
             <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
+              {/* Avatar that materializes from a swirl */}
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={inView ? { scale: 1, rotate: 0 } : {}}
+                transition={{
+                  delay: 0.3 + i * 0.15,
+                  duration: 0.6,
+                  type: "spring",
+                  stiffness: 200,
+                }}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white relative"
                 style={{ backgroundColor: t.avatar }}
               >
-                {t.name[0]}
-              </div>
+                {/* Glow ring */}
+                <div
+                  className="absolute inset-[-3px] rounded-full animate-pulse"
+                  style={{
+                    background: `conic-gradient(from 0deg, transparent, ${t.avatar}40, transparent)`,
+                    filter: "blur(3px)",
+                  }}
+                />
+                <span className="relative z-10">{t.name[0]}</span>
+              </motion.div>
               <div>
-                <p className="text-sm font-semibold text-[rgb(var(--fg))]">{t.name}</p>
-                <p className="text-xs text-[rgb(var(--muted-fg))]">{t.uni}</p>
+                <p className="text-sm font-semibold text-white/80">{t.name}</p>
+                <p className="text-xs text-white/30">{t.uni}</p>
               </div>
             </div>
           </motion.div>

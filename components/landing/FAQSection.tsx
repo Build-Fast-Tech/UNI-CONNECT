@@ -35,17 +35,17 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-[rgb(var(--border))] last:border-0">
+    <div className={`faq-panel-glow rounded-xl px-5 transition-all duration-300 ${open ? "active" : ""}`}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between py-5 text-left gap-4 group"
       >
-        <span className="text-base font-medium text-[rgb(var(--fg))] group-hover:text-[rgb(var(--primary))] transition-colors">
+        <span className="text-base font-medium text-white/70 group-hover:text-white/90 transition-colors">
           {q}
         </span>
         <ChevronDown
-          className={`w-5 h-5 text-[rgb(var(--muted-fg))] transition-transform duration-300 flex-shrink-0 ${
-            open ? "rotate-180 text-[rgb(var(--primary))]" : ""
+          className={`w-5 h-5 text-white/25 transition-all duration-300 flex-shrink-0 ${
+            open ? "rotate-180 text-purple-400/70" : ""
           }`}
         />
       </button>
@@ -55,10 +55,10 @@ function FAQItem({ q, a }: { q: string; a: string }) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <p className="pb-5 text-sm text-[rgb(var(--muted-fg))] leading-relaxed">{a}</p>
+            <p className="pb-5 text-sm text-white/35 leading-relaxed">{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -77,15 +77,15 @@ export function FAQSection() {
         animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-center mb-16"
       >
-        <h2 className="text-4xl sm:text-5xl font-bold mb-4">Frequently asked</h2>
-        <p className="text-lg text-[rgb(var(--muted-fg))]">Everything you need to know.</p>
+        <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white/95">Frequently asked</h2>
+        <p className="text-lg text-white/35">Everything you need to know.</p>
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={inView ? { opacity: 1 } : {}}
+        initial={{ opacity: 0, y: 20 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
         transition={{ delay: 0.2 }}
-        className="theme-card p-8"
+        className="glass-panel p-3 space-y-1"
       >
         {FAQS.map((faq) => (
           <FAQItem key={faq.q} {...faq} />
