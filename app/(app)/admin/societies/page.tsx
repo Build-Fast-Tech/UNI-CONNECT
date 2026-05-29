@@ -27,7 +27,7 @@ interface Society {
   admin: { full_name: string; email: string } | null;
 }
 
-const STATUS_CONFIG: Record<SocietyStatus, { label: string; color: string; icon: React.ElementType }> = {
+const STATUS_CONFIG: Record<SocietyStatus, { label: string; color: string; icon: React.ComponentType<any> }> = {
   pending:   { label: "Pending",   color: "text-amber-400 bg-amber-400/10",    icon: Clock },
   approved:  { label: "Approved",  color: "text-emerald-400 bg-emerald-400/10", icon: CheckCircle },
   rejected:  { label: "Rejected",  color: "text-red-400 bg-red-400/10",        icon: XCircle },

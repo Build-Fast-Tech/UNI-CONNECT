@@ -26,7 +26,7 @@ interface University {
   short_name: string;
 }
 
-const FILE_ICONS: Record<string, React.ElementType> = {
+const FILE_ICONS: Record<string, React.ComponentType<any>> = {
   pdf:  FileText,
   docx: FileText,
   pptx: FileImage,
