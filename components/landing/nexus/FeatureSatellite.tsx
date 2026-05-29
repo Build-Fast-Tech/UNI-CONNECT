@@ -34,7 +34,6 @@ export function FeatureSatellite({ position, title, description, iconColor, inde
             anisotropy={0.1} 
             distortion={0.1} 
             distortionScale={0.1} 
-            temporalFilter={0.8} 
             color="rgba(255,255,255,0.1)"
           />
         </mesh>

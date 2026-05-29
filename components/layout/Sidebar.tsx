@@ -15,15 +15,16 @@ import { useCurrentUser } from "@/components/providers/UserProvider";
 import { createClient } from "@/lib/supabase/client";
 
 
-interface NavChild { href: string; icon: React.ElementType; label: string; }
-interface NavItem {
-  href: string;
-  icon: React.ElementType;
+interface NavChild { href: string; icon: React.ComponentType<any>; label: string; showBadge?: boolean; isNew?: boolean; }
+interface NavGroup {
   label: string;
+  icon: React.ComponentType<any>;
+  href: string;
   showBadge?: boolean;
   isNew?: boolean;
   children?: NavChild[];
 }
+type NavItem = NavChild | NavGroup;
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/feed",         icon: Home,          label: "Home" },
@@ -143,7 +144,7 @@ function SidebarContent({
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto" data-lenis-prevent>
         {NAV_ITEMS.map(item => {
           /* ── Expandable item (Career Center) ── */
-          if (item.children) {
+          if ("children" in item && item.children) {
             const isOpen = expanded.has(item.label);
             const childActive = item.children.some(c => isActive(c.href, c.label));
             return (

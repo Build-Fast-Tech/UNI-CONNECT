@@ -148,7 +148,7 @@ function HeroBanner({ daysLeft, showDatePicker, setShowDatePicker, dateInput, se
   );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: string; sub: string; icon: React.ElementType; color: string }) {
+function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: string; sub: string; icon: React.ComponentType<any>; color: string }) {
   return (
     <div className="theme-card p-4 flex items-center gap-3 flex-1 animate-fade-up">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: color + "22" }}>
