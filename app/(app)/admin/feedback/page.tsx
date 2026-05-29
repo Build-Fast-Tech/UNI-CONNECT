@@ -194,7 +194,7 @@ export default function AdminFeedbackPage() {
         <div className="space-y-3">
           {filtered.map(item => {
             const cfg = STATUS_CONFIG[item.status ?? "pending"];
-            const TypeIcon = TYPE_ICONS[item.type] ?? HelpCircle;
+            const TypeIcon: React.ElementType = TYPE_ICONS[item.type] ?? HelpCircle;
             const StatusIcon = cfg.icon;
             const isActing = acting === item.id;
             const showReject = showRejectInput[item.id];
