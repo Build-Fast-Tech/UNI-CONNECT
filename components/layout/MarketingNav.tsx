@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "#features",      label: "Features" },
+  { href: "#features",      label: "Features", accent: true },
   { href: "#universities",  label: "Universities" },
   { href: "/jobs",          label: "Jobs" },
   { href: "/notes",         label: "Notes" },
@@ -53,7 +53,8 @@ export function MarketingNav() {
                 className={cn(
                   "nav-item-liquid px-3.5 py-2 rounded-xl text-sm font-medium",
                   "text-white/50 hover:text-white/90",
-                  "transition-colors duration-300"
+                  "transition-colors duration-300",
+                  link.accent && "text-emerald-400/90 hover:text-emerald-300"
                 )}
               >
                 {link.label}
