@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { date, subjects = [], studyHours = 6, startHour = 9 } = await req.json();
+  const rl = rateLimit(rateLimitKey("ai-schedule", user.id, req), {
+    windowMs: 60 * 1000,
+    max: 6,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again shortly." },
+      { status: 429, headers: rateLimitHeaders(rl) },
+    );
+  }
+
+  let body: { date?: unknown; subjects?: unknown; studyHours?: unknown; startHour?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const date = typeof body.date === "string" ? body.date : new Date().toISOString().slice(0, 10);
+  const subjects = Array.isArray(body.subjects) ? body.subjects.slice(0, 20).map(String) : [];
+  const studyHours = Number(body.studyHours) || 6;
+  const startHour = Number(body.startHour) || 9;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "AI not configured" }, { status: 503 });

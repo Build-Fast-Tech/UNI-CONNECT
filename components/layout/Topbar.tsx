@@ -308,6 +308,7 @@ export function Topbar({ onMenuClick, unreadCount, markAllRead }: TopbarProps) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => { if (results.length > 0) setOpen(true); }}
+            aria-label="Search notes, jobs, people, and universities"
             placeholder="Search notes, jobs, people, universities..."
             className={cn(
               "w-full h-9 pl-9 pr-3 rounded-xl text-sm",

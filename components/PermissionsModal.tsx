@@ -25,21 +25,32 @@ function errorLabel(state: PermResult): string {
   }
 }
 
+// If the user ignores the browser prompt entirely, getUserMedia can stay pending
+// forever — which would leave the row stuck on "Waiting…". Cap it so the UI always
+// settles into a retry-able state. (The modal is dismissible regardless.)
+const ASK_TIMEOUT_MS = 45_000;
+
 async function tryGetMedia(constraints: MediaStreamConstraints): Promise<PermResult> {
-  if (!window.isSecureContext) return "insecure";
+  if (typeof window === "undefined" || !window.isSecureContext) return "insecure";
   if (!navigator.mediaDevices?.getUserMedia) return "insecure";
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    stream.getTracks().forEach(t => t.stop());
-    return "granted";
-  } catch (err) {
-    if (err instanceof DOMException) {
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") return "blocked";
-      if (err.name === "NotReadableError" || err.name === "TrackStartError")      return "inuse";
-      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError")    return "nohardware";
+  const timeout = new Promise<PermResult>((resolve) =>
+    setTimeout(() => resolve("error"), ASK_TIMEOUT_MS)
+  );
+  const attempt = (async (): Promise<PermResult> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream.getTracks().forEach(t => t.stop());
+      return "granted";
+    } catch (err) {
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") return "blocked";
+        if (err.name === "NotReadableError" || err.name === "TrackStartError")      return "inuse";
+        if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError")    return "nohardware";
+      }
+      return "error";
     }
-    return "error";
-  }
+  })();
+  return Promise.race([attempt, timeout]);
 }
 
 const BAD_STATES: PermResult[] = ["blocked", "inuse", "nohardware", "insecure", "error"];

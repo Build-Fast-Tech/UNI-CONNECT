@@ -2,7 +2,7 @@
 
 import React, { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stars, PerspectiveCamera, Environment, Float } from "@react-three/drei";
+import { OrbitControls, Stars, PerspectiveCamera } from "@react-three/drei";
 import { Core } from "./Core";
 import { FeatureSatellite } from "./FeatureSatellite";
 import { MemoryBubble } from "./MemoryBubble";
@@ -95,10 +95,12 @@ export function NexusScene() {
 
         {/* Space Environment */}
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-        <Environment preset="city" />
+        {/* NOTE: dropped <Environment preset="city" /> — it fetched an external HDR
+            (drei-assets CDN) that the production CSP correctly blocks. The explicit
+            light rig below covers the scene; ambient is raised to compensate. */}
 
         {/* Lighting */}
-        <ambientLight intensity={0.2} />
+        <ambientLight intensity={0.35} />
         <pointLight position={[10, 10, 10]} intensity={1.5} color="#8B00FF" />
         <pointLight position={[-10, -10, -10]} intensity={1.5} color="#00ced1" />
         <spotLight position={[0, 10, 0]} intensity={2} angle={0.3} penumbra={1} castShadow />

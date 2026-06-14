@@ -42,21 +42,27 @@ export class LayoutErrorBoundary extends Component<Props, State> {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              height: "100vh",
+              minHeight: "60vh",
+              width: "100%",
               gap: "12px",
-              fontFamily: "sans-serif",
-              color: "#fff",
-              background: "#000",
+              padding: "24px",
+              textAlign: "center",
+              fontFamily: "var(--font-geist-sans, system-ui, sans-serif)",
+              color: "rgb(var(--fg))",
+              background: "rgb(var(--bg))",
             }}
           >
-            <p style={{ fontSize: 14, opacity: 0.6 }}>Layout error — please reload</p>
+            <p style={{ fontSize: 16, fontWeight: 700 }}>Something went wrong</p>
+            <p style={{ fontSize: 14, opacity: 0.6, maxWidth: 360 }}>
+              A part of the page failed to load. Reloading usually fixes it.
+            </p>
             <button
               onClick={() => window.location.reload()}
               style={{
-                padding: "8px 20px",
+                padding: "10px 22px",
                 borderRadius: 12,
-                background: "#6366f1",
-                color: "#fff",
+                background: "rgb(var(--primary))",
+                color: "rgb(var(--primary-fg))",
                 border: "none",
                 cursor: "pointer",
                 fontSize: 14,

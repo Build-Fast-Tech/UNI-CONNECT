@@ -1,10 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@/lib/supabase/server";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+const clamp = (v: unknown, max: number) =>
+  (typeof v === "string" ? v : "").slice(0, max);
+
 export async function POST(req: NextRequest) {
-  const { topic, difficulty, language, customInstructions } = await req.json();
+  // Require auth + rate limit: each call hits the paid Gemini API, so an open
+  // endpoint is a direct cost-abuse vector.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rl = rateLimit(rateLimitKey("ai-problem", user.id, req), {
+    windowMs: 60 * 1000,
+    max: 6,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again shortly." },
+      { status: 429, headers: rateLimitHeaders(rl) },
+    );
+  }
+
+  let parsedBody: { topic?: unknown; difficulty?: unknown; language?: unknown; customInstructions?: unknown };
+  try {
+    parsedBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const topic = clamp(parsedBody.topic, 120) || "General";
+  const difficulty = clamp(parsedBody.difficulty, 40) || "medium";
+  const language = clamp(parsedBody.language, 40) || "cpp";
+  const customInstructions = clamp(parsedBody.customInstructions, 500);
 
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({

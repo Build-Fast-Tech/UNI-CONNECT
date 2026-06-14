@@ -58,7 +58,7 @@ types/database.ts     # Generated Supabase database types (636 lines)
 - Channel unread tracking uses `localStorage` (`uc_channel_last_read_{userId}`)
 - Inbox notification tracking uses `localStorage` (`uc_inbox_last_seen_{userId}`)
 - Realtime subscriptions used for chat messages, presence, notifications
-- `/api/debug-env` exists (dev-only, returns Supabase URL/key status and session info)
+- Debug endpoints (`/api/debug-env`, `/api/debug-profile`) were removed during the security hardening pass — do not reintroduce service-role debug routes into the committed tree
 - Permissions modal (`PermissionsModal.tsx`) handles camera/mic/notification permission requests with localStorage flag
 - Rate limiting is in-memory (`Map`) — not safe across multiple Vercel replicas
 

@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -11,12 +12,31 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
+    // Each parse downloads a file and runs a paid Gemini call — cap it tightly.
+    const rl = rateLimit(rateLimitKey("cv-parse", user.id, req), {
+      windowMs: 60 * 60 * 1000,
+      max: 20,
+    });
+    if (!rl.ok) {
+      return Response.json(
+        { error: "Too many CV analyses. Try again later." },
+        { status: 429, headers: rateLimitHeaders(rl) },
+      );
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       return Response.json({ error: "AI not configured" }, { status: 503 });
     }
 
-    const { cvId } = await req.json();
-    if (!cvId) return Response.json({ error: "cvId required" }, { status: 400 });
+    let cvId: unknown;
+    try {
+      ({ cvId } = await req.json());
+    } catch {
+      return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    if (typeof cvId !== "string" || !cvId) {
+      return Response.json({ error: "cvId required" }, { status: 400 });
+    }
 
     const { data: cv } = await supabase
       .from("cvs")

@@ -1,22 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@/lib/supabase/server";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { hours, subjects, breakMins } = await req.json();
+    // Require auth + rate limit: this calls the paid Gemini API.
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const subjectList = (subjects as string)
+    const rl = rateLimit(rateLimitKey("ai-schedule", user.id, req), {
+      windowMs: 60 * 1000,
+      max: 6,
+    });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again shortly." },
+        { status: 429, headers: rateLimitHeaders(rl) },
+      );
+    }
+
+    let body: { hours?: unknown; subjects?: unknown; breakMins?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const subjectList = (typeof body.subjects === "string" ? body.subjects : "")
       .split(",")
       .map((s: string) => s.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, 20);
 
     if (subjectList.length === 0) {
       return NextResponse.json({ error: "No subjects provided." }, { status: 400 });
     }
 
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const hours = Number(body.hours) || 6;
+    const breakMins = Number(body.breakMins) || 10;
+
+    // Only the server-side GEMINI_API_KEY — never a NEXT_PUBLIC_* key, which
+    // would be inlined into the client bundle and leak the credential.
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "AI service not configured." }, { status: 500 });
+      return NextResponse.json({ error: "AI service not configured." }, { status: 503 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);

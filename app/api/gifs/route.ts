@@ -1,14 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { rateLimit, rateLimitKey, rateLimitHeaders } from "@/lib/rate-limit";
 
 // Priority: Giphy key → Tenor v2 (Google) key → no results with a hint
 const GIPHY_KEY  = process.env.GIPHY_API_KEY;
 const TENOR_KEY  = process.env.TENOR_API_KEY; // Google API key with Tenor API enabled
 
 export async function GET(req: NextRequest) {
+  // This proxy spends our Giphy/Tenor quota, so gate it behind auth and a
+  // generous per-user rate limit rather than leaving it open to the world.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ results: [] }, { status: 401 });
+
+  const rl = rateLimit(rateLimitKey("gifs", user.id, req), {
+    windowMs: 60 * 1000,
+    max: 40,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { results: [], error: "Too many requests" },
+      { status: 429, headers: rateLimitHeaders(rl) },
+    );
+  }
+
   const { searchParams } = new URL(req.url);
-  const q     = searchParams.get("q")    ?? "";
-  const type  = searchParams.get("type") ?? "gif";
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "9"), 24);
+  const q     = (searchParams.get("q") ?? "").slice(0, 100);
+  const type  = searchParams.get("type") === "sticker" ? "sticker" : "gif";
+  const parsedLimit = parseInt(searchParams.get("limit") ?? "9", 10);
+  const limit = Number.isFinite(parsedLimit)
+    ? Math.min(Math.max(parsedLimit, 1), 24)
+    : 9;
 
   // ── Giphy (recommended — free key at developers.giphy.com) ──────────────
   if (GIPHY_KEY) {
@@ -26,11 +48,18 @@ export async function GET(req: NextRequest) {
       const res  = await fetch(url, { next: { revalidate: 60 } });
       const data = await res.json();
       if (data.meta?.status === 200) {
-        const results = (data.data ?? []).map((g: any) => ({
+        type GiphyItem = {
+          id?: string;
+          images?: {
+            original?: { url?: string };
+            fixed_height_small?: { url?: string };
+          };
+        };
+        const results = ((data.data ?? []) as GiphyItem[]).map((g) => ({
           id:      g.id,
           url:     g.images?.original?.url ?? "",
           preview: g.images?.fixed_height_small?.url ?? g.images?.original?.url ?? "",
-        })).filter((r: any) => r.url);
+        })).filter((r) => r.url);
         return NextResponse.json({ results, provider: "giphy" });
       }
     } catch (e) {
@@ -49,14 +78,21 @@ export async function GET(req: NextRequest) {
       const res  = await fetch(url, { next: { revalidate: 60 } });
       const data = await res.json();
       if (!data.error) {
-        const results = (data.results ?? []).map((item: any) => {
+        type TenorItem = {
+          id?: string;
+          media_formats?: {
+            gif?: { url?: string };
+            tinygif?: { url?: string };
+          };
+        };
+        const results = ((data.results ?? []) as TenorItem[]).map((item) => {
           const fmt = item.media_formats ?? {};
           return {
             id:      item.id,
             url:     fmt.gif?.url     ?? "",
             preview: fmt.tinygif?.url ?? fmt.gif?.url ?? "",
           };
-        }).filter((r: any) => r.url);
+        }).filter((r) => r.url);
         return NextResponse.json({ results, provider: "tenor" });
       }
     } catch (e) {

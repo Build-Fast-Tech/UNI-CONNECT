@@ -92,48 +92,71 @@ export default function OnboardingPage() {
   const handleComplete = async () => {
     setError("");
     if (!bio.trim()) { setError("Please write a short bio."); return; }
+    if (loading) return; // guard against double-submit
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
 
-    let avatar_url: string | undefined;
-
-    if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `${user.id}/avatar.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, avatarFile, { upsert: true });
-
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-        avatar_url = urlData.publicUrl;
+    // Everything is wrapped so a network/storage error can NEVER leave the
+    // button frozen on "loading" or trap the user on this screen.
+    try {
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) {
+        // Session lost — send them back to log in instead of spinning forever.
+        router.replace("/login?next=/onboarding");
+        return;
       }
-    }
 
-    const { error: updateError } = await (supabase.from("profiles") as any).upsert({
-      id: user.id,
-      email: user.email,
-      full_name: user.user_metadata?.full_name ?? "",
-      university_id: selectedUni?.id,
-      branch_id: selectedBranch?.id ?? null,
-      department: department || null,
-      year_of_study: year ? YEARS.indexOf(year) + 1 : null,
-      bio: bio || null,
-      avatar_url: avatar_url ?? null,
-    }, { onConflict: "id" });
+      let avatar_url: string | undefined;
 
-    if (updateError) {
-      const msg = updateError.message ?? JSON.stringify(updateError);
-      alert("Save failed: " + msg);
-      setError(msg);
+      // Avatar upload is best-effort: a failed/slow upload must not block
+      // onboarding completion — the user can add a photo later.
+      if (avatarFile) {
+        try {
+          const ext = (avatarFile.name.split(".").pop() || "png").toLowerCase();
+          const path = `${user.id}/avatar.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("avatars")
+            .upload(path, avatarFile, { upsert: true });
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+            avatar_url = urlData.publicUrl;
+          }
+        } catch (uploadErr) {
+          console.warn("Avatar upload failed (continuing without it):", uploadErr);
+        }
+      }
+
+      const { error: updateError } = await (supabase.from("profiles") as any).upsert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name ?? "",
+        university_id: selectedUni?.id,
+        branch_id: selectedBranch?.id ?? null,
+        department: department || null,
+        year_of_study: year ? YEARS.indexOf(year) + 1 : null,
+        bio: bio || null,
+        avatar_url: avatar_url ?? null,
+      }, { onConflict: "id" });
+
+      if (updateError) {
+        setError(updateError.message ?? "Could not save your profile. Please try again.");
+        return;
+      }
+
+      // Mark onboarding complete so proxy.ts stops redirecting
+      document.cookie = "uc_onboarded=1; path=/; max-age=31536000; SameSite=Lax";
+      // replace() so the back button can't return to a now-completed onboarding
+      router.replace("/feed");
+    } catch (err) {
+      console.error("Onboarding completion failed:", err);
+      setError(
+        err instanceof Error
+          ? `Something went wrong: ${err.message}. Please check your connection and try again.`
+          : "Something went wrong. Please check your connection and try again."
+      );
+    } finally {
+      // ALWAYS clear loading so the button can never stay stuck spinning.
       setLoading(false);
-      return;
     }
-
-    // Mark onboarding complete so proxy.ts stops redirecting
-    document.cookie = "uc_onboarded=1; path=/; max-age=31536000; SameSite=Lax";
-    router.push("/feed");
   };
 
   return (

@@ -86,6 +86,26 @@ function LiquidRippleButton({ children, className = "", primary = false, href = 
   );
 }
 
+// Star positions are precomputed deterministically (seeded PRNG) at module load
+// so the server and client render byte-identical markup. Using Math.random()
+// inline caused a React hydration mismatch (console errors + layout shift).
+const STARS = (() => {
+  let seed = 0x9e3779b9;
+  const rand = () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return Array.from({ length: 15 }, () => ({
+    left: `${(rand() * 100).toFixed(4)}%`,
+    top: `${(rand() * 100).toFixed(4)}%`,
+    dur: `${(3 + rand() * 3).toFixed(4)}s`,
+    delay: `${(rand() * 4).toFixed(4)}s`,
+  }));
+})();
+
 export function HeroSection() {
   const orbRef = useRef<HTMLDivElement>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
@@ -109,15 +129,15 @@ export function HeroSection() {
     <section className="relative min-h-[92vh] flex items-center pt-28 pb-16 overflow-hidden">
       {/* Background Star field */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        {Array.from({ length: 15 }).map((_, i) => (
+        {STARS.map((s, i) => (
           <div
             key={i}
             className="star-particle"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              ["--twinkle-dur" as string]: `${3 + Math.random() * 3}s`,
-              ["--twinkle-delay" as string]: `${Math.random() * 4}s`,
+              left: s.left,
+              top: s.top,
+              ["--twinkle-dur" as string]: s.dur,
+              ["--twinkle-delay" as string]: s.delay,
             }}
           />
         ))}
