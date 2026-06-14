@@ -49,11 +49,27 @@ export async function POST(req: Request) {
       return Response.json({ error: "CV not found" }, { status: 404 });
     }
 
+    // Only ever fetch the user's own CV from our public storage bucket — the cvs
+    // row is written client-side, so file_url is untrusted. Pinning it to the
+    // storage prefix blocks SSRF to internal/metadata endpoints.
+    const storagePrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/cvs/`;
+    if (!cv.file_url.startsWith(storagePrefix)) {
+      return Response.json({ error: "Invalid CV file location" }, { status: 400 });
+    }
+
     const fileRes = await fetch(cv.file_url);
     if (!fileRes.ok)
       return Response.json({ error: "Failed to download CV" }, { status: 502 });
 
+    // Cap the download so a large file can't exhaust function memory.
+    const MAX_CV_BYTES = 10 * 1024 * 1024; // 10 MB
+    if (Number(fileRes.headers.get("content-length") ?? "0") > MAX_CV_BYTES) {
+      return Response.json({ error: "CV file too large" }, { status: 413 });
+    }
     const buffer = await fileRes.arrayBuffer();
+    if (buffer.byteLength > MAX_CV_BYTES) {
+      return Response.json({ error: "CV file too large" }, { status: 413 });
+    }
     const base64 = Buffer.from(buffer).toString("base64");
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });

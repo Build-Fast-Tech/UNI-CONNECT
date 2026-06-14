@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeSearchTerm } from "@/lib/utils";
 
 interface Profile {
   id: string;
@@ -126,12 +126,16 @@ export default function FriendsPage() {
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       if (!userId) return;
-      const usernameQuery = query.startsWith("@") ? query.slice(1) : query;
+      // Sanitize before interpolating into the PostgREST `.or()` filter.
+      const term = sanitizeSearchTerm(query);
+      const usernameQuery = (query.startsWith("@") ? query.slice(1) : query)
+        .toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30);
+      if (!term && !usernameQuery) { setSearchResults([]); setSearching(false); return; }
       const { data } = await supabase
         .from("profiles")
         .select("id, full_name, username, avatar_url")
         .neq("id", userId)
-        .or(`full_name.ilike.%${query}%,username.ilike.%${usernameQuery}%`)
+        .or(`full_name.ilike.%${term}%,username.ilike.%${usernameQuery}%`)
         .limit(10);
 
       setSearchResults((data as Profile[]) ?? []);

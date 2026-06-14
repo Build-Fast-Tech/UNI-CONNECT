@@ -85,3 +85,20 @@ export function formatTypingNames(names: string[]): string {
   if (n === 3) return `${names[0]}, ${names[1]}, and ${names[2]} are typing…`;
   return "Several people are typing…";
 }
+
+/**
+ * Make a free-text search term safe to interpolate into a Supabase/PostgREST
+ * filter string such as `.or("name.ilike.%<term>%")`.
+ *
+ * Removes the characters that have structural meaning in a PostgREST logic-tree
+ * filter — `(` `)` `,` — so a user can't break out of the filter and inject
+ * extra conditions, plus the LIKE wildcards `%` `_` `*` and backslash so they
+ * can't smuggle wildcards. Whitespace is collapsed and the result length-capped.
+ */
+export function sanitizeSearchTerm(input: string, maxLen = 60): string {
+  return (input ?? "")
+    .replace(/[(),%_*\\"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLen);
+}

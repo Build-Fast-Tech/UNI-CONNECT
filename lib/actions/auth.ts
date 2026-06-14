@@ -14,7 +14,7 @@ export async function signUpAction(data: {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !key) {
-      return { error: `Server config missing: URL=${url ? "ok" : "missing"} KEY=${key ? "ok" : "missing"}` };
+      return { error: "Service temporarily unavailable. Please try again later." };
     }
 
     const supabase = await createClient();
@@ -63,7 +63,7 @@ export async function signInAction(data: {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !key) {
-      return { error: `Server config missing: URL=${url ? "ok" : "missing"} KEY=${key ? "ok" : "missing"}` };
+      return { error: "Service temporarily unavailable. Please try again later." };
     }
 
     const supabase = await createClient();

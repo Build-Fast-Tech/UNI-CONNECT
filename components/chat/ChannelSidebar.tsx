@@ -139,7 +139,7 @@ function UserSearch({ onLinkClick, myId }: { onLinkClick?: () => void; myId: str
       const { data } = await supabase
         .from("profiles")
         .select("id, full_name, username, avatar_url")
-        .ilike("username", `${clean.trim()}%`)
+        .ilike("username", `${clean.trim().replace(/[%_\\]/g, "")}%`)
         .neq("id", myId ?? "")
         .limit(6);
       setResults((data as UserSearchResult[]) ?? []);

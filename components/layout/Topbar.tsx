@@ -4,7 +4,7 @@ import { Search, Bell, Menu, Plus } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeSearchTerm } from "@/lib/utils";
 
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
@@ -211,15 +211,20 @@ export function Topbar({ onMenuClick, unreadCount, markAllRead }: TopbarProps) {
     if (!q.trim()) { setResults([]); setOpen(false); return; }
     setSearching(true);
     const supabase = createClient();
-    const usernameQuery = q.startsWith("@") ? q.slice(1) : q;
+    // Sanitize before interpolating into PostgREST filters — prevents `.or()`
+    // filter-injection and wildcard injection from the search box.
+    const term = sanitizeSearchTerm(q);
+    const usernameQuery = (q.startsWith("@") ? q.slice(1) : q)
+      .toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30);
+    if (!term && !usernameQuery) { setResults([]); setOpen(false); setSearching(false); return; }
 
     // People search is username-only (strip @ if typed)
     const [
       { data: notes }, { data: jobs }, { data: unis }, { data: byUsername },
     ] = await Promise.all([
-      supabase.from("notes").select("id, title, subject").eq("status", "published").ilike("title", `%${q}%`).limit(3),
-      supabase.from("jobs").select("id, title, company_name").eq("status", "active").ilike("title", `%${q}%`).limit(2),
-      supabase.from("universities").select("id, name, short_name, slug").or(`name.ilike.%${q}%,short_name.ilike.%${q}%`).limit(2),
+      supabase.from("notes").select("id, title, subject").eq("status", "published").ilike("title", `%${term}%`).limit(3),
+      supabase.from("jobs").select("id, title, company_name").eq("status", "active").ilike("title", `%${term}%`).limit(2),
+      supabase.from("universities").select("id, name, short_name, slug").or(`name.ilike.%${term}%,short_name.ilike.%${term}%`).limit(2),
       supabase.from("profiles").select("id, full_name, username, avatar_url")
         .ilike("username", `${usernameQuery}%`).limit(5),
     ]);
