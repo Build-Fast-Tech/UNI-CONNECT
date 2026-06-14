@@ -36,7 +36,7 @@ if (!dbPassword) {
 // Extract project ref from NEXT_PUBLIC_SUPABASE_URL
 const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || "";
 const projectRefMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
-const projectRef = projectRefMatch ? projectRefMatch[1] : "mwpuwgoesgvsvknhqmor";
+const projectRef = projectRefMatch ? projectRefMatch[1] : "mxlfreenahsqdclabemx";
 
 const connectionString = `postgresql://postgres.${projectRef}:${encodeURIComponent(dbPassword)}@aws-1-ap-south-1.pooler.supabase.com:6543/postgres`;
 

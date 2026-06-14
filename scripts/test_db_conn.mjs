@@ -14,7 +14,7 @@ const passwords = [
 
 async function tryPassword(password) {
   const client = new Client({
-    host: "db.mwpuwgoesgvsvknhqmor.supabase.co",
+    host: "db.mxlfreenahsqdclabemx.supabase.co",
     port: 5432,
     database: "postgres",
     user: "postgres",

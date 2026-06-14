@@ -2,8 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import { readdir, readFile, stat } from "fs/promises";
 import path from "path";
 
-const SUPABASE_URL = "https://mwpuwgoesgvsvknhqmor.supabase.co";
-const SERVICE_KEY = "***REMOVED_LEAKED_SERVICE_ROLE_KEY***";
+// Credentials come from the environment — run with:
+//   node --env-file=.env.local scripts/upload-notes.mjs
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (run with --env-file=.env.local)");
+  process.exit(1);
+}
 const ROOT = "E:\\UPLOADS\\fsc-past-papers-main\\fsc-past-papers-main";
 const SEMESTER_LABELS = ["1st","2nd","3rd","4th","5th","6th","7th","8th"];
 const BUCKET = "notes";
