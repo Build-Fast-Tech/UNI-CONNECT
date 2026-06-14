@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/components/providers/UserProvider";
 import { useInboxNotifications } from "@/lib/hooks/useInboxNotifications";
 import { LayoutErrorBoundary } from "./LayoutErrorBoundary";
 import { createClient } from "@/lib/supabase/client";
+import { PermissionsModal } from "@/components/PermissionsModal";
 
 /**
  * OnboardingGuard — queries the DB directly to check onboarding status.
@@ -106,11 +107,19 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {showModal && (
+      {/* Username setup is required, so it takes priority. The permissions
+          modal renders here — at the shell root, OUTSIDE the pointer-events-none
+          <main> — and only when the username modal isn't up. Previously it lived
+          inside <main>, so when the username modal disabled <main> the
+          permissions overlay (z-[200]) sat on top while being unclickable,
+          trapping the user. */}
+      {showModal ? (
         <UsernameSetupModal
           userId={userId}
           onDone={(u) => setSessionUsername(u)}
         />
+      ) : (
+        <PermissionsModal />
       )}
     </div>
   );
