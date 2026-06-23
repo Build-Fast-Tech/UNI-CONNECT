@@ -25,8 +25,13 @@ const playfairDisplay = Playfair_Display({
   display: "swap",
 });
 
+// Canonical site URL. Set NEXT_PUBLIC_SITE_URL in Vercel (to the live domain or
+// a custom domain). Falls back to the live deployment — never the unconfigured
+// uniconnect.pk, which previously poisoned canonical/OG/JSON-LD for Google.
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://uni-connect-official.vercel.app";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://uniconnect.pk"),
+  metadataBase: new URL(SITE),
   title: {
     default: "UniConnect — Pakistan's University Student Platform",
     template: "%s | UniConnect",
@@ -41,7 +46,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_PK",
-    url: "https://uniconnect.pk",
+    url: SITE,
     siteName: "UniConnect",
     title: "UniConnect — Pakistan's University Student Platform",
     description: "Notes, societies, study groups, jobs, and AI tutoring for Pakistani university students.",
@@ -66,31 +71,30 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebSite",
-      "@id": "https://uniconnect.pk/#website",
-      url: "https://uniconnect.pk",
+      "@id": `${SITE}/#website`,
+      url: SITE,
       name: "UniConnect",
       description: "Pakistan's all-in-one university student platform",
       potentialAction: {
         "@type": "SearchAction",
-        target: { "@type": "EntryPoint", urlTemplate: "https://uniconnect.pk/notes?q={search_term_string}" },
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE}/notes?q={search_term_string}` },
         "query-input": "required name=search_term_string",
       },
     },
     {
       "@type": "Organization",
-      "@id": "https://uniconnect.pk/#organization",
+      "@id": `${SITE}/#organization`,
       name: "UniConnect",
-      url: "https://uniconnect.pk",
-      logo: { "@type": "ImageObject", url: "https://uniconnect.pk/og-image.png" },
-      sameAs: ["https://github.com/ruvnet/uniconnect"],
+      url: SITE,
+      logo: { "@type": "ImageObject", url: `${SITE}/og-image.png` },
       description: "The all-in-one platform for Pakistani university students — notes, societies, study groups, jobs, and AI tutoring.",
     },
     {
       "@type": "EducationalOrganization",
-      "@id": "https://uniconnect.pk/#edu",
+      "@id": `${SITE}/#edu`,
       name: "UniConnect",
       description: "Connecting Pakistani university students through shared notes, societies, and collaborative study tools.",
-      url: "https://uniconnect.pk",
+      url: SITE,
     },
   ],
 };
