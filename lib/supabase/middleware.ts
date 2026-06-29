@@ -69,6 +69,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // A logged-in user landing on the marketing home ("/") — e.g. by clicking the
+  // UniConnect logo — should go straight to their app home, not the landing page.
+  if (pathname === "/" && user) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/feed";
+    return NextResponse.redirect(redirectUrl);
+  }
+
   // IMPORTANT: Must return supabaseResponse (not a new NextResponse) so that
   // the session cookies set by Supabase are forwarded to the browser.
   return supabaseResponse;

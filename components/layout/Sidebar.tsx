@@ -100,7 +100,7 @@ function SidebarContent({
     <>
       {/* Logo */}
       <div className="px-4 mb-3 flex items-center justify-between">
-        <Link href="/" onClick={onLinkClick} className="flex items-center gap-2">
+        <Link href="/feed" onClick={onLinkClick} className="flex items-center gap-2">
           <span className="font-bold text-xl tracking-tight">
             Uni<span className="text-[rgb(var(--primary))]">Connect</span>
           </span>

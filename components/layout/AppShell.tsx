@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserProvider } from "@/components/providers/UserProvider";
+import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { UsernameSetupModal } from "@/components/ui/UsernameSetupModal";
@@ -128,7 +129,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <UserProvider>
-      <AppShellInner>{children}</AppShellInner>
+      <PresenceProvider>
+        <AppShellInner>{children}</AppShellInner>
+      </PresenceProvider>
     </UserProvider>
   );
 }

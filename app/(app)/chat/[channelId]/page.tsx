@@ -416,6 +416,9 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   const subRef         = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const reactSubRef    = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const pollSubRef     = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // Always-current set of displayed message ids, so realtime reaction handlers
+  // don't capture a stale list and miss reactions on newly-arrived messages.
+  const messageIdsRef  = useRef<Set<string>>(new Set());
   const typingTimers   = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const profileCache   = useRef<Map<string, Profile>>(new Map());
   const gifSearchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -996,31 +999,43 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
-  // ─── Realtime: reactions ──────────────────────────────────────────────────────
+  // Keep the live message-id set in sync for the realtime reaction handlers.
   useEffect(() => {
-    if (messages.length === 0) return;
-    const ids = messages.map(m => m.id);
+    messageIdsRef.current = new Set(messages.map(m => m.id));
+  }, [messages]);
+
+  // ─── Realtime: reactions ──────────────────────────────────────────────────────
+  // Subscribes once per channel (not per message batch) and reads the current
+  // message ids from a ref, so reactions fan out live for every message —
+  // including ones that arrived after the page loaded.
+  useEffect(() => {
     const reactSub = supabase.channel(`reactions:${channelId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "message_reactions" },
         (payload) => {
           const row = payload.new as { message_id: string; user_id: string; emoji: string };
-          if (!ids.includes(row.message_id)) return;
-          setReactions(prev => ({
-            ...prev,
-            [row.message_id]: {
-              ...prev[row.message_id],
-              [row.emoji]: [...(prev[row.message_id]?.[row.emoji] ?? []), row.user_id],
-            },
-          }));
+          if (!messageIdsRef.current.has(row.message_id)) return;
+          setReactions(prev => {
+            const current = prev[row.message_id]?.[row.emoji] ?? [];
+            // Skip if this user is already counted (e.g. our own optimistic add
+            // echoing back) so reactions never double-count.
+            if (current.includes(row.user_id)) return prev;
+            return {
+              ...prev,
+              [row.message_id]: {
+                ...prev[row.message_id],
+                [row.emoji]: [...current, row.user_id],
+              },
+            };
+          });
         }
       )
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "message_reactions" },
         (payload) => {
           const row = payload.old as { message_id: string; user_id: string; emoji: string };
           setReactions(prev => {
-            if (!prev[row.message_id]) return prev;
+            if (!prev[row.message_id] || !prev[row.message_id][row.emoji]) return prev;
             const n = { ...prev, [row.message_id]: { ...prev[row.message_id] } };
-            n[row.message_id][row.emoji] = (n[row.message_id][row.emoji] ?? []).filter(u => u !== row.user_id);
+            n[row.message_id][row.emoji] = n[row.message_id][row.emoji].filter(u => u !== row.user_id);
             if (n[row.message_id][row.emoji].length === 0) delete n[row.message_id][row.emoji];
             return n;
           });
@@ -1030,7 +1045,7 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     reactSubRef.current = reactSub;
     return () => { supabase.removeChannel(reactSub); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length > 0, channelId]);
+  }, [channelId]);
 
   // ─── Realtime: poll votes ─────────────────────────────────────────────────────
   useEffect(() => {

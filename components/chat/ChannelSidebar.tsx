@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Globe, Building2, Plus, User, X, Pin, PinOff, Search, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useOnlineUsers } from "@/components/providers/PresenceProvider";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 type ChannelKind = "global" | "university" | "branch" | "dm";
@@ -307,7 +308,9 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
   const [uniChannels, setUniChannels]     = useState<Channel[]>([]);
   const [dmChannels, setDmChannels]       = useState<Channel[]>([]);
   const [pins, setPins]                   = useState<Set<string>>(new Set());
-  const [onlineUsers, setOnlineUsers]     = useState<Set<string>>(new Set());
+  // Online status now comes from the app-wide PresenceProvider, so users show
+  // online everywhere — not only while the chat sidebar is mounted.
+  const onlineUsers = useOnlineUsers();
 
   const togglePin = useCallback((channelId: string) => {
     if (!myId) return;
@@ -404,29 +407,6 @@ export function ChannelSidebar({ mobileOpen = false, onClose }: ChannelSidebarPr
     init();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Global presence — track who is online across the whole app
-  useEffect(() => {
-    if (!myId) return;
-    const pres = supabase.channel("presence:app", {
-      config: { presence: { key: myId } },
-    });
-    pres
-      .on("presence", { event: "sync" }, () => {
-        const state = pres.presenceState<{ userId: string }>();
-        const ids = new Set(
-          Object.values(state).map(subs => (subs[0] as { userId?: string })?.userId).filter((id): id is string => !!id)
-        );
-        setOnlineUsers(ids);
-      })
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED") {
-          await pres.track({ userId: myId });
-        }
-      });
-    return () => { supabase.removeChannel(pres); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId]);
 
   // Realtime: bump channel previews on new message
   useEffect(() => {
