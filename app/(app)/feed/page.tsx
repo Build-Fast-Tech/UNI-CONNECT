@@ -310,10 +310,10 @@ function CVWidget() {
   return (
     <div className="theme-card p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="font-semibold text-sm">CV Upload</p>
+        <p className="font-semibold text-sm">CV Center</p>
         <span className="text-[10px] text-[rgb(var(--muted-fg))]">Required for 3 Apps</span>
       </div>
-       <Link href="/cv-center"
+       <Link href="/cvs"
         className="flex flex-col items-center py-5 border-2 border-dashed border-[rgb(var(--border))] rounded-xl hover:border-[rgb(var(--primary)/0.4)] hover:bg-[rgb(var(--primary)/0.03)] transition-all group">
         <div className="w-10 h-10 rounded-xl bg-[rgb(var(--primary)/0.1)] flex items-center justify-center mb-2">
           <Upload className="w-5 h-5 text-[rgb(var(--primary))]" />
@@ -703,31 +703,33 @@ export default function FeedPage() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        {/* Row 1: Hero + Stats */}
+        {/* Row 1: Hero + Calendar — calendar sits directly beneath/beside the
+            brown banner and above the Communication Hub, filling the gap that
+            used to be left empty in this row. */}
         <div className="lg:col-span-2"><HeroBanner daysLeft={daysLeft} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateInput={dateInput} setDateInput={setDateInput} onSetDate={setSemesterEnd} subjectsToReview={subjectsToReview} /></div>
-        <div className="flex flex-col gap-4 stagger">
-          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#6366f1" />
-          <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#10b981" />
-          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
-        </div>
+        <div><CalendarWidget userId={userId} /></div>
 
-        {/* Row 2: Comm Hub + Jobs / CV */}
+        {/* Row 2: Comm Hub + Stats */}
         <div className="lg:col-span-2">
           <CommHub
             globalMsgs={globalMsgs} uniMsgs={uniMsgs} privateMsgs={privateMsgs}
             loading={chatLoading} activeTab={chatTab} setActiveTab={setChatTab}
           />
         </div>
+        <div className="flex flex-col gap-4 stagger">
+          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#6366f1" />
+          <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#10b981" />
+          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
+        </div>
+
+        {/* Row 3: Library + Jobs / CV */}
+        <div className="lg:col-span-2">
+          <LibraryWidget notes={notes} loading={notesLoading} activeTab={noteTab} setActiveTab={setNoteTab} />
+        </div>
         <div className="flex flex-col gap-4">
           <JobPortal jobs={jobs} loading={jobsLoading} />
           <CVWidget />
         </div>
-
-        {/* Row 3: Library + Calendar */}
-        <div className="lg:col-span-2">
-          <LibraryWidget notes={notes} loading={notesLoading} activeTab={noteTab} setActiveTab={setNoteTab} />
-        </div>
-        <div><CalendarWidget userId={userId} /></div>
       </motion.div>
 
       <AnimatePresence>

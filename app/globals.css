@@ -194,6 +194,73 @@ a[style*="transform"]:active { transform: none; }
   border-color: rgb(var(--primary) / 0.18);
 }
 
+/* ─── Glass Tabs & Chips (Feed: Communication Hub / The Library) ─── */
+/* Segmented tab bar — e.g. Global · University · Private */
+.glass-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgb(var(--muted) / 0.6);
+  border: 1px solid rgb(var(--border));
+}
+.glass-tab {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: rgb(var(--muted-fg));
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.glass-tab:hover {
+  color: rgb(var(--fg));
+  background: rgb(var(--card) / 0.6);
+}
+.glass-tab.active {
+  color: rgb(var(--primary-fg));
+  background: rgb(var(--primary));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* Scrollable filter chips — e.g. All · Trending · Computer Science · … */
+.glass-chip-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.glass-chip-bar::-webkit-scrollbar { display: none; }
+.glass-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: rgb(var(--muted-fg));
+  background: rgb(var(--muted) / 0.6);
+  border: 1px solid rgb(var(--border));
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.glass-chip:hover {
+  color: rgb(var(--fg));
+  border-color: rgb(var(--primary) / 0.35);
+}
+.glass-chip.active {
+  color: rgb(var(--primary-fg));
+  background: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+}
+
 /* ─── Animated Gradient Mesh ──────────────────────────────────── */
 @keyframes mesh-move {
   0%, 100% { transform: translate(0, 0) scale(1); }

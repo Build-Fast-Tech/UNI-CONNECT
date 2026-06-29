@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import {
   FileUser, Plus, Download, Eye, GraduationCap, MapPin, Briefcase,
-  Search, Upload, Pencil, Trash2, ChevronDown, X, Building2,
+  Search, Upload, Pencil, Trash2, ChevronDown, X, Building2, MousePointerClick,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +24,7 @@ interface CV {
   availability: string | null;
   visibility: "public" | "employers_only" | "private";
   views: number;
+  impressions?: number;
   created_at: string;
   profile?: {
     full_name: string;
@@ -181,10 +182,19 @@ export default function CVsPage() {
         supabase.from("universities").select("id, name, short_name").order("short_name"),
       ]);
 
+      const others = (othersRes.data as CV[]) ?? [];
       setMyCvs((ownRes.data as CV[]) ?? []);
-      setPublicCvs((othersRes.data as CV[]) ?? []);
+      setPublicCvs(others);
       setUniversities((unisRes.data as University[]) ?? []);
       setLoading(false);
+
+      // Count an impression for every CV shown to this viewer (excluding their
+      // own). One batched RPC — safe even if the migration hasn't run yet.
+      const impressionIds = others.filter(cv => cv.user_id !== user.id).map(cv => cv.id);
+      if (impressionIds.length > 0) {
+        // Cast: these RPCs aren't in the generated Database types yet.
+        (supabase as any).rpc("increment_cv_impressions", { ids: impressionIds }).then(() => {}, () => {});
+      }
     })();
   }, []);
 
@@ -266,8 +276,11 @@ export default function CVsPage() {
                   <p className="font-semibold truncate">{cv.headline || "My Resume"}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", vis.color)}>{vis.label}</span>
-                    <span className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1">
-                      <Eye className="w-3 h-3" /> {cv.views} views
+                    <span className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1" title="Times your CV was shown to others">
+                      <Eye className="w-3 h-3" /> {cv.impressions ?? 0} impressions
+                    </span>
+                    <span className="text-xs text-[rgb(var(--muted-fg))] flex items-center gap-1" title="Times someone opened your CV">
+                      <MousePointerClick className="w-3 h-3" /> {cv.views} opens
                     </span>
                     {cv.availability && AVAILABILITY_LABELS[cv.availability] && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">{AVAILABILITY_LABELS[cv.availability]}</span>
@@ -457,8 +470,10 @@ function CvCard({ cv, index, onView }: { cv: CV; index: number; onView: (cv: CV)
             </span>
             {cv.file_url && (
               <button
-                onClick={async () => {
-                  await supabase.from("cvs").update({ views: cv.views + 1 }).eq("id", cv.id);
+                onClick={() => {
+                  // Count the open via a SECURITY DEFINER RPC — a plain UPDATE is
+                  // blocked by RLS on CVs the viewer doesn't own.
+                  (supabase as any).rpc("increment_cv_view", { cv_id: cv.id }).then(() => {}, () => {});
                   onView(cv);
                 }}
                 className="flex items-center gap-1 text-xs text-[rgb(var(--primary))] hover:underline font-medium"

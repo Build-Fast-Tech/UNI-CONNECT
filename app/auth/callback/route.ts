@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import type { Database } from "@/types/database";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -23,7 +25,34 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createClient();
+  // Collect every cookie Supabase wants to write (the refreshed session) and
+  // apply it to the FINAL redirect response below. This is the fix for the
+  // "have to click Google/GitHub twice" bug: when the session cookies were set
+  // via next/headers and we then returned a separate NextResponse.redirect, the
+  // Set-Cookie headers could be dropped, so the first round-trip landed back on
+  // /login unauthenticated and only the second attempt stuck.
+  const cookieStore = await cookies();
+  const pendingCookies: { name: string; value: string; options?: Record<string, unknown> }[] = [];
+
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(cookiesToSet) { pendingCookies.push(...cookiesToSet); },
+      },
+    }
+  );
+
+  // Build a redirect that is GUARANTEED to carry the freshly-set session cookies.
+  const redirectWithSession = (path: string) => {
+    const res = NextResponse.redirect(`${origin}${path}`);
+    pendingCookies.forEach(({ name, value, options }) =>
+      res.cookies.set(name, value, options as never)
+    );
+    return res;
+  };
 
   // PKCE flow: Supabase sends ?code=... after verifying on their server
   if (code) {
@@ -47,10 +76,10 @@ export async function GET(request: Request) {
           ? (safeNext !== "/onboarding" ? safeNext : "/feed")
           : "/onboarding";
 
-        return NextResponse.redirect(`${origin}${destination}`);
+        return redirectWithSession(destination);
       }
       // User object not available — fall back to safeNext
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      return redirectWithSession(safeNext);
     }
     console.error("Auth callback error:", error.message);
     return NextResponse.redirect(
@@ -65,7 +94,7 @@ export async function GET(request: Request) {
       type: type as any,
     });
     if (!error) {
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      return redirectWithSession(safeNext);
     }
     console.error("OTP verification error:", error.message);
     return NextResponse.redirect(

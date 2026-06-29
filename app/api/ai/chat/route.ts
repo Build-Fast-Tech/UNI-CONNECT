@@ -138,6 +138,21 @@ export async function POST(req: Request) {
     } catch (sdkErr: any) {
       const msg = sdkErr?.message ?? String(sdkErr);
       console.error(`Gemini SDK error (model=${MODEL}):`, msg);
+      // Surface a clear, actionable message when the failure is the API key
+      // itself (invalid / expired / restricted / no access to the model) rather
+      // than a generic "Gemini error", so the cause is obvious from the UI/logs.
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("api key") || lower.includes("api_key") ||
+        lower.includes("api-key") || lower.includes("permission") ||
+        lower.includes("unauthenticated") || lower.includes("unauthorized") ||
+        lower.includes("invalid_argument") || lower.includes("403") || lower.includes("401")
+      ) {
+        return new Response(
+          "AI is unavailable: the Gemini API key is missing, invalid, or has no access to this model. Check GEMINI_API_KEY (and GEMINI_MODEL) in the deployment environment.",
+          { status: 502 }
+        );
+      }
       return new Response(`Gemini error: ${msg}`, { status: 502 });
     }
 

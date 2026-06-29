@@ -38,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "#",             icon: Briefcase,     label: "Career Center",
     children: [
-      { href: "/cvs/upload", icon: FileUser, label: "Upload CV" },
+      { href: "/cvs", icon: FileUser, label: "CV Center" },
       { href: "/jobs", icon: Briefcase, label: "Jobs" },
     ],
   },
