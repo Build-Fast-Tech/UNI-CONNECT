@@ -801,31 +801,47 @@ export default function ChatChannelPage({ params }: { params: Promise<{ channelI
     }
   };
 
-  // ─── Reactions ────────────────────────────────────────────────────────────────
+  // ─── Reactions (one per user per message) ─────────────────────────────────────
   const handleReact = async (messageId: string, emoji: string) => {
     if (!userId) return;
-    const existing = reactions[messageId]?.[emoji] ?? [];
-    const hasReacted = existing.includes(userId);
+    const msgReactions = reactions[messageId] ?? {};
+    // Which emoji (if any) has this user already used on this message?
+    const myCurrentEmoji = Object.keys(msgReactions).find(e => msgReactions[e]?.includes(userId)) ?? null;
 
-    if (hasReacted) {
+    // Optimistically strip the user out of every emoji on this message.
+    const stripMine = (map: ReactionsMap): ReactionsMap => {
+      const msg = { ...(map[messageId] ?? {}) };
+      for (const e of Object.keys(msg)) {
+        const next = (msg[e] ?? []).filter(u => u !== userId);
+        if (next.length === 0) delete msg[e]; else msg[e] = next;
+      }
+      return { ...map, [messageId]: msg };
+    };
+
+    // Clicking the same emoji again clears the reaction (toggle off).
+    if (myCurrentEmoji === emoji) {
+      setReactions(prev => stripMine(prev));
       await (supabase as any).from("message_reactions").delete()
         .eq("message_id", messageId).eq("user_id", userId).eq("emoji", emoji);
-      setReactions(prev => {
-        const n = { ...prev, [messageId]: { ...prev[messageId] } };
-        n[messageId][emoji] = (n[messageId][emoji] ?? []).filter(u => u !== userId);
-        if (n[messageId][emoji].length === 0) delete n[messageId][emoji];
-        return n;
-      });
-    } else {
-      await (supabase as any).from("message_reactions").insert({ message_id: messageId, user_id: userId, emoji });
-      setReactions(prev => ({
-        ...prev,
-        [messageId]: {
-          ...prev[messageId],
-          [emoji]: [...(prev[messageId]?.[emoji] ?? []), userId],
-        },
-      }));
+      setHoveredMsgId(null);
+      return;
     }
+
+    // Otherwise switch/add: only ever ONE reaction per user on a message, so
+    // remove any existing one first, then add the new emoji.
+    setReactions(prev => {
+      const stripped = stripMine(prev);
+      const msg = { ...(stripped[messageId] ?? {}) };
+      msg[emoji] = [...(msg[emoji] ?? []), userId];
+      return { ...stripped, [messageId]: msg };
+    });
+
+    if (myCurrentEmoji) {
+      // Delete ALL of this user's reactions on the message (any emoji).
+      await (supabase as any).from("message_reactions").delete()
+        .eq("message_id", messageId).eq("user_id", userId);
+    }
+    await (supabase as any).from("message_reactions").insert({ message_id: messageId, user_id: userId, emoji });
     setHoveredMsgId(null);
   };
 

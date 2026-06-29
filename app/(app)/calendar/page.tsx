@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Plus, X,
   Clock, Calendar, Trash2, CalendarPlus,
+  Sparkles, CalendarDays, TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/components/providers/UserProvider";
@@ -35,6 +36,17 @@ const MONTHS = [
 ];
 
 const EMPTY_BLOCK = (): ScheduleBlock => ({ title: "", start_time: "", end_time: "", color: COLORS[0] });
+
+/** Small frosted stat chip used in the hero header. */
+function StatChip({ icon: Icon, label, value }: { icon: React.ComponentType<any>; label: string; value: number }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm">
+      <Icon className="w-4 h-4 text-white/90" />
+      <span className="text-lg font-bold leading-none">{value}</span>
+      <span className="text-[11px] text-white/75 leading-none">{label}</span>
+    </div>
+  );
+}
 
 export default function CalendarPage() {
   const { userId } = useCurrentUser();
@@ -77,6 +89,7 @@ export default function CalendarPage() {
     (supabase as any).from("calendar_events")
       .select("*").eq("user_id", userId).gte("date", start).lte("date", end)
       .then(({ data }: { data: CalEvent[] | null }) => setEvents(data ?? []));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, year, month]);
 
   const fmt = (d: number) =>
@@ -125,25 +138,57 @@ export default function CalendarPage() {
 
   const todayStr = today.toISOString().split("T")[0];
 
+  // ── Derived stats for the hero ──
+  const todayCount    = events.filter(e => e.date === todayStr).length;
+  const upcomingCount = events.filter(e => e.date >= todayStr).length;
+  const nextEvent = events
+    .filter(e => e.date >= todayStr)
+    .sort((a, b) => (a.date + (a.start_time ?? "")).localeCompare(b.date + (b.start_time ?? "")))[0] ?? null;
+
   return (
-    <section className="min-h-screen pb-24 max-w-4xl mx-auto space-y-4">
-      {/* Header */}
-      <header className="flex items-center justify-between pt-2">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[rgb(var(--primary))]" /> Calendar
-          </h1>
-          <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">Plan your schedule and track your week</p>
+    <section className="min-h-screen pb-28 max-w-4xl mx-auto space-y-4">
+      {/* ── Hero header ── */}
+      <motion.header
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="relative overflow-hidden rounded-2xl p-6 text-white"
+        style={{ background: "linear-gradient(135deg,#4f46e5 0%,#7c3aed 48%,#db2777 100%)" }}
+      >
+        <div className="absolute -right-10 -top-12 w-48 h-48 rounded-full bg-white/10 pointer-events-none" />
+        <div className="absolute right-28 bottom-0 w-32 h-32 rounded-full bg-white/10 translate-y-1/2 pointer-events-none" />
+        <div className="absolute left-1/3 -bottom-16 w-40 h-40 rounded-full bg-white/5 pointer-events-none" />
+
+        <div className="relative z-10 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-white/75 text-[11px] font-semibold uppercase tracking-widest flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            </p>
+            <h1 className="text-3xl font-bold mt-1.5 flex items-center gap-2">
+              <Calendar className="w-7 h-7" /> {MONTHS[month]} <span className="text-white/70 font-semibold">{year}</span>
+            </h1>
+            <p className="text-white/80 text-sm mt-1.5">
+              {nextEvent
+                ? <>Next up: <span className="font-semibold">{nextEvent.title}</span>{nextEvent.start_time ? ` at ${nextEvent.start_time}` : ""}</>
+                : "Nothing planned yet — add your first event below."}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowBuilder(p => !p)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#5b21b6] font-semibold text-sm hover:bg-white/90 transition-colors shadow-lg shadow-black/10"
+          >
+            <CalendarPlus className="w-4 h-4" /> Plan Day
+          </button>
         </div>
-        <button
-          onClick={() => setShowBuilder(p => !p)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          <CalendarPlus className="w-4 h-4" /> Plan Day
-        </button>
-      </header>
 
-      {/* Manual Schedule Builder */}
+        <div className="relative z-10 mt-5 flex gap-2 flex-wrap">
+          <StatChip icon={CalendarDays} label="this month" value={events.length} />
+          <StatChip icon={Clock}        label="today"      value={todayCount} />
+          <StatChip icon={TrendingUp}   label="upcoming"   value={upcomingCount} />
+        </div>
+      </motion.header>
+
+      {/* ── Manual Schedule Builder ── */}
       <AnimatePresence>
         {showBuilder && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
@@ -157,19 +202,16 @@ export default function CalendarPage() {
                 </button>
               </div>
 
-              {/* Date for the schedule */}
               <div>
                 <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Schedule date</label>
                 <input type="date" value={buildDate} onChange={e => setBuildDate(e.target.value)}
                   className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-40" />
               </div>
 
-              {/* Time blocks */}
               <div className="space-y-2">
                 <label className="text-xs text-[rgb(var(--muted-fg))] block">Time blocks</label>
                 {buildBlocks.map((block, i) => (
                   <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    {/* Color dot */}
                     <div className="relative flex-shrink-0">
                       <select
                         value={block.color}
@@ -229,111 +271,28 @@ export default function CalendarPage() {
         )}
       </AnimatePresence>
 
-      {/* Manual Schedule Builder */}
-      <AnimatePresence>
-        {showBuilder && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="theme-card p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-sm flex items-center gap-2">
-                  <CalendarPlus className="w-4 h-4 text-[rgb(var(--primary))]" /> Plan Your Day
-                </p>
-                <button onClick={() => setShowBuilder(false)} className="text-[rgb(var(--muted-fg))] hover:text-[rgb(var(--fg))]">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Date for the schedule */}
-              <div>
-                <label className="text-xs text-[rgb(var(--muted-fg))] mb-1 block">Schedule date</label>
-                <input type="date" value={buildDate} onChange={e => setBuildDate(e.target.value)}
-                  className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-40" />
-              </div>
-
-              {/* Time blocks */}
-              <div className="space-y-2">
-                <label className="text-xs text-[rgb(var(--muted-fg))] block">Time blocks</label>
-                {buildBlocks.map((block, i) => (
-                  <div key={i} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    {/* Color dot */}
-                    <div className="relative flex-shrink-0">
-                      <select
-                        value={block.color}
-                        onChange={e => updateBlock(i, "color", e.target.value)}
-                        className="w-8 h-9 opacity-0 absolute inset-0 cursor-pointer"
-                      >
-                        {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <div className="w-8 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: block.color + "33" }}>
-                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: block.color }} />
-                      </div>
-                    </div>
-
-                    <input
-                      value={block.title}
-                      onChange={e => updateBlock(i, "title", e.target.value)}
-                      placeholder="Event title…"
-                      className="flex-1 min-w-[100px] bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-3 py-2 text-sm outline-none focus:border-[rgb(var(--primary))]"
-                    />
-                    <input type="time" value={block.start_time}
-                      onChange={e => updateBlock(i, "start_time", e.target.value)}
-                      className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-2 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
-                    <span className="text-xs text-[rgb(var(--muted-fg))] flex-shrink-0">–</span>
-                    <input type="time" value={block.end_time}
-                      onChange={e => updateBlock(i, "end_time", e.target.value)}
-                      className="bg-[rgb(var(--muted))] border border-[rgb(var(--border))] rounded-xl px-2 py-2 text-sm outline-none focus:border-[rgb(var(--primary))] w-28 flex-shrink-0" />
-                    {buildBlocks.length > 1 && (
-                      <button onClick={() => removeBlock(i)}
-                        className="p-2 rounded-xl text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => setBuildBlocks(p => [...p, EMPTY_BLOCK()])}
-                  className="flex items-center gap-1.5 text-xs text-[rgb(var(--primary))] hover:underline mt-1"
-                >
-                  <Plus className="w-3 h-3" /> Add another block
-                </button>
-              </div>
-
-              <div className="flex gap-3 pt-1">
-                <button onClick={saveSchedule}
-                  disabled={buildSaving || !buildBlocks.some(b => b.title.trim())}
-                  className="flex-1 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity">
-                  {buildSaving ? "Saving…" : `Add ${buildBlocks.filter(b => b.title.trim()).length} event${buildBlocks.filter(b => b.title.trim()).length !== 1 ? "s" : ""} to Calendar`}
-                </button>
-                <button onClick={() => setShowBuilder(false)}
-                  className="px-4 py-2.5 rounded-xl bg-[rgb(var(--muted))] text-sm hover:bg-[rgb(var(--border))] transition-colors">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Calendar Grid */}
+      {/* ── Calendar Grid ── */}
       <div className="theme-card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgb(var(--border))]">
-          <button onClick={() => setCurrent(new Date(year, month - 1, 1))} className="p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
+          <button onClick={() => setCurrent(new Date(year, month - 1, 1))} className="p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors active:scale-90">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="text-center">
             <p className="font-bold">{MONTHS[month]} {year}</p>
             <button onClick={() => setCurrent(new Date(today.getFullYear(), today.getMonth(), 1))}
-              className="text-xs text-[rgb(var(--primary))] hover:underline mt-0.5">Today</button>
+              className="text-xs text-[rgb(var(--primary))] hover:underline mt-0.5">Jump to today</button>
           </div>
-          <button onClick={() => setCurrent(new Date(year, month + 1, 1))} className="p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors">
+          <button onClick={() => setCurrent(new Date(year, month + 1, 1))} className="p-2 rounded-xl hover:bg-[rgb(var(--muted))] transition-colors active:scale-90">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
         <div className="grid grid-cols-7 border-b border-[rgb(var(--border))]">
-          {DAYS.map(d => (
-            <div key={d} className="py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted-fg))]">{d}</div>
+          {DAYS.map((d, i) => (
+            <div key={d} className={cn(
+              "py-2 text-center text-[11px] font-semibold uppercase tracking-wider",
+              i === 0 || i === 6 ? "text-[rgb(var(--primary))]" : "text-[rgb(var(--muted-fg))]"
+            )}>{d}</div>
           ))}
         </div>
 
@@ -343,26 +302,43 @@ export default function CalendarPage() {
             const dayEvents = day ? eventsOn(day) : [];
             const isToday   = dateStr === todayStr;
             const isSel     = dateStr === selected;
+            const isWeekend = i % 7 === 0 || i % 7 === 6;
             return (
-              <div key={i}
+              <motion.div key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2, delay: Math.min(i * 0.006, 0.18) }}
                 onClick={() => day && setSelected(isSel ? null : dateStr)}
                 className={cn(
-                  "min-h-[80px] p-1.5 border-b border-r border-[rgb(var(--border))] transition-colors",
-                  day ? "cursor-pointer hover:bg-[rgb(var(--muted)/0.5)]" : "opacity-0 pointer-events-none",
-                  isSel && "bg-[rgb(var(--primary)/0.05)]",
+                  "group relative min-h-[88px] p-1.5 border-b border-r border-[rgb(var(--border))] transition-colors",
+                  day ? "cursor-pointer hover:bg-[rgb(var(--primary)/0.06)]" : "opacity-0 pointer-events-none",
+                  isWeekend && day && !isSel && "bg-[rgb(var(--muted)/0.25)]",
+                  isSel && "bg-[rgb(var(--primary)/0.08)] ring-1 ring-inset ring-[rgb(var(--primary)/0.45)]",
                   i % 7 === 6 && "border-r-0",
                 )}
               >
                 {day && (
                   <>
-                    <div className={cn(
-                      "w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium mb-1 mx-auto",
-                      isToday ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] font-bold" : "text-[rgb(var(--fg))]"
-                    )}>{day}</div>
-                    <div className="space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <div className={cn(
+                        "w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium transition-transform group-hover:scale-105",
+                        isToday
+                          ? "text-white font-bold shadow-md shadow-pink-500/30 bg-gradient-to-br from-indigo-500 to-pink-500"
+                          : "text-[rgb(var(--fg))]"
+                      )}>{day}</div>
+                      {dayEvents.length > 0 && (
+                        <span className="flex gap-0.5">
+                          {dayEvents.slice(0, 3).map(ev => (
+                            <span key={ev.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ev.color }} />
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-0.5 mt-1">
                       {dayEvents.slice(0, 3).map(ev => (
-                        <div key={ev.id} className="text-[10px] truncate px-1.5 py-0.5 rounded-md font-medium text-white"
-                          style={{ backgroundColor: ev.color }}>
+                        <div key={ev.id}
+                          className="text-[10px] truncate pl-1.5 pr-1 py-0.5 rounded-md font-medium text-white"
+                          style={{ background: `linear-gradient(90deg, ${ev.color}, ${ev.color}cc)` }}>
                           {ev.start_time && <span className="opacity-80">{ev.start_time} </span>}{ev.title}
                         </div>
                       ))}
@@ -372,18 +348,19 @@ export default function CalendarPage() {
                     </div>
                   </>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
       </div>
 
-      {/* Selected day detail */}
+      {/* ── Selected day detail ── */}
       <AnimatePresence>
         {selected && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
             <div className="theme-card p-4">
-              <p className="font-semibold text-sm mb-3">
+              <p className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[rgb(var(--primary))]" />
                 {new Date(selected + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
               </p>
               {events.filter(e => e.date === selected).length === 0 ? (
@@ -394,8 +371,9 @@ export default function CalendarPage() {
                     .filter(e => e.date === selected)
                     .sort((a, b) => (a.start_time ?? "").localeCompare(b.start_time ?? ""))
                     .map(ev => (
-                      <div key={ev.id} className="flex items-center gap-3 p-3 rounded-xl bg-[rgb(var(--muted))]">
-                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: ev.color }} />
+                      <motion.div key={ev.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-[rgb(var(--muted))] hover:bg-[rgb(var(--primary)/0.06)] transition-colors">
+                        <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: ev.color }} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium">{ev.title}</p>
                           {ev.start_time && (
@@ -409,7 +387,7 @@ export default function CalendarPage() {
                           className="p-1.5 rounded-lg text-[rgb(var(--muted-fg))] hover:text-red-400 hover:bg-red-500/10 transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      </div>
+                      </motion.div>
                     ))}
                 </div>
               )}
@@ -418,7 +396,7 @@ export default function CalendarPage() {
         )}
       </AnimatePresence>
 
-      {/* Quick Add — fixed bottom bar */}
+      {/* ── Quick Add — fixed bottom bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-[rgb(var(--bg)/0.95)] backdrop-blur-md border-t border-[rgb(var(--border))] px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-1.5 flex-shrink-0">
