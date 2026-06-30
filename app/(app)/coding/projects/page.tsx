@@ -434,12 +434,12 @@ function ProjectCard({ project }: { project: Project }) {
 
   return (
     <motion.div layout className="rounded-2xl overflow-hidden"
-      style={{ border: "1px solid rgba(108,63,212,0.3)", background: "rgba(15,5,29,0.6)" }}>
+      style={{ border: "1px solid rgba(255,255,255,0.3)", background: "rgba(15,5,29,0.6)" }}>
       {/* Card header */}
       <button className="w-full text-left px-5 py-4 flex items-start gap-4 hover:bg-white/[0.02] transition-colors"
         onClick={() => setExpanded(e => !e)}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-          style={{ background: "rgba(108,63,212,0.2)", border: "1px solid rgba(108,63,212,0.3)" }}>
+          style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.3)" }}>
           <FolderKanban className="w-5 h-5" style={{ color: "#BD93F9" }} />
         </div>
         <div className="flex-1 min-w-0">
@@ -462,7 +462,7 @@ function ProjectCard({ project }: { project: Project }) {
             <div className="flex gap-1 flex-wrap">
               {project.tags.slice(0, 3).map(t => (
                 <span key={t} className="text-[10px] px-1.5 py-0.5 rounded"
-                  style={{ background: "rgba(108,63,212,0.15)", color: "#BD93F9", border: "1px solid rgba(108,63,212,0.2)" }}>
+                  style={{ background: "rgba(255,255,255,0.15)", color: "#BD93F9", border: "1px solid rgba(255,255,255,0.2)" }}>
                   {t}
                 </span>
               ))}
@@ -496,7 +496,7 @@ function ProjectCard({ project }: { project: Project }) {
                   {project.objectives.map((obj, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs" style={{ color: "#CBD5E1" }}>
                       <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
-                        style={{ background: "rgba(108,63,212,0.2)", color: "#BD93F9", border: "1px solid rgba(108,63,212,0.3)" }}>
+                        style={{ background: "rgba(255,255,255,0.2)", color: "#BD93F9", border: "1px solid rgba(255,255,255,0.3)" }}>
                         {i + 1}
                       </span>
                       {obj}
@@ -524,7 +524,7 @@ function ProjectCard({ project }: { project: Project }) {
               <div>
                 <button onClick={() => setShowCode(s => !s)}
                   className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg transition-all"
-                  style={{ background: "rgba(108,63,212,0.15)", border: "1px solid rgba(108,63,212,0.3)", color: "#BD93F9" }}>
+                  style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#BD93F9" }}>
                   <Code2 className="w-3.5 h-3.5" />
                   {showCode ? "Hide Starter Code" : "Show Starter Code"}
                 </button>
@@ -534,11 +534,11 @@ function ProjectCard({ project }: { project: Project }) {
                       className="mt-3 rounded-xl overflow-hidden"
                       style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
                       <div className="px-4 py-2 text-[10px] font-mono"
-                        style={{ background: "rgba(108,63,212,0.1)", borderBottom: "1px solid rgba(255,255,255,0.06)", color: "#BD93F9" }}>
+                        style={{ background: "rgba(255,255,255,0.1)", borderBottom: "1px solid rgba(255,255,255,0.06)", color: "#BD93F9" }}>
                         starter_{project.id}.cpp
                       </div>
                       <pre className="px-4 py-3 text-xs font-mono overflow-x-auto leading-5"
-                        style={{ background: "#0F051D", color: "#E2E8F0", maxHeight: 320 }}>
+                        style={{ background: "#0e0e0e", color: "#E2E8F0", maxHeight: 320 }}>
                         {project.starterCode}
                       </pre>
                     </motion.div>
@@ -591,8 +591,8 @@ export default function ProjectsPage() {
             className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
             style={filter === f.id ? {
               background: "linear-gradient(135deg,#6C3FD4,#4F46E5)",
-              border: "1px solid rgba(108,63,212,0.5)", color: "#fff",
-              boxShadow: "0 0 14px rgba(108,63,212,0.35)",
+              border: "1px solid rgba(255,255,255,0.5)", color: "#fff",
+              boxShadow: "0 0 14px rgba(255,255,255,0.35)",
             } : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94A3B8" }}>
             {f.label}
           </button>

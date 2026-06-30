@@ -322,7 +322,7 @@ export default function BattlePage() {
 
                   {/* Create button */}
                   <button onClick={createRoom} disabled={creating}
-                    className="w-full py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-[rgb(var(--primary))] to-purple-600 text-white hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2">
+                    className="w-full py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-[rgb(var(--primary))] to-[rgb(var(--muted))] text-white hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2">
                     {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Swords className="w-4 h-4" />}
                     {creating ? "Creating…" : "Create Battle Room"}
                   </button>

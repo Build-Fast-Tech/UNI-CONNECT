@@ -717,9 +717,9 @@ export default function FeedPage() {
           />
         </div>
         <div className="flex flex-col gap-4 stagger">
-          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#6366f1" />
-          <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#10b981" />
-          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#f97316" />
+          <StatCard label="GPA This Term"  value={gpa !== null ? gpa.toFixed(2) : "—"} sub={gpa !== null ? "weighted average" : "add grades in /gpa"} icon={TrendingUp} color="#9ca3af" />
+          <StatCard label="Time Studied"  value={studyMinsThisWeek >= 60 ? `${Math.floor(studyMinsThisWeek/60)}h ${studyMinsThisWeek%60}m` : `${studyMinsThisWeek}m`} sub="this week" icon={Clock} color="#71717a" />
+          <StatCard label="Applications"   value={String(applications)} sub={applications === 0 ? "none submitted yet" : `${applications} submitted`} icon={Briefcase} color="#52525b" />
         </div>
 
         {/* Row 3: Library + Jobs / CV */}

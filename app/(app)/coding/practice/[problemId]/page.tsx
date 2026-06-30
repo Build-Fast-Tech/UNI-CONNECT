@@ -201,7 +201,7 @@ export default function ProblemIDEPage() {
                       <div className="flex gap-1">
                         {problem.testCases.slice(0,3).map((_,i)=>(
                           <button key={i} onClick={()=>setActiveCase(i)} className="px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
-                            style={activeCase===i?{background:"rgba(108,63,212,0.3)",color:"#BD93F9",border:"1px solid rgba(108,63,212,0.4)"}
+                            style={activeCase===i?{background:"rgba(255,255,255,0.3)",color:"#BD93F9",border:"1px solid rgba(255,255,255,0.4)"}
                               :{background:"rgba(255,255,255,0.04)",color:"#6272A4",border:"1px solid rgba(255,255,255,0.06)"}}>
                             Case {i+1}
                           </button>
@@ -245,7 +245,7 @@ export default function ProblemIDEPage() {
           <div className="flex flex-col gap-2 min-h-0">
             {/* Toolbar */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl shrink-0"
-              style={{background:"rgba(26,11,46,0.9)",border:"1px solid rgba(108,63,212,0.25)"}}>
+              style={{background:"rgba(26,11,46,0.9)",border:"1px solid rgba(255,255,255,0.25)"}}>
               <Code2 className="w-3.5 h-3.5 shrink-0" style={{color:"#BD93F9"}}/>
               <span className="text-xs font-mono flex-1" style={{color:"#6272A4"}}>solution.{LANG_EXT[language]}</span>
               <select value={language} onChange={e=>setLanguage(e.target.value)}
@@ -261,7 +261,7 @@ export default function ProblemIDEPage() {
 
             {/* Code editor */}
             <div className="flex-1 rounded-xl overflow-hidden relative min-h-0"
-              style={{background:"#0F051D",border:"1px solid rgba(108,63,212,0.2)",boxShadow:"inset 0 0 40px rgba(108,63,212,0.04)"}}>
+              style={{background:"#0e0e0e",border:"1px solid rgba(255,255,255,0.2)",boxShadow:"inset 0 0 40px rgba(255,255,255,0.04)"}}>
               <div className="flex h-full">
                 {/* Line numbers */}
                 <div className="pt-4 pb-4 px-3 select-none shrink-0"

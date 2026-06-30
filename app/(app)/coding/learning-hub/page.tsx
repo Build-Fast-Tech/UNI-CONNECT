@@ -51,7 +51,7 @@ export default function LearningHubPage() {
           { label: "Problems Solved", value: totalSolved, total: PROBLEMS.length, icon: CheckCircle, color: "text-emerald-400" },
           { label: "Dry Runs Done",   value: dryRuns,     total: null,            icon: Flame,       color: "text-orange-400" },
           { label: "Total Points",    value: totalPoints, total: null,            icon: Star,        color: "text-yellow-400" },
-          { label: "Active Streak",   value: "🔥 Keep going!", total: null,       icon: Zap,         color: "text-purple-400" },
+          { label: "Active Streak",   value: "🔥 Keep going!", total: null,       icon: Zap,         color: "text-[rgb(var(--fg))]" },
         ].map(s => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             className="theme-card p-4 flex items-center gap-3">

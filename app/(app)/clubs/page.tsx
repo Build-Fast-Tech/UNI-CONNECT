@@ -33,15 +33,15 @@ interface Event {
 
 const CATEGORIES = ["All","academic","cultural","sports","tech","arts","community","general"];
 const CAT_COLORS: Record<string, string> = {
-  academic: "bg-blue-500/10 text-blue-400", cultural: "bg-pink-500/10 text-pink-400",
-  sports: "bg-emerald-500/10 text-emerald-400", tech: "bg-violet-500/10 text-violet-400",
-  arts: "bg-amber-500/10 text-amber-400", community: "bg-orange-500/10 text-orange-400",
+  academic: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]", cultural: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
+  sports: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]", tech: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
+  arts: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]", community: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
   general: "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",
 };
 const POST_TYPES = [
-  { value: "announcement", label: "Announcement", icon: Megaphone, color: "text-blue-400" },
-  { value: "event",        label: "Event",        icon: Calendar,  color: "text-violet-400" },
-  { value: "update",       label: "Update",       icon: Zap,       color: "text-amber-400" },
+  { value: "announcement", label: "Announcement", icon: Megaphone, color: "text-[rgb(var(--muted-fg))]" },
+  { value: "event",        label: "Event",        icon: Calendar,  color: "text-[rgb(var(--muted-fg))]" },
+  { value: "update",       label: "Update",       icon: Zap,       color: "text-[rgb(var(--muted-fg))]" },
 ];
 
 function formatEventDate(d: string | null) {
@@ -723,9 +723,9 @@ export default function ClubsEventsPage() {
                   const imgs = ev.image_urls?.length ? ev.image_urls : (ev.image_url ? [ev.image_url] : []);
                   const typeLabel = ev.post_type ?? "update";
                   const typeStyle =
-                    typeLabel === "announcement" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                    typeLabel === "event"        ? "bg-violet-500/10 text-violet-400 border-violet-500/20" :
-                                                  "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                    typeLabel === "announcement" ? "bg-[rgb(var(--muted))] text-[rgb(var(--fg))] border-[rgb(var(--border))]" :
+                    typeLabel === "event"        ? "bg-[rgb(var(--muted))] text-[rgb(var(--fg))] border-[rgb(var(--border))]" :
+                                                  "bg-[rgb(var(--muted))] text-[rgb(var(--fg))] border-[rgb(var(--border))]";
                   return (
                     <motion.article key={ev.id}
                       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -838,8 +838,8 @@ export default function ClubsEventsPage() {
                 <div className="space-y-2">
                   {events.filter(e => isUpcoming(e.event_date)).slice(0, 4).map(ev => (
                     <div key={ev.id} className="flex items-start gap-2.5 p-2 rounded-xl bg-[rgb(var(--muted)/0.5)] hover:bg-[rgb(var(--muted))] transition-colors">
-                      <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Calendar className="w-3.5 h-3.5 text-violet-400" />
+                      <div className="w-7 h-7 rounded-lg bg-[rgb(var(--muted))] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Calendar className="w-3.5 h-3.5 text-[rgb(var(--fg))]" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold line-clamp-1">{ev.title || ev.society?.name}</p>

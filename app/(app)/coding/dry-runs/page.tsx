@@ -55,14 +55,14 @@ function VarBox({ name, value, changed }: { name: string; value: string | number
       animate={{ opacity: 1, scale: 1 }}
       className="flex flex-col items-center rounded-xl overflow-hidden"
       style={{
-        border: changed ? "1.5px solid #50FA7B" : "1px solid rgba(108,63,212,0.4)",
+        border: changed ? "1.5px solid #50FA7B" : "1px solid rgba(255,255,255,0.4)",
         boxShadow: changed ? "0 0 16px rgba(80,250,123,0.25)" : "none",
         minWidth: 72,
         background: "rgba(15,5,29,0.8)",
       }}>
       {/* Name label */}
       <div className="w-full text-center px-2 py-1 text-[10px] font-mono font-semibold truncate"
-        style={{ background: "rgba(108,63,212,0.2)", color: "#BD93F9", borderBottom: "1px solid rgba(108,63,212,0.3)" }}>
+        style={{ background: "rgba(255,255,255,0.2)", color: "#BD93F9", borderBottom: "1px solid rgba(255,255,255,0.3)" }}>
         {name}
       </div>
       {/* Value */}
@@ -113,7 +113,7 @@ function VisualTrace({ steps, currentStep }: { steps: TraceStep[]; currentStep: 
 
       {/* Current line badge + note */}
       <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
-        style={{ background: "rgba(108,63,212,0.12)", border: "1px solid rgba(108,63,212,0.25)" }}>
+        style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)" }}>
         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold"
           style={{ background: "rgba(255,121,198,0.15)", color: "#FF79C6", border: "1px solid rgba(255,121,198,0.3)" }}>
           line {step.line}
@@ -159,7 +159,7 @@ function CodeDisplay({ code, activeLine }: { code: string; activeLine?: number }
   const displayActiveLine = activeLine !== undefined ? activeLine + HEADER_COUNT : undefined;
 
   return (
-    <div className="flex overflow-x-auto" style={{ background: "#0F051D" }}>
+    <div className="flex overflow-x-auto" style={{ background: "#0e0e0e" }}>
       <div className="px-3 py-4 select-none shrink-0" style={{ borderRight: "1px solid rgba(255,255,255,0.05)" }}>
         {allLines.map((_, i) => (
           <div key={i} className="text-xs font-mono leading-6 text-right w-6"
@@ -175,7 +175,7 @@ function CodeDisplay({ code, activeLine }: { code: string; activeLine?: number }
           return (
             <div key={i} className="leading-6 transition-colors duration-200"
               style={{
-                background: isActive ? "rgba(108,63,212,0.15)" : "transparent",
+                background: isActive ? "rgba(255,255,255,0.15)" : "transparent",
                 borderLeft: isActive ? "2px solid #BD93F9" : "2px solid transparent",
                 opacity: isBoilerplate ? 0.4 : 1,
               }}>
@@ -306,8 +306,8 @@ export default function DryRunsPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                 style={trackFilter === t.id ? {
                   background: "linear-gradient(135deg,#6C3FD4,#4F46E5)",
-                  border: "1px solid rgba(108,63,212,0.5)", color: "#fff",
-                  boxShadow: "0 0 14px rgba(108,63,212,0.35)",
+                  border: "1px solid rgba(255,255,255,0.5)", color: "#fff",
+                  boxShadow: "0 0 14px rgba(255,255,255,0.35)",
                 } : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94A3B8" }}>
                 <span>{t.icon}</span>{t.label}
               </button>
@@ -318,11 +318,11 @@ export default function DryRunsPage() {
         {snippet && (
           <motion.div key={snippet.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl overflow-hidden"
-            style={{ border: "1px solid rgba(108,63,212,0.35)", boxShadow: "0 0 40px rgba(108,63,212,0.12)" }}>
+            style={{ border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 0 40px rgba(255,255,255,0.12)" }}>
 
             {/* Card header */}
             <div className="flex items-center justify-between px-5 py-3"
-              style={{ background: "rgba(108,63,212,0.15)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              style={{ background: "rgba(255,255,255,0.15)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
                   {["#FF5555","#FFB86C","#50FA7B"].map(c => <div key={c} className="w-3 h-3 rounded-full" style={{ backgroundColor: c }} />)}
@@ -361,7 +361,7 @@ export default function DryRunsPage() {
                     {!tracing ? (
                       <button onClick={startTrace}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                        style={{ background: "rgba(108,63,212,0.2)", border: "1px solid rgba(108,63,212,0.4)", color: "#BD93F9" }}>
+                        style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)", color: "#BD93F9" }}>
                         <Play className="w-3 h-3" /> Start Trace
                       </button>
                     ) : (
@@ -370,13 +370,13 @@ export default function DryRunsPage() {
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                           style={autoPlay
                             ? { background: "rgba(255,184,108,0.2)", border: "1px solid rgba(255,184,108,0.4)", color: "#FFB86C" }
-                            : { background: "rgba(108,63,212,0.2)", border: "1px solid rgba(108,63,212,0.4)", color: "#BD93F9" }}>
+                            : { background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)", color: "#BD93F9" }}>
                           <SkipForward className="w-3 h-3" /> {autoPlay ? "Pause" : "Auto"}
                         </button>
                         <button onClick={stepForward}
                           disabled={traceStep >= traceSteps.length - 1 || autoPlay}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-30"
-                          style={{ background: "rgba(108,63,212,0.2)", border: "1px solid rgba(108,63,212,0.4)", color: "#BD93F9" }}>
+                          style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)", color: "#BD93F9" }}>
                           <StepForward className="w-3 h-3" /> Step
                         </button>
                         <button onClick={resetTrace}

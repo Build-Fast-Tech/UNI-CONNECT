@@ -280,7 +280,7 @@ a[style*="transform"]:active { transform: none; }
 
 /* ─── Coding OS Module ────────────────────────────────────────── */
 .coding-bg {
-  background: linear-gradient(135deg, #0F051D 0%, #1A0B2E 50%, #0D0620 100%);
+  background: linear-gradient(135deg, #161616 0%, #0e0e0e 50%, #000000 100%);
 }
 .coding-glass {
   background: rgba(255, 255, 255, 0.03);
@@ -297,23 +297,23 @@ a[style*="transform"]:active { transform: none; }
   border-radius: 14px;
 }
 .coding-glow-border {
-  border: 1px solid rgba(108, 63, 212, 0.4);
-  box-shadow: 0 0 20px rgba(108, 63, 212, 0.15), inset 0 0 20px rgba(108, 63, 212, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15), inset 0 0 20px rgba(255, 255, 255, 0.03);
 }
 .coding-glow-border-active {
-  border: 1px solid rgba(108, 63, 212, 0.7);
-  box-shadow: 0 0 30px rgba(108, 63, 212, 0.3), 0 0 60px rgba(108, 63, 212, 0.1), inset 0 0 30px rgba(108, 63, 212, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.3), 0 0 60px rgba(255, 255, 255, 0.1), inset 0 0 30px rgba(255, 255, 255, 0.05);
 }
 .coding-btn-primary {
   background: linear-gradient(135deg, #6C3FD4 0%, #4F46E5 100%);
-  border: 1px solid rgba(108, 63, 212, 0.5);
-  box-shadow: 0 4px 20px rgba(108, 63, 212, 0.35), 0 0 40px rgba(108, 63, 212, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.35), 0 0 40px rgba(255, 255, 255, 0.1);
   color: #fff;
   font-weight: 600;
   transition: all 0.2s ease;
 }
 .coding-btn-primary:hover {
-  box-shadow: 0 6px 30px rgba(108, 63, 212, 0.5), 0 0 60px rgba(108, 63, 212, 0.2);
+  box-shadow: 0 6px 30px rgba(255, 255, 255, 0.5), 0 0 60px rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 .coding-btn-primary:active { transform: translateY(0); }
@@ -349,8 +349,8 @@ a[style*="transform"]:active { transform: none; }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(108,63,212,0.3); }
-  50%       { box-shadow: 0 0 40px rgba(108,63,212,0.6), 0 0 80px rgba(79,70,229,0.2); }
+  0%, 100% { box-shadow: 0 0 20px rgba(255,255,255,0.3); }
+  50%       { box-shadow: 0 0 40px rgba(255,255,255,0.6), 0 0 80px rgba(255,255,255,0.2); }
 }
 .glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
 

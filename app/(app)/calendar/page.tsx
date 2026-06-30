@@ -28,7 +28,9 @@ interface ScheduleBlock {
   color: string;
 }
 
-const COLORS = ["#6366f1","#10b981","#f97316","#ef4444","#8b5cf6","#3b82f6","#ec4899","#eab308"];
+// Greyscale event palette (strict black & white theme). Mid-greys so pills with
+// white text stay legible on both the light and dark calendar grid.
+const COLORS = ["#3f3f46","#52525b","#646464","#737373","#4b4b4b","#5b5b5b","#6b7280","#444444"];
 const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -152,7 +154,7 @@ export default function CalendarPage() {
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="relative overflow-hidden rounded-2xl p-6 text-white"
-        style={{ background: "linear-gradient(135deg,#4f46e5 0%,#7c3aed 48%,#db2777 100%)" }}
+        style={{ background: "linear-gradient(135deg,#2d2d2d 0%,#1a1a1a 50%,#000000 100%)" }}
       >
         <div className="absolute -right-10 -top-12 w-48 h-48 rounded-full bg-white/10 pointer-events-none" />
         <div className="absolute right-28 bottom-0 w-32 h-32 rounded-full bg-white/10 translate-y-1/2 pointer-events-none" />
@@ -175,7 +177,7 @@ export default function CalendarPage() {
           </div>
           <button
             onClick={() => setShowBuilder(p => !p)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#5b21b6] font-semibold text-sm hover:bg-white/90 transition-colors shadow-lg shadow-black/10"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#111111] font-semibold text-sm hover:bg-white/90 transition-colors shadow-lg shadow-black/10"
           >
             <CalendarPlus className="w-4 h-4" /> Plan Day
           </button>
@@ -323,7 +325,7 @@ export default function CalendarPage() {
                       <div className={cn(
                         "w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium transition-transform group-hover:scale-105",
                         isToday
-                          ? "text-white font-bold shadow-md shadow-pink-500/30 bg-gradient-to-br from-indigo-500 to-pink-500"
+                          ? "bg-[rgb(var(--fg))] text-[rgb(var(--bg))] font-bold shadow-md"
                           : "text-[rgb(var(--fg))]"
                       )}>{day}</div>
                       {dayEvents.length > 0 && (

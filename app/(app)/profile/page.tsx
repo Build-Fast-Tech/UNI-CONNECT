@@ -340,7 +340,7 @@ export default function MyProfilePage() {
               </span>
             )}
             {isSocietyHead && (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-medium capitalize">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[rgb(var(--muted))] text-[rgb(var(--fg))] font-medium capitalize">
                 Society Head
               </span>
             )}

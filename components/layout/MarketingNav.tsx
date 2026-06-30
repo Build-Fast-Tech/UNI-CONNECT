@@ -38,7 +38,7 @@ export function MarketingNav() {
         <Link href="/" className="flex items-center gap-2 group">
           <span className="font-bold text-lg tracking-tight text-white/90">
             Uni
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent group-hover:from-cyan-400 group-hover:to-purple-400 transition-all duration-500">
+            <span className="bg-gradient-to-r from-[rgb(var(--muted))] to-[rgb(var(--muted))] bg-clip-text text-transparent group-hover:from-[rgb(var(--muted))] group-hover:to-[rgb(var(--muted))] transition-all duration-500">
               Connect
             </span>
           </span>

@@ -206,8 +206,8 @@ function AIChat() {
     <div className="flex flex-col h-full max-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 -my-4 sm:-my-6">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-[rgb(var(--border))] bg-[rgb(var(--card)/0.6)] backdrop-blur-sm flex-shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
-          <Bot className="w-5 h-5 text-white" />
+        <div className="w-9 h-9 rounded-xl bg-[rgb(var(--primary))] flex items-center justify-center">
+          <Bot className="w-5 h-5 text-[rgb(var(--primary-fg))]" />
         </div>
         <div className="min-w-0">
           <h1 className="font-semibold text-sm leading-tight">UniConnect AI</h1>
@@ -259,8 +259,8 @@ function AIChat() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center h-full gap-6 text-center"
           >
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
-              <Bot className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-[rgb(var(--primary))] flex items-center justify-center">
+              <Bot className="w-8 h-8 text-[rgb(var(--primary-fg))]" />
             </div>
             <div>
               <h2 className="font-bold text-lg mb-1">Ask me anything</h2>
@@ -298,11 +298,11 @@ function AIChat() {
               <div className={cn(
                 "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
                 msg.role === "assistant"
-                  ? "bg-gradient-to-br from-blue-500 to-violet-500"
+                  ? "bg-[rgb(var(--primary))]"
                   : "bg-[rgb(var(--muted))]"
               )}>
                 {msg.role === "assistant"
-                  ? <Bot className="w-4 h-4 text-white" />
+                  ? <Bot className="w-4 h-4 text-[rgb(var(--primary-fg))]" />
                   : <User className="w-4 h-4 text-[rgb(var(--muted-fg))]" />
                 }
               </div>
@@ -363,7 +363,7 @@ function AIChat() {
               className={cn(
                 "flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
                 input.trim() && !loading
-                  ? "bg-gradient-to-br from-blue-500 to-violet-500 text-white hover:opacity-90"
+                  ? "bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] hover:opacity-90"
                   : "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] cursor-not-allowed"
               )}
             >

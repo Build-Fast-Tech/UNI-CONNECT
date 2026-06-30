@@ -144,7 +144,7 @@ function PracticeContent() {
                         background: isSolved ? "rgba(80,250,123,0.04)" : "rgba(255,255,255,0.03)",
                         border: `1px solid ${isSolved ? "rgba(80,250,123,0.18)" : "rgba(255,255,255,0.07)"}`,
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = isSolved ? "rgba(80,250,123,0.08)" : "rgba(108,63,212,0.1)")}
+                      onMouseEnter={e => (e.currentTarget.style.background = isSolved ? "rgba(80,250,123,0.08)" : "rgba(255,255,255,0.1)")}
                       onMouseLeave={e => (e.currentTarget.style.background = isSolved ? "rgba(80,250,123,0.04)" : "rgba(255,255,255,0.03)")}>
 
                       {/* Completion tab on the left */}

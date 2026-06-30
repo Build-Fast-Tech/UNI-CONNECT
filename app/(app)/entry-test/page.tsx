@@ -40,8 +40,8 @@ interface University { id: string; name: string; short_name: string; }
 const TYPES = [
   { key: "all",        label: "All",          icon: Layers,       color: "text-[rgb(var(--primary))]" },
   { key: "past_paper", label: "Past Papers",  icon: FileQuestion, color: "text-orange-400" },
-  { key: "notes",      label: "Notes",        icon: BookOpen,     color: "text-blue-400" },
-  { key: "lecture",    label: "Lectures",     icon: Video,        color: "text-violet-400" },
+  { key: "notes",      label: "Notes",        icon: BookOpen,     color: "text-[rgb(var(--fg))]" },
+  { key: "lecture",    label: "Lectures",     icon: Video,        color: "text-[rgb(var(--fg))]" },
   { key: "mcqs",       label: "MCQs",         icon: ListChecks,   color: "text-emerald-400" },
   { key: "book",       label: "Books",        icon: FileText,     color: "text-rose-400" },
   { key: "other",      label: "Other",        icon: Layers,       color: "text-[rgb(var(--muted-fg))]" },

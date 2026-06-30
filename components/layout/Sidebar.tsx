@@ -128,7 +128,7 @@ function SidebarContent({
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 leading-tight">Employer</span>
               )}
               {isSocietyHead && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/15 text-violet-400 leading-tight">Society Head</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[rgb(var(--muted))] text-[rgb(var(--fg))] leading-tight">Society Head</span>
               )}
               {!isAdmin && !isEmployer && !isSocietyHead && (
                 <span className="text-[11px] text-[rgb(var(--muted-fg))]">Student</span>

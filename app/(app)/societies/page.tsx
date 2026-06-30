@@ -18,10 +18,10 @@ interface Society {
 
 const CATEGORIES = ["All","academic","cultural","sports","tech","arts","community","general"];
 const CAT_COLORS: Record<string, string> = {
-  academic:  "bg-blue-500/10 text-blue-400",
+  academic:  "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
   cultural:  "bg-pink-500/10 text-pink-400",
   sports:    "bg-emerald-500/10 text-emerald-400",
-  tech:      "bg-violet-500/10 text-violet-400",
+  tech:      "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
   arts:      "bg-amber-500/10 text-amber-400",
   community: "bg-orange-500/10 text-orange-400",
   general:   "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]",

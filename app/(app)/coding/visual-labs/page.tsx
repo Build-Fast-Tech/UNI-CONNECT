@@ -54,12 +54,12 @@ function PointerPlayground() {
           <motion.button key={v.name} onClick={() => pointTo(v.name)}
             whileTap={{ scale: 0.97 }}
             className={cn("p-4 rounded-xl border-2 text-center transition-all",
-              ptr === v.name ? "border-purple-500 bg-purple-500/10" : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.5)]")}>
+              ptr === v.name ? "border-[rgb(var(--border))] bg-[rgb(var(--muted))]" : "border-[rgb(var(--border))] hover:border-[rgb(var(--primary)/0.5)]")}>
             <div className="text-[10px] font-mono text-[rgb(var(--muted-fg))] mb-1">{v.addr}</div>
-            <div className="text-2xl font-bold font-mono text-purple-300">{v.value}</div>
+            <div className="text-2xl font-bold font-mono text-[rgb(var(--fg))]">{v.value}</div>
             <div className="text-xs font-mono mt-1">int {v.name}</div>
             {ptr === v.name && (
-              <div className="mt-2 text-[10px] text-purple-400 font-mono animate-pulse">← p points here</div>
+              <div className="mt-2 text-[10px] text-[rgb(var(--fg))] font-mono animate-pulse">← p points here</div>
             )}
           </motion.button>
         ))}
@@ -68,7 +68,7 @@ function PointerPlayground() {
       {/* Pointer display */}
       {ptr && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 font-mono text-sm text-purple-300">
+          className="p-3 rounded-xl bg-[rgb(var(--muted))] border border-[rgb(var(--border))] font-mono text-sm text-[rgb(var(--fg))]">
           <span className="text-[rgb(var(--muted-fg))]">int* p = </span>&amp;{ptr}
           <span className="text-[rgb(var(--muted-fg))]"> = </span>
           {vars.find(v => v.name === ptr)?.addr}
@@ -83,9 +83,9 @@ function PointerPlayground() {
       </button>
 
       {/* Console */}
-      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-3 max-h-40 overflow-y-auto">
+      <div className="rounded-xl bg-[#0e0e0e] border border-[rgb(var(--border))] p-3 max-h-40 overflow-y-auto">
         {log.map((l, i) => (
-          <div key={i} className={cn("text-xs font-mono", l.startsWith("//") ? "text-[rgb(var(--muted-fg))]" : "text-purple-300")}>{l}</div>
+          <div key={i} className={cn("text-xs font-mono", l.startsWith("//") ? "text-[rgb(var(--muted-fg))]" : "text-[rgb(var(--fg))]")}>{l}</div>
         ))}
       </div>
     </div>
@@ -101,7 +101,7 @@ function buildFibTree(n: number, depth = 0): TreeNode {
 }
 
 function TreeViz({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
-  const colors = ["text-purple-400", "text-blue-400", "text-emerald-400", "text-yellow-400", "text-orange-400", "text-pink-400"];
+  const colors = ["text-[rgb(var(--fg))]", "text-[rgb(var(--fg))]", "text-emerald-400", "text-yellow-400", "text-orange-400", "text-pink-400"];
   const color = colors[depth % colors.length];
   return (
     <div className="flex flex-col items-center gap-1">
@@ -141,7 +141,7 @@ function RecursionTree() {
           <Play className="w-3 h-3" /> Draw
         </button>
       </div>
-      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-4 overflow-auto min-h-48 flex items-start justify-center">
+      <div className="rounded-xl bg-[#0e0e0e] border border-[rgb(var(--border))] p-4 overflow-auto min-h-48 flex items-start justify-center">
         {showTree && <TreeViz node={tree} />}
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -230,7 +230,7 @@ function ArrayEngine() {
       </div>
 
       {/* Visual bars */}
-      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-4">
+      <div className="rounded-xl bg-[#0e0e0e] border border-[rgb(var(--border))] p-4">
         <div className="flex items-end gap-2 h-32 justify-center">
           {arr.map((v, i) => {
             const h = Math.max(8, (v / maxVal) * MAX_H);
@@ -261,7 +261,7 @@ function ArrayEngine() {
       )}
 
       {/* Log */}
-      <div className="rounded-xl bg-[#0F051D] border border-purple-500/20 p-3 max-h-28 overflow-y-auto">
+      <div className="rounded-xl bg-[#0e0e0e] border border-[rgb(var(--border))] p-3 max-h-28 overflow-y-auto">
         {log.slice(-8).map((l, i) => (
           <div key={i} className={cn("text-xs font-mono", l.startsWith("//") ? "text-[rgb(var(--muted-fg))]" : "text-emerald-400")}>{l}</div>
         ))}

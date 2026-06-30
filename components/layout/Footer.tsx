@@ -61,7 +61,7 @@ export function Footer() {
             © 2026{" "}
             <span className="text-white/50 font-medium">UniConnect</span>
             {" "}· Made with care in{" "}
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">Pakistan</span> 🇵🇰
+            <span className="bg-gradient-to-r from-[rgb(var(--muted))] to-[rgb(var(--muted))] bg-clip-text text-transparent">Pakistan</span> 🇵🇰
           </p>
           <p className="text-xs text-white/15">
             Stack: Next.js · Supabase · Google Gemini · Vercel

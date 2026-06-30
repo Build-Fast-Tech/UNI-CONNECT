@@ -129,9 +129,9 @@ export function PermissionsModal() {
   if (!visible) return null;
 
   const items = [
-    { key: "camera" as const,        icon: Camera, bg: "bg-violet-500", label: "Camera",        desc: "Take and send photos in chat",      onAllow: requestCamera },
-    { key: "mic" as const,           icon: Mic,    bg: "bg-orange-500", label: "Microphone",    desc: "Send voice notes in conversations", onAllow: requestMic },
-    { key: "notifications" as const, icon: Bell,   bg: "bg-blue-500",   label: "Notifications", desc: "Get notified about new messages",   onAllow: requestNotifications },
+    { key: "camera" as const,        icon: Camera, bg: "bg-[rgb(var(--primary))]", label: "Camera",        desc: "Take and send photos in chat",      onAllow: requestCamera },
+    { key: "mic" as const,           icon: Mic,    bg: "bg-[rgb(var(--primary))]", label: "Microphone",    desc: "Send voice notes in conversations", onAllow: requestMic },
+    { key: "notifications" as const, icon: Bell,   bg: "bg-[rgb(var(--primary))]", label: "Notifications", desc: "Get notified about new messages",   onAllow: requestNotifications },
   ];
 
   return (
@@ -163,7 +163,7 @@ export function PermissionsModal() {
               )}>
                 <div className="flex items-center gap-3">
                   <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0", bg)}>
-                    <Icon className="w-5 h-5 text-white" />
+                    <Icon className="w-5 h-5 text-[rgb(var(--primary-fg))]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">{label}</p>

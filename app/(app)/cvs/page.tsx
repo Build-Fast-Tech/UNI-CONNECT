@@ -50,7 +50,7 @@ const AVAILABILITY_LABELS: Record<string, string> = {
 
 const VIS_LABELS: Record<string, { label: string; color: string }> = {
   public:         { label: "Public",         color: "bg-emerald-500/10 text-emerald-400" },
-  employers_only: { label: "Employers only", color: "bg-blue-500/10 text-blue-400" },
+  employers_only: { label: "Employers only", color: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]" },
   private:        { label: "Private",        color: "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))]" },
 };
 
@@ -239,7 +239,7 @@ export default function CVsPage() {
           <h1 className="text-3xl font-bold mb-1">CV Center</h1>
           <p className="text-[rgb(var(--muted-fg))]">Browse student CVs from across Pakistani universities.</p>
         </div>
-        {role === "student" && myCvs.length === 0 && (
+        {role !== "employer" && (
           <Link
             href="/cvs/upload"
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[rgb(var(--primary))] text-[rgb(var(--primary-fg))] text-sm font-semibold hover:opacity-90 transition-opacity"

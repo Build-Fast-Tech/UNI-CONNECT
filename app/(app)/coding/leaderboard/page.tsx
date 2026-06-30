@@ -28,8 +28,8 @@ const RANK_ICON = (rank: number) => {
 
 const TIER_BADGE = (pts: number) => {
   if (pts >= 500) return { label: "Legend",   color: "bg-amber-400/20 text-amber-300 border-amber-400/30" };
-  if (pts >= 300) return { label: "Master",   color: "bg-purple-400/20 text-purple-300 border-purple-400/30" };
-  if (pts >= 150) return { label: "Expert",   color: "bg-blue-400/20 text-blue-300 border-blue-400/30" };
+  if (pts >= 300) return { label: "Master",   color: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))] border-[rgb(var(--border))]" };
+  if (pts >= 150) return { label: "Expert",   color: "bg-[rgb(var(--muted))] text-[rgb(var(--fg))] border-[rgb(var(--border))]" };
   if (pts >= 50)  return { label: "Adept",    color: "bg-emerald-400/20 text-emerald-300 border-emerald-400/30" };
   return                  { label: "Novice",  color: "bg-[rgb(var(--muted))] text-[rgb(var(--muted-fg))] border-[rgb(var(--border))]" };
 };
@@ -150,7 +150,7 @@ export default function LeaderboardPage() {
               <motion.div key={entry.user_id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: podiumIdx * 0.1 }}
                 className={cn("theme-card p-4 flex flex-col items-center justify-end text-center", heights[podiumIdx], isMe && "border-[rgb(var(--primary))]")}>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-purple-600 flex items-center justify-center text-sm font-bold text-white mb-1 overflow-hidden shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--muted))] flex items-center justify-center text-sm font-bold text-white mb-1 overflow-hidden shrink-0">
                   {entry.avatar_url ? <img src={entry.avatar_url} className="w-full h-full object-cover" /> : entry.full_name[0]}
                 </div>
                 <p className="text-xs font-semibold truncate w-full">{entry.full_name}</p>
@@ -198,7 +198,7 @@ export default function LeaderboardPage() {
                 <span className={cn("w-8 text-center font-bold shrink-0", rank <= 3 ? "text-lg" : "text-sm text-[rgb(var(--muted-fg))]")}>
                   {RANK_ICON(rank)}
                 </span>
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-purple-600 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--muted))] flex items-center justify-center text-sm font-bold text-white shrink-0">
                   {entry.avatar_url ? <img src={entry.avatar_url} className="w-full h-full object-cover" /> : entry.full_name[0]}
                 </div>
                 <div className="flex-1 min-w-0">

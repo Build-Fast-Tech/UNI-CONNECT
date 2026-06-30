@@ -27,8 +27,8 @@ interface SubjectStats {
 }
 
 const PRESET_COLORS = [
-  "#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316",
-  "#eab308","#22c55e","#10b981","#06b6d4","#3b82f6",
+  "#d4d4d8","#a1a1aa","#9ca3af","#8a8a8a","#71717a",
+  "#6b7280","#52525b","#4b5563","#3f3f46","#27272a",
 ];
 
 function GradeBar({ value, max = 100, color }: { value: number; max?: number; color: string }) {

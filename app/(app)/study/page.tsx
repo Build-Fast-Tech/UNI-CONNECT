@@ -35,12 +35,12 @@ interface LeaderboardEntry {
 }
 
 const MODE_CONFIG: Record<TimerMode, { label: string; color: string; bg: string; seconds: number }> = {
-  pomodoro:    { label: "Pomodoro",    color: "#6366f1", bg: "rgba(99,102,241,0.15)",  seconds: 25*60 },
-  short_break: { label: "Short Break", color: "#10b981", bg: "rgba(16,185,129,0.15)",  seconds: 5*60  },
-  long_break:  { label: "Long Break",  color: "#3b82f6", bg: "rgba(59,130,246,0.15)", seconds: 15*60 },
+  pomodoro:    { label: "Pomodoro",    color: "#e5e5e5", bg: "rgba(255,255,255,0.12)", seconds: 25*60 },
+  short_break: { label: "Short Break", color: "#a1a1aa", bg: "rgba(161,161,170,0.15)", seconds: 5*60  },
+  long_break:  { label: "Long Break",  color: "#71717a", bg: "rgba(113,113,122,0.15)", seconds: 15*60 },
 };
 
-const PRESET_COLORS = ["#6366f1","#8b5cf6","#ec4899","#ef4444","#f97316","#eab308","#22c55e","#10b981","#06b6d4","#3b82f6"];
+const PRESET_COLORS = ["#d4d4d8","#a1a1aa","#9ca3af","#8a8a8a","#71717a","#6b7280","#52525b","#4b5563","#3f3f46","#27272a"];
 const PRESET_SUBJECTS = ["Mathematics","Physics","Chemistry","Computer Science","Linear Algebra","Data Structures","Calculus","Statistics","Economics","History"];
 
 const CONFIG_KEY = "uc_timer_config";
@@ -494,9 +494,9 @@ export default function StudyPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   {[
-                    { key: "pomodoro" as const, label: "Pomodoro", color: "#6366f1", max: 60 },
-                    { key: "short_break" as const, label: "Short Break", color: "#10b981", max: 30 },
-                    { key: "long_break" as const, label: "Long Break", color: "#3b82f6", max: 60 },
+                    { key: "pomodoro" as const, label: "Pomodoro", color: "#e5e5e5", max: 60 },
+                    { key: "short_break" as const, label: "Short Break", color: "#a1a1aa", max: 30 },
+                    { key: "long_break" as const, label: "Long Break", color: "#71717a", max: 60 },
                   ].map(({ key, label, color, max }) => (
                     <div key={key} className="text-center">
                       <label className="block text-xs text-[rgb(var(--muted-fg))] mb-2 font-medium">{label}</label>
@@ -907,7 +907,7 @@ export default function StudyPage() {
                             <p className="font-semibold text-sm">{group.name}</p>
                             <span className={cn(
                               "text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide",
-                              group.type === "permanent" ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
+                              group.type === "permanent" ? "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]" : "bg-amber-500/10 text-amber-400"
                             )}>{group.type}</span>
                           </div>
                           <p className="text-xs text-[rgb(var(--muted-fg))] mt-0.5">{group.subject}</p>

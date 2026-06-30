@@ -23,7 +23,7 @@ export default function CodingLayout({ children }: { children: React.ReactNode }
       {/* Header */}
       <div className="flex items-center gap-3 py-5 mb-2">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg,#6C3FD4,#4F46E5)", boxShadow: "0 0 20px rgba(108,63,212,0.4)" }}>
+          style={{ background: "linear-gradient(135deg,#6C3FD4,#4F46E5)", boxShadow: "0 0 20px rgba(255,255,255,0.4)" }}>
           <Code2 className="w-4.5 h-4.5 text-white" />
         </div>
         <div>
@@ -45,9 +45,9 @@ export default function CodingLayout({ children }: { children: React.ReactNode }
                   : "text-[#6272A4] hover:text-[#94A3B8] hover:bg-white/5"
               )}
               style={active ? {
-                background: "linear-gradient(135deg,rgba(108,63,212,0.3),rgba(79,70,229,0.3))",
-                border: "1px solid rgba(108,63,212,0.4)",
-                boxShadow: "0 0 12px rgba(108,63,212,0.2)",
+                background: "linear-gradient(135deg,rgba(255,255,255,0.3),rgba(79,70,229,0.3))",
+                border: "1px solid rgba(255,255,255,0.4)",
+                boxShadow: "0 0 12px rgba(255,255,255,0.2)",
               } : {
                 border: "1px solid transparent",
               }}>

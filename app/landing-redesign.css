@@ -350,6 +350,13 @@
 .uc-landing .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.8s var(--ease), transform 0.8s var(--ease); }
 .uc-landing .reveal.in { opacity: 1; transform: none; }
 
+/* Landing has its own light/dark theme, decoupled from the app's data-theme.
+   The global ::selection uses the app palette (white text in dark mode), which
+   turned selected landing text invisible. Scope a contrast-correct selection
+   to the landing using its own tokens. */
+.uc-landing ::selection      { background: var(--ink); color: var(--bg); -webkit-text-fill-color: var(--bg); }
+.uc-landing ::-moz-selection { background: var(--ink); color: var(--bg); }
+
 /* ---- Responsive ---- */
 @media (max-width: 980px) {
   .uc-landing .nav-links { display: none; }

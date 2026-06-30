@@ -29,8 +29,8 @@ interface Post {
 }
 
 const POST_TYPE_CONFIG = {
-  event:        { label: "Event",        icon: Calendar,  color: "text-violet-400 bg-violet-400/10" },
-  announcement: { label: "Announcement", icon: Megaphone, color: "text-blue-400 bg-blue-400/10" },
+  event:        { label: "Event",        icon: Calendar,  color: "text-[rgb(var(--fg))] bg-[rgb(var(--muted))]" },
+  announcement: { label: "Announcement", icon: Megaphone, color: "text-[rgb(var(--fg))] bg-[rgb(var(--muted))]" },
   update:       { label: "Update",       icon: Zap,       color: "text-amber-400 bg-amber-400/10" },
 };
 

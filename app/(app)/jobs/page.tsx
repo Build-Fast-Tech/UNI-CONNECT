@@ -27,8 +27,8 @@ const TYPE_COLORS: Record<Job["type"], string> = {
   internship: "bg-[rgb(var(--primary)/0.1)] text-[rgb(var(--primary))]",
   full_time:  "bg-emerald-500/10 text-emerald-500",
   part_time:  "bg-amber-500/10 text-amber-500",
-  contract:   "bg-violet-500/10 text-violet-500",
-  remote:     "bg-sky-500/10 text-sky-500",
+  contract:   "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
+  remote:     "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
 };
 
 const FILTERS: Array<{ value: Job["type"] | "all" }> = [

@@ -30,8 +30,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 };
 
 const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  society:  { label: "Society Registration", icon: Building2,     color: "text-blue-400 bg-blue-400/10" },
-  employer: { label: "Employer Access",      icon: Briefcase,     color: "text-indigo-400 bg-indigo-400/10" },
+  society:  { label: "Society Registration", icon: Building2,     color: "text-[rgb(var(--fg))] bg-[rgb(var(--muted))]" },
+  employer: { label: "Employer Access",      icon: Briefcase,     color: "text-[rgb(var(--fg))] bg-[rgb(var(--muted))]" },
   feedback: { label: "Feedback/Bug",         icon: MessageSquare, color: "text-pink-400 bg-pink-400/10" },
 };
 

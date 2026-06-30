@@ -50,8 +50,8 @@ const CATEGORIES = [
 type CategoryId = typeof CATEGORIES[number]["id"];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  notes:      "bg-blue-500/10 text-blue-500",
-  quiz:       "bg-purple-500/10 text-purple-500",
+  notes:      "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
+  quiz:       "bg-[rgb(var(--muted))] text-[rgb(var(--fg))]",
   assignment: "bg-orange-500/10 text-orange-500",
   sessional1: "bg-yellow-500/10 text-yellow-600",
   sessional2: "bg-amber-500/10 text-amber-600",
