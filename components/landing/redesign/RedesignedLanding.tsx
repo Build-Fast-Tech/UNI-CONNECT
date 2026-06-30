@@ -461,57 +461,27 @@ function CTA() {
   );
 }
 
-const FOOTER_COLS = {
-  Product: [
-    { label: "Features", href: "#features" }, { label: "Universities", href: "/universities" },
-    { label: "Notes", href: "/notes" }, { label: "Jobs", href: "/jobs" }, { label: "AI Chat", href: "/ai" },
-  ],
-  Company: [
-    { label: "About", href: "/about" }, { label: "Pricing", href: "/pricing" },
-    { label: "Blog", href: "/blog" }, { label: "Careers", href: "/careers" },
-  ],
-  Legal: [
-    { label: "Privacy Policy", href: "/privacy" }, { label: "Terms of Service", href: "/terms" }, { label: "Cookie Policy", href: "/cookies" },
-  ],
-};
+const FOOTER_LINKS = [
+  { label: "About", href: "/about" },
+  { label: "Pricing", href: "/pricing" },
+  { label: "Blog", href: "/blog" },
+  { label: "Careers", href: "/careers" },
+  { label: "Legal", href: "/legal" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Cookie Policy", href: "/cookies" },
+];
 
 function SiteFooter() {
   return (
     <footer>
-      <div className="wrap">
-        <div className="foot-grid">
-          <div className="foot-brand">
-            <Brand />
-            <p>The all-in-one platform for Pakistani university students — notes, societies, study groups, jobs, and AI tutoring.</p>
-            <div className="foot-social" style={{ display: "flex", gap: 10, marginTop: 18 }}>
-              <a href="https://x.com" aria-label="Twitter / X" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.2 2H21l-6.5 7.4L22 22h-6l-4.7-6.1L5.8 22H3l7-8L2 2h6.2l4.2 5.6L18.2 2zm-2.1 18h1.6L7.9 3.8H6.2L16.1 20z" /></svg>
-              </a>
-              <a href="https://linkedin.com" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.1c.5-1 1.8-2 3.7-2 4 0 4.7 2.6 4.7 6V21h-4v-5.3c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V21h-4z" /></svg>
-              </a>
-              <a href="https://github.com" aria-label="GitHub" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.2c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z" /></svg>
-              </a>
-            </div>
-          </div>
-          {Object.entries(FOOTER_COLS).map(([title, links]) => (
-            <div key={title} className="foot-col">
-              <h4>{title}</h4>
-              {links.map((l) => (<Link key={l.label} href={l.href}>{l.label}</Link>))}
-            </div>
-          ))}
-          <div className="foot-col">
-            <h4>Get the app</h4>
-            <Link href="/signup">Create account</Link>
-            <Link href="/login">Log in</Link>
-            <Link href="/ai">Try the AI</Link>
-          </div>
-        </div>
-        <div className="foot-bottom">
-          <span>© 2026 <strong style={{ color: "var(--ink)" }}>UniConnect</strong> · Made with care in <span className="grad">Pakistan</span> 🇵🇰</span>
-          <span style={{ fontSize: 12, color: "var(--mut-2)" }}>Stack: Next.js · Supabase · Google Gemini · Vercel</span>
-        </div>
+      <div className="wrap foot-center">
+        <Link href="/" aria-label="UniConnect home"><Brand /></Link>
+        <nav className="foot-links">
+          {FOOTER_LINKS.map((l) => (<Link key={l.label} href={l.href}>{l.label}</Link>))}
+        </nav>
+        <p className="foot-made">Made with <span className="heart" role="img" aria-label="love">❤️</span> in Pakistan</p>
+        <p className="foot-copy">© 2026 UniConnect</p>
       </div>
     </footer>
   );
