@@ -55,19 +55,19 @@
   --input: 255 255 255;
 
   /* Text */
-  --fg:      44 47 45;   /* #2C2F2D Deep Charcoal */
-  --muted-fg:107 114 112;/* #6B7270 Muted Slate */
+  --fg:      23 23 23;   /* #171717 Near-black */
+  --muted-fg:107 107 107;/* #6B6B6B Neutral Gray */
 
-  /* Accent / primary — Sage Green */
-  --primary:    115 140 117; /* #738C75 Muted Sage Green */
-  --primary-fg: 255 255 255; /* white text on green buttons */
-  --accent:     115 140 117;
+  /* Accent / primary — black (monochrome, matches the landing) */
+  --primary:    17 17 17;  /* #111111 */
+  --primary-fg: 255 255 255; /* white text on black buttons */
+  --accent:     17 17 17;
   --accent-fg:  255 255 255;
 
   /* Borders & rings */
   --border:      230 230 228; /* #E6E6E4 */
   --card-border: 230 230 228;
-  --ring:        115 140 117;
+  --ring:        17 17 17;
 
   /* Status */
   --destructive: 239 68 68;
@@ -76,9 +76,9 @@
   /* ── Semantic hex vars (Light) ── */
   --color-background:     #F7F7F5;
   --color-surface:        #FFFFFF;
-  --color-text-primary:   #2C2F2D;
-  --color-text-secondary: #6B7270;
-  --color-accent:         #738C75;
+  --color-text-primary:   #171717;
+  --color-text-secondary: #6B6B6B;
+  --color-accent:         #111111;
   --color-border:         #E6E6E4;
 }
 

@@ -46,7 +46,7 @@ function StatusDot({ online, isDm }: { online: boolean; isDm: boolean }) {
     <span
       className={cn(
         "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[rgb(var(--card))]",
-        online ? "bg-blue-500 shadow-[0_0_6px_1px_rgba(59,130,246,0.8)]" : "bg-black"
+        online ? "bg-emerald-500 shadow-[0_0_6px_1px_rgba(16,185,129,0.7)]" : "bg-[rgb(var(--muted-fg))]"
       )}
     />
   );
