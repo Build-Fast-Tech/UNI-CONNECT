@@ -113,62 +113,92 @@ async function resetAll() {
 }
 
 const stats = { total: 0, uploaded: 0, skipped: 0, errors: 0 };
+const TASKS = [];                 // flat task list, processed with a concurrency pool
+let existingKeys = new Set();     // already-imported (title|subject|semester) keys
+const CONCURRENCY = 12;
 
-async function importDir(absDir, { subject, semesterLabel, storagePrefix }) {
+const keyOf = (title, subject, semester) => `${title}|||${subject}|||${semester ?? ""}`;
+
+// Collect every importable file in a dir as a task — no network here.
+async function collectDir(absDir, { subject, semesterLabel, storagePrefix }) {
   let files;
   try { files = await readdir(absDir); } catch { return; }
-  const importable = files.filter(f => ALLOWED_EXT[path.extname(f).toLowerCase()]);
-  if (!importable.length) return;
-
-  console.log(`\n[${semesterLabel || "—"}] ${subject} — ${importable.length} file(s)`);
-  for (const filename of importable) {
-    stats.total++;
+  for (const filename of files) {
     const ext = path.extname(filename).toLowerCase();
-    const title = filename.slice(0, -ext.length);
-    const category = deriveCategory(filename);
-    const year = extractYear(filename);
-    const courseCode = extractCourseCode(filename);
-    const storagePath = `${storagePrefix}/${filename}`;
-
-    const { data: dup } = await supabase.from("notes").select("id")
-      .eq("title", title).eq("subject", subject).eq("semester", semesterLabel ?? "").maybeSingle();
-    if (dup) { console.log(`  SKIP (dup) ${filename}`); stats.skipped++; continue; }
-
-    let buf;
-    try { buf = await readFile(path.join(absDir, filename)); }
-    catch (e) { console.error(`  READ ERR ${filename}: ${e.message}`); stats.errors++; continue; }
-
-    const { error: upErr } = await supabase.storage.from(BUCKET)
-      .upload(storagePath, buf, { contentType: ALLOWED_EXT[ext], upsert: true });
-    if (upErr) { console.error(`  UPLOAD ERR ${filename}: ${upErr.message}`); stats.errors++; continue; }
-
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-
-    const row = {
-      uploader_id: UPLOADER_ID,
-      title,
-      subject,
-      semester: semesterLabel,
-      university_id: FAST_ID,
-      department: "Computing",
-      course_code: courseCode,
-      file_url: publicUrl,
-      file_type: ext.slice(1),
-      file_size_bytes: buf.length,
-      category,
-      year,
-      status: "published",
-      description: `${subject}${semesterLabel ? ` — ${semesterLabel} semester` : ""} — ${category}${year ? ` (${year})` : ""}`,
-    };
-    const { error: dbErr } = await supabase.from("notes").insert(row);
-    if (dbErr) {
-      console.error(`  DB ERR ${filename}: ${dbErr.message}`);
-      await supabase.storage.from(BUCKET).remove([storagePath]);
-      stats.errors++; continue;
-    }
-    console.log(`  OK [${category}] ${filename}`);
-    stats.uploaded++;
+    if (!ALLOWED_EXT[ext]) continue;
+    TASKS.push({
+      absPath: path.join(absDir, filename),
+      filename, ext, subject, semesterLabel,
+      title: filename.slice(0, -ext.length),
+      // Storage keys must be ASCII — normalise (²⁶ → 26) and replace anything
+      // else non-printable-ASCII so files with odd characters still upload.
+      storagePath: `${storagePrefix}/${filename}`.normalize("NFKD").replace(/[^\x20-\x7E/]/g, "_"),
+    });
   }
+}
+
+// Upload one file to storage + insert its notes row.
+async function processTask(t) {
+  if (existingKeys.has(keyOf(t.title, t.subject, t.semesterLabel))) { stats.skipped++; return; }
+
+  let buf;
+  try { buf = await readFile(t.absPath); }
+  catch (e) { console.error(`READ ERR ${t.filename}: ${e.message}`); stats.errors++; return; }
+
+  const { error: upErr } = await supabase.storage.from(BUCKET)
+    .upload(t.storagePath, buf, { contentType: ALLOWED_EXT[t.ext], upsert: true });
+  if (upErr) { console.error(`UPLOAD ERR ${t.filename}: ${upErr.message}`); stats.errors++; return; }
+
+  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(t.storagePath);
+  const category = deriveCategory(t.filename);
+  const year = extractYear(t.filename);
+
+  const { error: dbErr } = await supabase.from("notes").insert({
+    uploader_id: UPLOADER_ID,
+    title: t.title,
+    subject: t.subject,
+    semester: t.semesterLabel,
+    university_id: FAST_ID,
+    department: "Computing",
+    course_code: extractCourseCode(t.filename),
+    file_url: publicUrl,
+    file_type: t.ext.slice(1),
+    file_size_bytes: buf.length,
+    category,
+    year,
+    status: "published",
+    description: `${t.subject}${t.semesterLabel ? ` — ${t.semesterLabel} semester` : ""} — ${category}${year ? ` (${year})` : ""}`,
+  });
+  if (dbErr) {
+    console.error(`DB ERR ${t.filename}: ${dbErr.message}`);
+    await supabase.storage.from(BUCKET).remove([t.storagePath]);
+    stats.errors++; return;
+  }
+  stats.uploaded++;
+  if (stats.uploaded % 25 === 0) console.log(`  …${stats.uploaded} uploaded`);
+}
+
+// Fixed-size concurrency pool.
+async function runPool(items, concurrency, worker) {
+  let i = 0;
+  await Promise.all(Array.from({ length: concurrency }, async () => {
+    while (i < items.length) { const idx = i++; await worker(items[idx]); }
+  }));
+}
+
+// Pull every existing (title|subject|semester) key once, so we skip in-memory
+// instead of a round-trip per file (handles re-runs + the earlier partial run).
+async function loadExistingKeys() {
+  const keys = new Set();
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase.from("notes")
+      .select("title, subject, semester").range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    for (const r of data) keys.add(keyOf(r.title, r.subject, r.semester));
+    if (data.length < PAGE) break;
+  }
+  return keys;
 }
 
 let UPLOADER_ID, FAST_ID;
@@ -191,7 +221,7 @@ async function main() {
     for (const subject of subjects) {
       const subjectDir = path.join(semDir, subject);
       if (!(await stat(subjectDir).catch(() => null))?.isDirectory()) continue;
-      await importDir(subjectDir, {
+      await collectDir(subjectDir, {
         subject,
         semesterLabel: SEMESTER_LABELS[n - 1],
         storagePrefix: `semester-${n}/${subject}`,
@@ -213,13 +243,19 @@ async function main() {
     for (const subject of subjects) {
       const subjectDir = path.join(semDir, subject);
       if (!(await stat(subjectDir).catch(() => null))?.isDirectory()) continue;
-      await importDir(subjectDir, {
+      await collectDir(subjectDir, {
         subject: `${subject} (Course Outline)`,
         semesterLabel: semIdx ? SEMESTER_LABELS[semIdx - 1] : null,
         storagePrefix: `course-outlines/${semFolder}/${subject}`,
       });
     }
   }
+
+  stats.total = TASKS.length;
+  existingKeys = await loadExistingKeys();
+  console.log(`Collected ${TASKS.length} files · ${existingKeys.size} already imported · uploading with concurrency ${CONCURRENCY}…`);
+
+  await runPool(TASKS, CONCURRENCY, processTask);
 
   console.log("\n=== DONE ===");
   console.log(`Found: ${stats.total}  Uploaded: ${stats.uploaded}  Skipped: ${stats.skipped}  Errors: ${stats.errors}`);
