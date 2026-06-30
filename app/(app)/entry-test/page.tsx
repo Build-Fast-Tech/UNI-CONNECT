@@ -39,11 +39,11 @@ interface University { id: string; name: string; short_name: string; }
 
 const TYPES = [
   { key: "all",        label: "All",          icon: Layers,       color: "text-[rgb(var(--primary))]" },
-  { key: "past_paper", label: "Past Papers",  icon: FileQuestion, color: "text-orange-400" },
+  { key: "past_paper", label: "Past Papers",  icon: FileQuestion, color: "text-[rgb(var(--fg))]" },
   { key: "notes",      label: "Notes",        icon: BookOpen,     color: "text-[rgb(var(--fg))]" },
   { key: "lecture",    label: "Lectures",     icon: Video,        color: "text-[rgb(var(--fg))]" },
-  { key: "mcqs",       label: "MCQs",         icon: ListChecks,   color: "text-emerald-400" },
-  { key: "book",       label: "Books",        icon: FileText,     color: "text-rose-400" },
+  { key: "mcqs",       label: "MCQs",         icon: ListChecks,   color: "text-[rgb(var(--fg))]" },
+  { key: "book",       label: "Books",        icon: FileText,     color: "text-[rgb(var(--fg))]" },
   { key: "other",      label: "Other",        icon: Layers,       color: "text-[rgb(var(--muted-fg))]" },
 ] as const;
 
